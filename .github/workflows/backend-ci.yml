@@ -1,0 +1,103 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, dev]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml"]
+  pull_request:
+    branches: [main, dev]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml"]
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  format:
+    name: Spotless format check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Spotless check
+        run: ./gradlew spotlessCheck
+
+  migration:
+    name: Flyway migration check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:18-3.6-alpine
+        env:
+          POSTGRES_DB: seoul_satellite_archive
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # 실제 PostgreSQL에 마이그레이션을 적용해 SQL 오류와 파일명 규칙을 검증
+      - name: Flyway migrate
+        run: |
+          mkdir -p src/main/resources/db/migration src/main/resources/db/seed
+          docker run --rm --network host \
+            -v "$PWD/src/main/resources/db/migration:/flyway/sql/migration" \
+            -v "$PWD/src/main/resources/db/seed:/flyway/sql/seed" \
+            flyway/flyway:12.4-alpine \
+            -url=jdbc:postgresql://localhost:5432/seoul_satellite_archive \
+            -user=postgres -password=postgres \
+            -locations=filesystem:/flyway/sql/migration,filesystem:/flyway/sql/seed \
+            -validateMigrationNaming=true \
+            migrate
+
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    needs: [format, migration]
+    services:
+      postgres:
+        image: postgis/postgis:18-3.6-alpine
+        env:
+          POSTGRES_DB: seoul_satellite_archive
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # 컴파일, 테스트, jar 패키징까지 수행
+      - name: Build
+        run: ./gradlew build

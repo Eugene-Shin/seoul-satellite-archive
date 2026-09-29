@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: seoul-satellite-archive
+  profiles:
+    default: local
+  datasource:
+    hikari:
+      connection-init-sql: SET TIME ZONE 'Asia/Seoul'
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true

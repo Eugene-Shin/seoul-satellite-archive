@@ -1,0 +1,25 @@
+# docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# 필수 값이 없으면 compose 단계에서 바로 실패한다.
+services:
+  postgis:
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+    ports: !reset []
+    restart: always
+
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgis:5432/${POSTGRES_DB:?POSTGRES_DB required}
+      DB_USERNAME: ${POSTGRES_USER:?POSTGRES_USER required}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS required}
+    restart: always
+
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL required}
+    restart: always
