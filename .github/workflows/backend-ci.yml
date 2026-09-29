@@ -67,7 +67,7 @@ jobs:
             migrate
 
   build:
-    name: Build & Test
+    name: Backend Build & Test
     runs-on: ubuntu-latest
     needs: [format, migration]
     services:
