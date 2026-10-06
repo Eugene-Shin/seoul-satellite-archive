@@ -15,6 +15,6 @@ CREATE TABLE image_upload (
     CONSTRAINT ck_upload_fail  CHECK (status = 'FAILED' OR failure_reason IS NULL)
 );
 
--- 같은 파일 동시 업로드 차단
-CREATE UNIQUE INDEX uq_upload_in_progress ON image_upload (original_file_name)
-    WHERE status IN ('PENDING', 'UPLOADING');
+-- 진행 중이거나 업로드 완료된 같은 파일 재업로드 차단 (실패한 파일은 재시도 가능)
+CREATE UNIQUE INDEX uq_upload_active ON image_upload (original_file_name)
+    WHERE status <> 'FAILED';
