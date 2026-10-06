@@ -1,0 +1,2 @@
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;  -- 제목 부분 일치 검색 인덱스용
