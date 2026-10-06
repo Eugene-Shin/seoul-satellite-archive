@@ -128,3 +128,6 @@ postgres-data/
 
 ### OMC ###
 .omc/
+
+### 로컬 전용 샘플 시드 (상용 위성 주문 정보 포함) ###
+backend/src/main/resources/db/seed/R__insert_dx_sample_satellite_images.sql
