@@ -1,4 +1,4 @@
-import type { ApiResponse } from "./types";
+import type { ApiResponse } from "@/shared/api/types";
 
 type QueryValue = string | number | boolean | null | undefined;
 

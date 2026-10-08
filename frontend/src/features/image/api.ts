@@ -4,7 +4,7 @@ import type {
     ImageFilterOptionsResponse,
     ImageResponse,
     ImageSearchParams,
-} from "./types";
+} from "@/features/image/types";
 
 export function fetchFilterOptions(): Promise<ImageFilterOptionsResponse> {
     return apiGet<ImageFilterOptionsResponse>("/api/images/filter-options");
