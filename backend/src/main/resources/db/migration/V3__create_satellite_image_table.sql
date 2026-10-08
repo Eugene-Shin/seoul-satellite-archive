@@ -5,7 +5,7 @@ CREATE TABLE satellite_image (
     source_id           VARCHAR(200) NOT NULL,     -- 출처 내 원본 영상 ID (FK 아님). STAC item id / CMR granule id / DX 제품명
     title               VARCHAR(300) NOT NULL,
     satellite           VARCHAR(50)  NOT NULL,     -- 출처 원본 값을 대문자로. SENTINEL-2A, LANDSAT-9, TDX-1, PAZ-1, WV02 ...
-    instruments         TEXT[],                    -- 영상 하나에 여러 개 가능 (Landsat: oli, tirs)
+    instruments         VARCHAR[],                 --영상 하나에 여러 개 가능 (Landsat: oli, tirs)
     sensor_type         VARCHAR(10)  NOT NULL CHECK (sensor_type IN ('OPTICAL', 'SAR')),  -- 구름량 필터·광학/SAR 구분
     acquired_at         TIMESTAMPTZ  NOT NULL,
     gsd_meters          NUMERIC(8,2),              -- 대표 공간 해상도 (Ground Sample Distance)
@@ -13,7 +13,7 @@ CREATE TABLE satellite_image (
     orbit_direction     VARCHAR(10)  CHECK (orbit_direction IN ('ASCENDING', 'DESCENDING')),
     footprint           geometry(MultiPolygon, 4326) NOT NULL,  -- 출처가 준 폴리곤 전부
     url                 TEXT         NOT NULL,     -- 원본 메타데이터 위치(STAC item / CMR concept). DX: 저장 경로
-    download_urls       TEXT[]       NOT NULL,     -- 파일 다운로드 링크 (https, s3)
+    download_urls       VARCHAR[]    NOT NULL,     -- 파일 다운로드 링크 (https, s3)
     source_updated_at   TIMESTAMPTZ,
     raw_metadata        JSONB        NOT NULL DEFAULT '{}'::jsonb,
     created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
