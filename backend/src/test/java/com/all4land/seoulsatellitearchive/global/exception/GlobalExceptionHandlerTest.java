@@ -17,11 +17,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@WebMvcTest
+@WebMvcTest(ApiErrorController.class)
 @Import(GlobalExceptionHandlerTest.ThrowingController.class)
 class GlobalExceptionHandlerTest {
 
@@ -45,6 +46,14 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_400_002"))
                 .andExpect(jsonPath("$.errorDetail[0]").value(org.hamcrest.Matchers.startsWith("name: ")));
+    }
+
+    @Test
+    void bindingFailureHidesInternalTypeNames() throws Exception {
+        mockMvc.perform(get("/test/bind").param("count", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_002"))
+                .andExpect(jsonPath("$.errorDetail[0]").value("count: 타입이 올바르지 않습니다."));
     }
 
     @Test
@@ -87,6 +96,9 @@ class GlobalExceptionHandlerTest {
         @PostMapping("/test/valid")
         void valid(@Valid @RequestBody NameRequest request) {}
 
+        @GetMapping("/test/bind")
+        void bind(@Valid @ModelAttribute CountQuery query) {}
+
         @GetMapping("/test/unexpected")
         void unexpected() {
             throw new RuntimeException("DB password=secret");
@@ -94,4 +106,6 @@ class GlobalExceptionHandlerTest {
     }
 
     record NameRequest(@NotBlank String name) {}
+
+    record CountQuery(Integer count) {}
 }

@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BindException.class)
     public ResponseEntity<ApiResponse<Void>> handleBind(BindException ex) {
         List<String> detail = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .map(fe -> fe.getField() + ": " + (fe.isBindingFailure() ? "타입이 올바르지 않습니다." : fe.getDefaultMessage()))
                 .toList();
         return toResponse(CommonErrorCode.VALIDATION_ERROR, detail);
     }
