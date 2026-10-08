@@ -43,3 +43,27 @@ export type ImageFilterOptionsResponse = {
     gsdRange: Range<number>;
     acquiredRange: Range<string>;
 };
+
+export type ImageSort =
+    | "ACQUIRED_AT_ASC"
+    | "ACQUIRED_AT_DESC"
+    | "CLOUD_COVER_ASC"
+    | "CLOUD_COVER_DESC";
+
+export type ImageSearchParams = {
+    keyword?: string;
+    acquiredFrom?: string;
+    acquiredTo?: string;
+    satellites?: string[];
+    instruments?: string[];
+    sensorTypes?: SensorType[];
+    orbitDirection?: OrbitDirection;
+    providers?: string[];
+    isPaid?: boolean;
+    gsdMin?: number;
+    gsdMax?: number;
+    cloudMax?: number;
+    sorts?: ImageSort[];
+    page?: number;
+    size?: number;
+};
