@@ -3,16 +3,23 @@
 import type {
     ImageSearchParams,
     ImageFilterOptionsResponse,
+    SensorType,
 } from "@/features/image/types";
 import { toKstDate } from "@/shared/utils/date";
 import {
     ORBIT_DIRECTION_LABELS,
     SENSOR_TYPE_LABELS,
 } from "@/features/image/labels";
+import { CloudCoverField } from "@/features/image/components/CloudCoverField";
+import { GsdRangeField } from "@/features/image/components/GsdRangeField";
 import { MultiSelect } from "@/shared/components/MultiSelect";
 
 function emptyToUndefined<T>(values: T[]): T[] | undefined {
     return values.length > 0 ? values : undefined;
+}
+
+function isSarOnly(sensorTypes: SensorType[] | undefined): boolean {
+    return sensorTypes ? sensorTypes.every((type) => type === "SAR") : false;
 }
 
 type ImageSearchFormProps = {
@@ -129,8 +136,12 @@ export function ImageSearchForm({
                             const type = options.sensorTypes.find(
                                 (t) => t === e.target.value,
                             );
+                            const sensorTypes = type ? [type] : undefined;
                             onChange({
-                                sensorTypes: type ? [type] : undefined,
+                                sensorTypes,
+                                cloudMax: isSarOnly(sensorTypes)
+                                    ? undefined
+                                    : conditions.cloudMax,
                             });
                         }}
                         className="rounded border px-3 py-2"
@@ -189,6 +200,19 @@ export function ImageSearchForm({
                         <option value="false">무료</option>
                     </select>
                 </label>
+            </div>
+
+            <div className="flex flex-wrap gap-8">
+                <GsdRangeField
+                    range={options.gsdRange}
+                    conditions={conditions}
+                    onChange={onChange}
+                />
+                <CloudCoverField
+                    value={conditions.cloudMax}
+                    disabled={isSarOnly(conditions.sensorTypes)}
+                    onChange={(cloudMax) => onChange({ cloudMax })}
+                />
             </div>
         </form>
     );
