@@ -14,6 +14,7 @@ import { CloudCoverField } from "@/features/image/components/CloudCoverField";
 import { GsdRangeField } from "@/features/image/components/GsdRangeField";
 import { MultiSelect } from "@/shared/components/MultiSelect";
 import { Select } from "@/shared/components/Select";
+import { SortField } from "@/features/image/components/SortField";
 
 function emptyToUndefined<T>(values: T[]): T[] | undefined {
     return values.length > 0 ? values : undefined;
@@ -163,6 +164,13 @@ export function ImageSearchForm({
                     onChange={(cloudMax) => onChange({ cloudMax })}
                 />
             </div>
+
+            <SortField
+                value={conditions.sorts ?? []}
+                onChange={(sorts) =>
+                    onChange({ sorts: emptyToUndefined(sorts) })
+                }
+            />
         </form>
     );
 }
