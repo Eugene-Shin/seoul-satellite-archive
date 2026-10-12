@@ -5,6 +5,15 @@ import type {
     ImageFilterOptionsResponse,
 } from "@/features/image/types";
 import { toKstDate } from "@/shared/utils/date";
+import {
+    ORBIT_DIRECTION_LABELS,
+    SENSOR_TYPE_LABELS,
+} from "@/features/image/labels";
+import { MultiSelect } from "@/shared/components/MultiSelect";
+
+function emptyToUndefined<T>(values: T[]): T[] | undefined {
+    return values.length > 0 ? values : undefined;
+}
 
 type ImageSearchFormProps = {
     options: ImageFilterOptionsResponse;
@@ -31,7 +40,9 @@ export function ImageSearchForm({
                 <input
                     type="text"
                     value={conditions.keyword ?? ""}
-                    onChange={(e) => onChange({ keyword: e.target.value })}
+                    onChange={(e) =>
+                        onChange({ keyword: e.target.value || undefined })
+                    }
                     placeholder="영상 제목을 입력하세요"
                     className="rounded border px-3 py-2"
                 />
@@ -47,7 +58,9 @@ export function ImageSearchForm({
                         min={firstDate}
                         max={conditions.acquiredTo || lastDate}
                         onChange={(e) =>
-                            onChange({ acquiredFrom: e.target.value })
+                            onChange({
+                                acquiredFrom: e.target.value || undefined,
+                            })
                         }
                         className="rounded border px-3 py-2"
                     />
@@ -59,12 +72,124 @@ export function ImageSearchForm({
                         min={conditions.acquiredFrom || firstDate}
                         max={lastDate}
                         onChange={(e) =>
-                            onChange({ acquiredTo: e.target.value })
+                            onChange({
+                                acquiredTo: e.target.value || undefined,
+                            })
                         }
                         className="rounded border px-3 py-2"
                     />
                 </div>
             </fieldset>
+            <div className="flex flex-wrap gap-2">
+                <MultiSelect
+                    label="위성"
+                    options={options.satellites.map((satellite) => ({
+                        value: satellite,
+                        label: satellite,
+                    }))}
+                    selected={conditions.satellites ?? []}
+                    onChange={(satellites) =>
+                        onChange({ satellites: emptyToUndefined(satellites) })
+                    }
+                />
+                <MultiSelect
+                    label="센서"
+                    options={options.instruments.map((instrument) => ({
+                        value: instrument,
+                        label: instrument,
+                    }))}
+                    selected={conditions.instruments ?? []}
+                    onChange={(instruments) =>
+                        onChange({ instruments: emptyToUndefined(instruments) })
+                    }
+                />
+                <MultiSelect
+                    label="영상 제공 기관"
+                    options={options.providers.map((provider) => ({
+                        value: provider.code,
+                        label: provider.name,
+                    }))}
+                    selected={conditions.providers ?? []}
+                    onChange={(providers) =>
+                        onChange({ providers: emptyToUndefined(providers) })
+                    }
+                />
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+                <label className="flex flex-col gap-1">
+                    <span className="font-semibold">센서 유형</span>
+                    <select
+                        value={
+                            conditions.sensorTypes
+                                ? conditions.sensorTypes[0]
+                                : ""
+                        }
+                        onChange={(e) => {
+                            const type = options.sensorTypes.find(
+                                (t) => t === e.target.value,
+                            );
+                            onChange({
+                                sensorTypes: type ? [type] : undefined,
+                            });
+                        }}
+                        className="rounded border px-3 py-2"
+                    >
+                        <option value="">전체</option>
+                        {options.sensorTypes.map((type) => (
+                            <option key={type} value={type}>
+                                {SENSOR_TYPE_LABELS[type]}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+
+                <label className="flex flex-col gap-1">
+                    <span className="font-semibold">궤도 방향</span>
+                    <select
+                        value={conditions.orbitDirection ?? ""}
+                        onChange={(e) =>
+                            onChange({
+                                orbitDirection: options.orbitDirections.find(
+                                    (direction) => direction === e.target.value,
+                                ),
+                            })
+                        }
+                        className="rounded border px-3 py-2"
+                    >
+                        <option value="">전체</option>
+                        {options.orbitDirections.map((direction) => (
+                            <option key={direction} value={direction}>
+                                {ORBIT_DIRECTION_LABELS[direction]}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+
+                <label className="flex flex-col gap-1">
+                    <span className="font-semibold">유료 여부</span>
+                    <select
+                        value={
+                            conditions.isPaid === undefined
+                                ? ""
+                                : String(conditions.isPaid)
+                        }
+                        onChange={(e) => {
+                            onChange({
+                                isPaid:
+                                    e.target.value === ""
+                                        ? undefined
+                                        : e.target.value === "true",
+                            });
+                        }}
+                        className="rounded border px-3 py-2"
+                    >
+                        <option value="">전체</option>
+                        <option value="true">유료</option>
+                        <option value="false">무료</option>
+                    </select>
+                </label>
+            </div>
         </form>
     );
 }
