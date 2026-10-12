@@ -28,17 +28,22 @@ type ImageSearchFormProps = {
     options: ImageFilterOptionsResponse;
     conditions: ImageSearchParams;
     onChange: (change: Partial<ImageSearchParams>) => void;
+    onSubmit: () => void;
 };
 
 export function ImageSearchForm({
     options,
     conditions,
     onChange,
+    onSubmit,
 }: ImageSearchFormProps) {
     return (
         <form
             className="flex flex-col gap-4"
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={(e) => {
+                e.preventDefault();
+                onSubmit();
+            }}
         >
             <label className="flex flex-col gap-1">
                 <span className="font-semibold">제목</span>
@@ -171,6 +176,13 @@ export function ImageSearchForm({
                     onChange({ sorts: emptyToUndefined(sorts) })
                 }
             />
+
+            <button
+                type="submit"
+                className="self-start rounded bg-foreground px-6 py-2 text-background"
+            >
+                검색
+            </button>
         </form>
     );
 }

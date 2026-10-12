@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { fetchFilterOptions } from "@/features/image/api";
+import { ImageResults } from "@/features/image/components/ImageResults";
 import { ImageSearchForm } from "@/features/image/components/ImageSearchForm";
 import type {
     ImageFilterOptionsResponse,
@@ -15,9 +16,17 @@ export function ImageSearch() {
     );
     const [error, setError] = useState<string | null>(null);
     const [conditions, setConditions] = useState<ImageSearchParams>({});
+    const [search, setSearch] = useState<{
+        id: number;
+        conditions: ImageSearchParams;
+    }>({ id: 0, conditions: {} });
 
     function updateConditions(changes: Partial<ImageSearchParams>) {
         setConditions((prev) => ({ ...prev, ...changes }));
+    }
+
+    function runSearch() {
+        setSearch((prev) => ({ id: prev.id + 1, conditions }));
     }
 
     useEffect(() => {
@@ -62,11 +71,10 @@ export function ImageSearch() {
                 options={options}
                 conditions={conditions}
                 onChange={updateConditions}
+                onSubmit={runSearch}
             />
 
-            <pre className="rounded bg-zinc-100 p-4 text-sm">
-                {JSON.stringify(conditions, null, 2)}
-            </pre>
+            <ImageResults key={search.id} conditions={search.conditions} />
         </div>
     );
 }
