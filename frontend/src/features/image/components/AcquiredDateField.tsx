@@ -1,3 +1,5 @@
+"use client";
+
 import type { ImageSearchParams, Range } from "@/features/image/types";
 import { toKstDate } from "@/shared/utils/date";
 

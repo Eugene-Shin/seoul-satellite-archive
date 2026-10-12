@@ -1,3 +1,5 @@
+"use client";
+
 type MultiSelectOption = {
     value: string;
     label: string;

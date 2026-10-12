@@ -1,3 +1,5 @@
+"use client";
+
 type SelectOption = {
     value: string;
     label: string;

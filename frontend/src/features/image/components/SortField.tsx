@@ -1,3 +1,5 @@
+"use client";
+
 import type { ImageSort } from "@/features/image/types";
 
 const SORT_OPTIONS: Record<ImageSort, { label: string; field: string }> = {

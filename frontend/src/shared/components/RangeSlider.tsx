@@ -1,3 +1,5 @@
+"use client";
+
 type RangeSliderProps = {
     label: string;
     min: number;

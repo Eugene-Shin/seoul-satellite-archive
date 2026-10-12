@@ -1,3 +1,5 @@
+"use client";
+
 import type { ImageSearchParams, Range } from "@/features/image/types";
 import { RangeSlider } from "@/shared/components/RangeSlider";
 

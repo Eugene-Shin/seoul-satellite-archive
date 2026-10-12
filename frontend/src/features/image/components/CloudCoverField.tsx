@@ -1,3 +1,5 @@
+"use client";
+
 const MAX_CLOUD_COVER = 100;
 
 type CloudCoverFieldProps = {
