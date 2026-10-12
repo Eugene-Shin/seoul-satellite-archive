@@ -5,14 +5,15 @@ import type {
     ImageFilterOptionsResponse,
     SensorType,
 } from "@/features/image/types";
-import { toKstDate } from "@/shared/utils/date";
 import {
     ORBIT_DIRECTION_LABELS,
     SENSOR_TYPE_LABELS,
 } from "@/features/image/labels";
+import { AcquiredDateField } from "@/features/image/components/AcquiredDateField";
 import { CloudCoverField } from "@/features/image/components/CloudCoverField";
 import { GsdRangeField } from "@/features/image/components/GsdRangeField";
 import { MultiSelect } from "@/shared/components/MultiSelect";
+import { Select } from "@/shared/components/Select";
 
 function emptyToUndefined<T>(values: T[]): T[] | undefined {
     return values.length > 0 ? values : undefined;
@@ -33,10 +34,6 @@ export function ImageSearchForm({
     conditions,
     onChange,
 }: ImageSearchFormProps) {
-    const { min, max } = options.acquiredRange;
-    const firstDate = min ? toKstDate(min) : undefined;
-    const lastDate = max ? toKstDate(max) : undefined;
-
     return (
         <form
             className="flex flex-col gap-4"
@@ -55,38 +52,12 @@ export function ImageSearchForm({
                 />
             </label>
 
-            <fieldset className="flex flex-col gap-1">
-                <legend className="font-semibold">촬영일</legend>
-                <div className="flex items-center gap-2">
-                    <input
-                        type="date"
-                        aria-label="촬영일 시작"
-                        value={conditions.acquiredFrom ?? ""}
-                        min={firstDate}
-                        max={conditions.acquiredTo || lastDate}
-                        onChange={(e) =>
-                            onChange({
-                                acquiredFrom: e.target.value || undefined,
-                            })
-                        }
-                        className="rounded border px-3 py-2"
-                    />
-                    <span>~</span>
-                    <input
-                        type="date"
-                        aria-label="촬영일 종료"
-                        value={conditions.acquiredTo ?? ""}
-                        min={conditions.acquiredFrom || firstDate}
-                        max={lastDate}
-                        onChange={(e) =>
-                            onChange({
-                                acquiredTo: e.target.value || undefined,
-                            })
-                        }
-                        className="rounded border px-3 py-2"
-                    />
-                </div>
-            </fieldset>
+            <AcquiredDateField
+                range={options.acquiredRange}
+                conditions={conditions}
+                onChange={onChange}
+            />
+
             <div className="flex flex-wrap gap-2">
                 <MultiSelect
                     label="위성"
@@ -124,82 +95,60 @@ export function ImageSearchForm({
             </div>
 
             <div className="flex flex-wrap gap-4">
-                <label className="flex flex-col gap-1">
-                    <span className="font-semibold">센서 유형</span>
-                    <select
-                        value={
-                            conditions.sensorTypes
-                                ? conditions.sensorTypes[0]
-                                : ""
-                        }
-                        onChange={(e) => {
-                            const type = options.sensorTypes.find(
-                                (t) => t === e.target.value,
-                            );
-                            const sensorTypes = type ? [type] : undefined;
-                            onChange({
-                                sensorTypes,
-                                cloudMax: isSarOnly(sensorTypes)
-                                    ? undefined
-                                    : conditions.cloudMax,
-                            });
-                        }}
-                        className="rounded border px-3 py-2"
-                    >
-                        <option value="">전체</option>
-                        {options.sensorTypes.map((type) => (
-                            <option key={type} value={type}>
-                                {SENSOR_TYPE_LABELS[type]}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-
-                <label className="flex flex-col gap-1">
-                    <span className="font-semibold">궤도 방향</span>
-                    <select
-                        value={conditions.orbitDirection ?? ""}
-                        onChange={(e) =>
-                            onChange({
-                                orbitDirection: options.orbitDirections.find(
-                                    (direction) => direction === e.target.value,
-                                ),
-                            })
-                        }
-                        className="rounded border px-3 py-2"
-                    >
-                        <option value="">전체</option>
-                        {options.orbitDirections.map((direction) => (
-                            <option key={direction} value={direction}>
-                                {ORBIT_DIRECTION_LABELS[direction]}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-
-                <label className="flex flex-col gap-1">
-                    <span className="font-semibold">유료 여부</span>
-                    <select
-                        value={
-                            conditions.isPaid === undefined
-                                ? ""
-                                : String(conditions.isPaid)
-                        }
-                        onChange={(e) => {
-                            onChange({
-                                isPaid:
-                                    e.target.value === ""
-                                        ? undefined
-                                        : e.target.value === "true",
-                            });
-                        }}
-                        className="rounded border px-3 py-2"
-                    >
-                        <option value="">전체</option>
-                        <option value="true">유료</option>
-                        <option value="false">무료</option>
-                    </select>
-                </label>
+                <Select
+                    label="센서 유형"
+                    options={options.sensorTypes.map((type) => ({
+                        value: type,
+                        label: SENSOR_TYPE_LABELS[type],
+                    }))}
+                    value={
+                        conditions.sensorTypes ? conditions.sensorTypes[0] : ""
+                    }
+                    onChange={(value) => {
+                        const type = options.sensorTypes.find(
+                            (t) => t === value,
+                        );
+                        const sensorTypes = type ? [type] : undefined;
+                        onChange({
+                            sensorTypes,
+                            cloudMax: isSarOnly(sensorTypes)
+                                ? undefined
+                                : conditions.cloudMax,
+                        });
+                    }}
+                />
+                <Select
+                    label="궤도 방향"
+                    options={options.orbitDirections.map((direction) => ({
+                        value: direction,
+                        label: ORBIT_DIRECTION_LABELS[direction],
+                    }))}
+                    value={conditions.orbitDirection ?? ""}
+                    onChange={(value) =>
+                        onChange({
+                            orbitDirection: options.orbitDirections.find(
+                                (direction) => direction === value,
+                            ),
+                        })
+                    }
+                />
+                <Select
+                    label="유료 여부"
+                    options={[
+                        { value: "true", label: "유료" },
+                        { value: "false", label: "무료" },
+                    ]}
+                    value={
+                        conditions.isPaid === undefined
+                            ? ""
+                            : String(conditions.isPaid)
+                    }
+                    onChange={(value) =>
+                        onChange({
+                            isPaid: value === "" ? undefined : value === "true",
+                        })
+                    }
+                />
             </div>
 
             <div className="flex flex-wrap gap-8">
