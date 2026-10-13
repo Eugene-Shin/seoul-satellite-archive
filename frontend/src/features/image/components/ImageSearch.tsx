@@ -10,6 +10,14 @@ import type {
     ImageSearchParams,
 } from "@/features/image/types";
 
+type PanelTab = "conditions" | "results";
+
+function tabClassName(selected: boolean): string {
+    return selected
+        ? "flex-1 border-b-2 border-foreground py-3 font-semibold"
+        : "flex-1 border-b-2 border-transparent py-3 text-zinc-500";
+}
+
 export function ImageSearch() {
     const [options, setOptions] = useState<ImageFilterOptionsResponse | null>(
         null,
@@ -20,6 +28,7 @@ export function ImageSearch() {
         id: number;
         conditions: ImageSearchParams;
     }>({ id: 0, conditions: {} });
+    const [activeTab, setActiveTab] = useState<PanelTab>("results");
 
     function updateConditions(changes: Partial<ImageSearchParams>) {
         setConditions((prev) => ({ ...prev, ...changes }));
@@ -27,6 +36,7 @@ export function ImageSearch() {
 
     function runSearch() {
         setSearch((prev) => ({ id: prev.id + 1, conditions }));
+        setActiveTab("results");
     }
 
     useEffect(() => {
@@ -66,15 +76,57 @@ export function ImageSearch() {
     }
 
     return (
-        <div className="flex flex-col gap-6">
-            <ImageSearchForm
-                options={options}
-                conditions={conditions}
-                onChange={updateConditions}
-                onSubmit={runSearch}
-            />
+        <div className="grid min-h-0 flex-1 grid-cols-[28rem_1fr]">
+            <aside className="flex min-h-0 flex-col border-r">
+                <div role="tablist" className="flex shrink-0 border-b">
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === "conditions"}
+                        onClick={() => setActiveTab("conditions")}
+                        className={tabClassName(activeTab === "conditions")}
+                    >
+                        검색 조건
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === "results"}
+                        onClick={() => setActiveTab("results")}
+                        className={tabClassName(activeTab === "results")}
+                    >
+                        검색 결과
+                    </button>
+                </div>
 
-            <ImageResults key={search.id} conditions={search.conditions} />
+                <section
+                    role="tabpanel"
+                    hidden={activeTab !== "conditions"}
+                    className="min-h-0 flex-1 overflow-y-auto p-4"
+                >
+                    <ImageSearchForm
+                        options={options}
+                        conditions={conditions}
+                        onChange={updateConditions}
+                        onSubmit={runSearch}
+                    />
+                </section>
+
+                <section
+                    role="tabpanel"
+                    hidden={activeTab !== "results"}
+                    className="min-h-0 flex-1 overflow-y-auto p-4"
+                >
+                    <ImageResults
+                        key={search.id}
+                        conditions={search.conditions}
+                    />
+                </section>
+            </aside>
+
+            <section className="flex min-h-0 items-center justify-center text-zinc-500">
+                지도 영역
+            </section>
         </div>
     );
 }

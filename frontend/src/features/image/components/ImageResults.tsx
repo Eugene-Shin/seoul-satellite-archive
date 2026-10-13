@@ -52,7 +52,7 @@ export function ImageResults({ conditions }: ImageResultsProps) {
     }
 
     return (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="flex flex-col gap-3">
             {result.content.map((image) => (
                 <ImageCard key={image.imageId} image={image} />
             ))}
