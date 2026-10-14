@@ -17,7 +17,7 @@ type PanelTab = "conditions" | "results";
 function tabClassName(selected: boolean): string {
     return selected
         ? "flex-1 border-b-2 border-foreground py-3 font-semibold"
-        : "flex-1 border-b-2 border-transparent py-3 text-zinc-500";
+        : "flex-1 border-b-2 border-transparent py-3 text-zinc-500 hover:border-zinc-300 hover:text-foreground";
 }
 
 export function ImageSearch() {
