@@ -1,4 +1,6 @@
-import type { ApiResponse } from "@/shared/api/types";
+import type { z } from "zod";
+
+import { apiResponseSchema } from "@/shared/api/schemas";
 
 type QueryValue = string | number | boolean | null | undefined;
 
@@ -44,10 +46,11 @@ function toSearchParams(params: QueryParams): URLSearchParams {
     return searchParams;
 }
 
-export async function apiGet<T>(
+export async function apiGet<S extends z.ZodType>(
     path: string,
+    schema: S,
     params: QueryParams = {},
-): Promise<T> {
+): Promise<z.infer<S>> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
     if (!baseUrl) {
@@ -66,14 +69,16 @@ export async function apiGet<T>(
         );
     }
 
-    const body = await readBody<T>(response);
+    const envelope = apiResponseSchema.safeParse(await readJson(response));
 
-    if (!body) {
+    if (!envelope.success) {
         throw new ApiError(
             `서버 응답을 처리할 수 없습니다. (${response.status})`,
             { status: response.status },
         );
     }
+
+    const body = envelope.data;
 
     if (!body.success) {
         throw new ApiError(body.message, {
@@ -83,13 +88,24 @@ export async function apiGet<T>(
         });
     }
 
-    return body.data;
+    const data = schema.safeParse(body.data);
+
+    if (!data.success) {
+        throw new ApiError("서버 응답 형식이 올바르지 않습니다.", {
+            status: response.status,
+            details: data.error.issues.map(
+                (issue) => `${issue.path.join(".")}: ${issue.message}`,
+            ),
+        });
+    }
+
+    return data.data;
 }
 
-async function readBody<T>(response: Response): Promise<ApiResponse<T> | null> {
+async function readJson(response: Response): Promise<unknown> {
     try {
         return await response.json();
     } catch {
-        return null;
+        return undefined;
     }
 }

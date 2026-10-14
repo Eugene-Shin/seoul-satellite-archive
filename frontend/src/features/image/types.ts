@@ -1,48 +1,31 @@
-export type SensorType = "OPTICAL" | "SAR";
+import type { z } from "zod";
 
-export type OrbitDirection = "ASCENDING" | "DESCENDING";
+import type {
+    imageFilterOptionsSchema,
+    imageResponseSchema,
+    multiPolygonSchema,
+    orbitDirectionSchema,
+    providerSchema,
+    sensorTypeSchema,
+} from "@/features/image/schemas";
 
-export type Provider = {
-    code: string;
-    name: string;
-    isPaid: boolean;
-};
+export type SensorType = z.infer<typeof sensorTypeSchema>;
 
-export type MultiPolygon = {
-    type: "MultiPolygon";
-    coordinates: number[][][][];
-};
+export type OrbitDirection = z.infer<typeof orbitDirectionSchema>;
 
-export type ImageResponse = {
-    imageId: number;
-    provider: Provider;
-    title: string;
-    satellite: string;
-    instruments: string[] | null;
-    sensorType: SensorType;
-    acquiredAt: string;
-    gsdMeters: number | null;
-    cloudCover: number | null;
-    orbitDirection: OrbitDirection | null;
-    footprint: MultiPolygon;
-    downloadUrls: string[];
-    sourceUpdatedAt: string | null;
-};
+export type Provider = z.infer<typeof providerSchema>;
 
-export type Range<T> = {
-    min: T | null;
-    max: T | null;
-};
+export type MultiPolygon = z.infer<typeof multiPolygonSchema>;
 
-export type ImageFilterOptionsResponse = {
-    satellites: string[];
-    instruments: string[];
-    providers: Provider[];
-    sensorTypes: SensorType[];
-    orbitDirections: OrbitDirection[];
-    gsdRange: Range<number>;
-    acquiredRange: Range<string>;
-};
+export type ImageResponse = z.infer<typeof imageResponseSchema>;
+
+export type ImageFilterOptionsResponse = z.infer<
+    typeof imageFilterOptionsSchema
+>;
+
+export type GsdRange = ImageFilterOptionsResponse["gsdRange"];
+
+export type AcquiredRange = ImageFilterOptionsResponse["acquiredRange"];
 
 export type ImageSort =
     | "ACQUIRED_AT_ASC"

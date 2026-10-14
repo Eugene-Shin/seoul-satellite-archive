@@ -1,17 +1,14 @@
-import type {
-    ImageFilterOptionsResponse,
-    ImageResponse,
-    ImageSearchParams,
-} from "@/features/image/types";
+import {
+    imageFilterOptionsSchema,
+    imageSearchResultSchema,
+} from "@/features/image/schemas";
+import type { ImageSearchParams } from "@/features/image/types";
 import { apiGet } from "@/shared/api/client";
-import type { SliceResponse } from "@/shared/api/types";
 
-export function fetchFilterOptions(): Promise<ImageFilterOptionsResponse> {
-    return apiGet<ImageFilterOptionsResponse>("/api/images/filter-options");
+export function fetchFilterOptions() {
+    return apiGet("/api/images/filter-options", imageFilterOptionsSchema);
 }
 
-export function searchImages(
-    params: ImageSearchParams,
-): Promise<SliceResponse<ImageResponse>> {
-    return apiGet<SliceResponse<ImageResponse>>("/api/images", params);
+export function searchImages(params: ImageSearchParams) {
+    return apiGet("/api/images", imageSearchResultSchema, params);
 }

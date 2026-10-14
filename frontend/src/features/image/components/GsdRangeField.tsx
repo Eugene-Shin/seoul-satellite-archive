@@ -1,10 +1,10 @@
 "use client";
 
-import type { ImageSearchParams, Range } from "@/features/image/types";
+import type { GsdRange, ImageSearchParams } from "@/features/image/types";
 import { RangeSlider } from "@/shared/components/RangeSlider";
 
 type GsdRangeFieldProps = {
-    range: Range<number>;
+    range: GsdRange;
     conditions: ImageSearchParams;
     onChange: (change: Partial<ImageSearchParams>) => void;
 };

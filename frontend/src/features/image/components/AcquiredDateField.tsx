@@ -1,10 +1,10 @@
 "use client";
 
-import type { ImageSearchParams, Range } from "@/features/image/types";
+import type { AcquiredRange, ImageSearchParams } from "@/features/image/types";
 import { toKstDate } from "@/shared/utils/date";
 
 type AcquiredDateFieldProps = {
-    range: Range<string>;
+    range: AcquiredRange;
     conditions: ImageSearchParams;
     onChange: (change: Partial<ImageSearchParams>) => void;
 };
