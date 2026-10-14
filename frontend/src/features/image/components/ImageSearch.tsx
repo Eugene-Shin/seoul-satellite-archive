@@ -5,9 +5,9 @@ import { useState } from "react";
 import { ImageDetail } from "@/features/image/components/ImageDetail";
 import { ImageResults } from "@/features/image/components/ImageResults";
 import { ImageSearchForm } from "@/features/image/components/ImageSearchForm";
+import { useFilterOptions } from "@/features/image/queries";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
-import { useFilterOptions } from "@/features/image/queries";
 
 type PanelTab = "conditions" | "results";
 
