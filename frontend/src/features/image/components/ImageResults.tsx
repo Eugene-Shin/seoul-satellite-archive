@@ -1,95 +1,82 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
-import { searchImages } from "@/features/image/api";
 import { ImageCard } from "@/features/image/components/ImageCard";
+import { useImageSearch } from "@/features/image/queries";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 
-const PAGE_SIZE = 20;
-
 type ImageResultsProps = {
+    searchId: number;
     conditions: ImageSearchParams;
     selectedImageId: number | null;
     onSelect: (image: ImageResponse) => void;
 };
 
 export function ImageResults({
+    searchId,
     conditions,
     selectedImageId,
     onSelect,
 }: ImageResultsProps) {
-    const [images, setImages] = useState<ImageResponse[]>([]);
-    const [page, setPage] = useState(0);
-    const [loadedPages, setLoadedPages] = useState(0);
-    const [hasNext, setHasNext] = useState(true);
-    const [error, setError] = useState<unknown>(null);
-    const [attempt, setAttempt] = useState(0);
+    const {
+        data,
+        error,
+        fetchNextPage,
+        hasNextPage,
+        isPending,
+        isFetchingNextPage,
+        isFetchNextPageError,
+        refetch,
+    } = useImageSearch(searchId, conditions);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-    const loading = loadedPages <= page;
-
-    useEffect(() => {
-        let ignore = false;
-
-        searchImages({ ...conditions, page, size: PAGE_SIZE })
-            .then((data) => {
-                if (!ignore) {
-                    setImages((prev) => [...prev, ...data.content]);
-                    setHasNext(data.hasNext);
-                    setLoadedPages((prev) => prev + 1);
-                }
-            })
-            .catch((e) => {
-                if (!ignore) {
-                    setError(e);
-                }
-            });
-
-        return () => {
-            ignore = true;
-        };
-    }, [conditions, page, attempt]);
+    const images = data ? data.pages.flatMap((page) => page.content) : [];
 
     useEffect(() => {
         const sentinel = sentinelRef.current;
-        if (!sentinel || loading || !hasNext || error) {
+        if (!sentinel || !hasNextPage || isFetchingNextPage || error) {
             return;
         }
 
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting) {
-                setPage((prev) => prev + 1);
+                fetchNextPage();
             }
         });
 
         observer.observe(sentinel);
 
         return () => observer.disconnect();
-    }, [loading, hasNext, error]);
+    }, [hasNextPage, isFetchingNextPage, error, fetchNextPage]);
 
     function statusMessage(): string | null {
         if (error) {
             return null;
         }
 
-        if (loading) {
-            return images.length === 0
-                ? "검색 중입니다..."
-                : "더 불러오는 중입니다...";
+        if (isPending) {
+            return "검색 중입니다...";
+        }
+
+        if (isFetchingNextPage) {
+            return "더 불러오는 중입니다...";
         }
 
         if (images.length === 0) {
             return "검색 결과가 없습니다.";
         }
 
-        return hasNext ? null : "마지막 결과입니다.";
+        return hasNextPage ? null : "마지막 결과입니다.";
     }
 
     function retry() {
-        setError(null);
-        setAttempt((prev) => prev + 1);
+        if (isFetchNextPageError) {
+            fetchNextPage();
+        } else {
+            refetch();
+        }
     }
 
     const status = statusMessage();

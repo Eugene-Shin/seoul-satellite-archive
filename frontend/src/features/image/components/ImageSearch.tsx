@@ -98,7 +98,7 @@ export function ImageSearch() {
                     className="min-h-0 flex-1 overflow-y-auto p-4"
                 >
                     <ImageResults
-                        key={search.id}
+                        searchId={search.id}
                         conditions={search.conditions}
                         selectedImageId={
                             selectedImage ? selectedImage.imageId : null
