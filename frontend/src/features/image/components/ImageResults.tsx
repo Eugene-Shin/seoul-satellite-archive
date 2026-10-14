@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { searchImages } from "@/features/image/api";
 import { ImageCard } from "@/features/image/components/ImageCard";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
+import { ErrorMessage } from "@/shared/components/ErrorMessage";
 
 const PAGE_SIZE = 20;
 
@@ -23,7 +24,8 @@ export function ImageResults({
     const [page, setPage] = useState(0);
     const [loadedPages, setLoadedPages] = useState(0);
     const [hasNext, setHasNext] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<unknown>(null);
+    const [attempt, setAttempt] = useState(0);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
 
     const loading = loadedPages <= page;
@@ -41,14 +43,14 @@ export function ImageResults({
             })
             .catch((e) => {
                 if (!ignore) {
-                    setError(e instanceof Error ? e.message : String(e));
+                    setError(e);
                 }
             });
 
         return () => {
             ignore = true;
         };
-    }, [conditions, page]);
+    }, [conditions, page, attempt]);
 
     useEffect(() => {
         const sentinel = sentinelRef.current;
@@ -69,7 +71,7 @@ export function ImageResults({
 
     function statusMessage(): string | null {
         if (error) {
-            return `검색 중 오류가 발생했습니다: ${error}`;
+            return null;
         }
 
         if (loading) {
@@ -85,6 +87,13 @@ export function ImageResults({
         return hasNext ? null : "마지막 결과입니다.";
     }
 
+    function retry() {
+        setError(null);
+        setAttempt((prev) => prev + 1);
+    }
+
+    const status = statusMessage();
+
     return (
         <div className="flex flex-col gap-3">
             <ul className="flex flex-col gap-3">
@@ -98,8 +107,12 @@ export function ImageResults({
                 ))}
             </ul>
             <div ref={sentinelRef} className="h-px" />
-            <p className="text-center text-sm text-zinc-500">
-                {statusMessage()}
+            <ErrorMessage error={error} onRetry={retry} />
+            <p
+                hidden={status === null}
+                className="text-center text-sm text-zinc-500"
+            >
+                {status}
             </p>
         </div>
     );

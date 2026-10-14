@@ -11,6 +11,7 @@ import type {
     ImageResponse,
     ImageSearchParams,
 } from "@/features/image/types";
+import { ErrorMessage } from "@/shared/components/ErrorMessage";
 
 type PanelTab = "conditions" | "results";
 
@@ -24,7 +25,8 @@ export function ImageSearch() {
     const [options, setOptions] = useState<ImageFilterOptionsResponse | null>(
         null,
     );
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<unknown>(null);
+    const [optionsAttempt, setOptionsAttempt] = useState(0);
     const [conditions, setConditions] = useState<ImageSearchParams>({});
     const [search, setSearch] = useState<{
         id: number;
@@ -56,20 +58,25 @@ export function ImageSearch() {
             })
             .catch((e) => {
                 if (!ignore) {
-                    setError(e instanceof Error ? e.message : String(e));
+                    setError(e);
                 }
             });
 
         return () => {
             ignore = true;
         };
-    }, []);
+    }, [optionsAttempt]);
+
+    function retryOptions() {
+        setError(null);
+        setOptionsAttempt((prev) => prev + 1);
+    }
 
     if (error) {
         return (
-            <p className="text-red-600">
-                검색 조건을 불러오는 중 오류가 발생했습니다: {error}
-            </p>
+            <div className="p-6">
+                <ErrorMessage error={error} onRetry={retryOptions} />
+            </div>
         );
     }
 
