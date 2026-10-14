@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { ImageSearch } from "@/features/image/components/ImageSearch";
 
 export default function Home() {
@@ -8,7 +10,9 @@ export default function Home() {
                     위성 영상 검색 및 아카이빙 시스템
                 </h1>
             </header>
-            <ImageSearch />
+            <Suspense fallback={<p>검색 화면을 불러오는 중입니다...</p>}>
+                <ImageSearch />
+            </Suspense>
         </div>
     );
 }

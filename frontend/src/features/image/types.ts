@@ -3,6 +3,7 @@ import type { z } from "zod";
 import type {
     imageFilterOptionsSchema,
     imageResponseSchema,
+    imageSortSchema,
     multiPolygonSchema,
     orbitDirectionSchema,
     providerSchema,
@@ -27,11 +28,7 @@ export type GsdRange = ImageFilterOptionsResponse["gsdRange"];
 
 export type AcquiredRange = ImageFilterOptionsResponse["acquiredRange"];
 
-export type ImageSort =
-    | "ACQUIRED_AT_ASC"
-    | "ACQUIRED_AT_DESC"
-    | "CLOUD_COVER_ASC"
-    | "CLOUD_COVER_DESC";
+export type ImageSort = z.infer<typeof imageSortSchema>;
 
 export type ImageSearchParams = {
     keyword?: string;

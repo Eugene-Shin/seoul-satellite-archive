@@ -6,6 +6,13 @@ export const sensorTypeSchema = z.enum(["OPTICAL", "SAR"]);
 
 export const orbitDirectionSchema = z.enum(["ASCENDING", "DESCENDING"]);
 
+export const imageSortSchema = z.enum([
+    "ACQUIRED_AT_DESC",
+    "ACQUIRED_AT_ASC",
+    "CLOUD_COVER_ASC",
+    "CLOUD_COVER_DESC",
+]);
+
 export const providerSchema = z.object({
     code: z.string(),
     name: z.string(),

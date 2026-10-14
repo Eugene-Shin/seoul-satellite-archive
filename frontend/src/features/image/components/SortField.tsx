@@ -1,5 +1,6 @@
 "use client";
 
+import { imageSortSchema } from "@/features/image/schemas";
 import type { ImageSort } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
 
@@ -10,7 +11,7 @@ const SORT_OPTIONS: Record<ImageSort, { label: string; field: string }> = {
     CLOUD_COVER_DESC: { label: "구름량 많은순", field: "cloudCover" },
 };
 
-const SORTS = Object.keys(SORT_OPTIONS) as ImageSort[];
+const SORTS = imageSortSchema.options;
 
 type SortFieldProps = {
     value: ImageSort[];

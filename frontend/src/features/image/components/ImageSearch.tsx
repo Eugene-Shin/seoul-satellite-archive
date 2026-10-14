@@ -6,6 +6,7 @@ import { ImageDetail } from "@/features/image/components/ImageDetail";
 import { ImageResults } from "@/features/image/components/ImageResults";
 import { ImageSearchForm } from "@/features/image/components/ImageSearchForm";
 import { useFilterOptions } from "@/features/image/queries";
+import { useAppliedConditions } from "@/features/image/searchParams";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 
@@ -19,11 +20,10 @@ function tabClassName(selected: boolean): string {
 
 export function ImageSearch() {
     const { data: options, error, refetch } = useFilterOptions();
-    const [conditions, setConditions] = useState<ImageSearchParams>({});
-    const [search, setSearch] = useState<{
-        id: number;
-        conditions: ImageSearchParams;
-    }>({ id: 0, conditions: {} });
+    const [appliedConditions, setAppliedConditions] = useAppliedConditions();
+    const [conditions, setConditions] =
+        useState<ImageSearchParams>(appliedConditions);
+    const [searchId, setSearchId] = useState(0);
     const [activeTab, setActiveTab] = useState<PanelTab>("results");
     const [selectedImage, setSelectedImage] = useState<ImageResponse | null>(
         null,
@@ -34,7 +34,8 @@ export function ImageSearch() {
     }
 
     function runSearch() {
-        setSearch((prev) => ({ id: prev.id + 1, conditions }));
+        setAppliedConditions(conditions);
+        setSearchId((prev) => prev + 1);
         setActiveTab("results");
         setSelectedImage(null);
     }
@@ -98,8 +99,8 @@ export function ImageSearch() {
                     className="min-h-0 flex-1 overflow-y-auto p-4"
                 >
                     <ImageResults
-                        searchId={search.id}
-                        conditions={search.conditions}
+                        searchId={searchId}
+                        conditions={appliedConditions}
                         selectedImageId={
                             selectedImage ? selectedImage.imageId : null
                         }
