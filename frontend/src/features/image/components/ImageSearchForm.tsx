@@ -5,9 +5,9 @@ import { CloudCoverField } from "@/features/image/components/CloudCoverField";
 import { GsdRangeField } from "@/features/image/components/GsdRangeField";
 import { SortField } from "@/features/image/components/SortField";
 import {
-    ORBIT_DIRECTION_LABELS,
-    SENSOR_TYPE_LABELS,
-} from "@/features/image/labels";
+    ORBIT_DIRECTION_NAMES,
+    SENSOR_TYPE_NAMES,
+} from "@/features/image/imageText";
 import type {
     ImageFilterOptionsResponse,
     ImageSearchParams,
@@ -105,7 +105,7 @@ export function ImageSearchForm({
                     label="센서 유형"
                     options={options.sensorTypes.map((type) => ({
                         value: type,
-                        label: SENSOR_TYPE_LABELS[type],
+                        label: SENSOR_TYPE_NAMES[type],
                     }))}
                     value={
                         conditions.sensorTypes ? conditions.sensorTypes[0] : ""
@@ -127,7 +127,7 @@ export function ImageSearchForm({
                     label="궤도 방향"
                     options={options.orbitDirections.map((direction) => ({
                         value: direction,
-                        label: ORBIT_DIRECTION_LABELS[direction],
+                        label: ORBIT_DIRECTION_NAMES[direction],
                     }))}
                     value={conditions.orbitDirection ?? ""}
                     onChange={(value) =>
