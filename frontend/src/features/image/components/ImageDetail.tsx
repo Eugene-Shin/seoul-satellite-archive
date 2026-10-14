@@ -11,6 +11,7 @@ import {
     sourceUpdatedAtText,
 } from "@/features/image/imageText";
 import type { ImageResponse } from "@/features/image/types";
+import { IconButton } from "@/shared/components/IconButton";
 
 type ImageDetailProps = {
     image: ImageResponse | null;
@@ -24,14 +25,13 @@ export function ImageDetail({ image, onClose }: ImageDetailProps) {
 
     return (
         <aside className="absolute right-4 bottom-4 h-64 w-[26rem] rounded border bg-background text-foreground shadow-lg">
-            <button
-                type="button"
-                aria-label="상세 정보 닫기"
+            <IconButton
+                label="상세 정보 닫기"
                 onClick={onClose}
-                className="absolute top-3 right-3 rounded border px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="absolute top-3 right-3"
             >
                 ✕
-            </button>
+            </IconButton>
 
             <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
                 <h2 className="pr-10 font-semibold break-all">{image.title}</h2>

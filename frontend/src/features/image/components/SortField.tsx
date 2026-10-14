@@ -1,6 +1,7 @@
 "use client";
 
 import type { ImageSort } from "@/features/image/types";
+import { IconButton } from "@/shared/components/IconButton";
 
 const SORT_OPTIONS: Record<ImageSort, { label: string; field: string }> = {
     ACQUIRED_AT_DESC: { label: "촬영일 최신순", field: "acquiredAt" },
@@ -79,23 +80,19 @@ export function SortField({ value, onChange }: SortFieldProps) {
                                 </option>
                             ))}
                         </select>
-                        <button
-                            type="button"
-                            aria-label="우선순위 올리기"
+                        <IconButton
+                            label="우선순위 올리기"
                             disabled={index === 0}
                             onClick={() => moveUp(index)}
-                            className="rounded border px-2 py-1 disabled:opacity-40"
                         >
                             ↑
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="정렬 기준 삭제"
+                        </IconButton>
+                        <IconButton
+                            label="정렬 기준 삭제"
                             onClick={() => remove(index)}
-                            className="rounded border px-2 py-1"
                         >
                             ✕
-                        </button>
+                        </IconButton>
                     </li>
                 ))}
             </ol>
