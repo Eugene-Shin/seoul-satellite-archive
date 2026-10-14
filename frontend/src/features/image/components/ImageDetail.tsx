@@ -1,0 +1,99 @@
+"use client";
+
+import {
+    acquiredAtText,
+    cloudCoverText,
+    gsdText,
+    orbitDirectionText,
+    providerText,
+    satelliteText,
+    sensorTypeText,
+    sourceUpdatedAtText,
+} from "@/features/image/imageText";
+import type { ImageResponse } from "@/features/image/types";
+
+type ImageDetailProps = {
+    image: ImageResponse | null;
+    onClose: () => void;
+};
+
+export function ImageDetail({ image, onClose }: ImageDetailProps) {
+    if (!image) {
+        return null;
+    }
+
+    return (
+        <aside className="absolute right-4 bottom-4 h-64 w-[26rem] rounded border bg-background text-foreground shadow-lg">
+            <button
+                type="button"
+                aria-label="상세 정보 닫기"
+                onClick={onClose}
+                className="absolute top-3 right-3 rounded border px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+                ✕
+            </button>
+
+            <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
+                <h2 className="pr-10 font-semibold break-all">{image.title}</h2>
+
+                <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-sm">
+                    <dt className="text-zinc-500">영상 ID</dt>
+                    <dd>{image.imageId}</dd>
+                    <dt className="text-zinc-500">위성</dt>
+                    <dd>{satelliteText(image)}</dd>
+                    <dt className="text-zinc-500">센서 유형</dt>
+                    <dd>{sensorTypeText(image)}</dd>
+                    <dt className="text-zinc-500">촬영일시(KST)</dt>
+                    <dd>{acquiredAtText(image)}</dd>
+                    <dt className="text-zinc-500">해상도</dt>
+                    <dd>{gsdText(image)}</dd>
+                    <dt className="text-zinc-500">구름량</dt>
+                    <dd>{cloudCoverText(image)}</dd>
+                    <dt className="text-zinc-500">궤도 방향</dt>
+                    <dd>{orbitDirectionText(image)}</dd>
+                    <dt className="text-zinc-500">제공 기관</dt>
+                    <dd>{providerText(image)}</dd>
+                    <dt className="text-zinc-500">원본 갱신(KST)</dt>
+                    <dd>{sourceUpdatedAtText(image)}</dd>
+                </dl>
+
+                <section className="flex flex-col gap-2">
+                    <h3 className="font-semibold">
+                        다운로드 ({image.downloadUrls.length})
+                    </h3>
+                    <ul className="flex flex-col gap-1 text-sm">
+                        {image.downloadUrls.map((url) => (
+                            <li key={url}>
+                                <DownloadLink url={url} />
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            </div>
+        </aside>
+    );
+}
+
+function DownloadLink({ url }: { url: string }) {
+    const fileName = url.split("/").pop() || url;
+
+    if (!url.startsWith("http")) {
+        return (
+            <span className="break-all text-zinc-500" title={url}>
+                {fileName}
+            </span>
+        );
+    }
+
+    return (
+        <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-all underline"
+            title={url}
+        >
+            {fileName}
+        </a>
+    );
+}

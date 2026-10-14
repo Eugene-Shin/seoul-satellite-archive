@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 
 import { fetchFilterOptions } from "@/features/image/api";
+import { ImageDetail } from "@/features/image/components/ImageDetail";
 import { ImageResults } from "@/features/image/components/ImageResults";
 import { ImageSearchForm } from "@/features/image/components/ImageSearchForm";
 import type {
     ImageFilterOptionsResponse,
+    ImageResponse,
     ImageSearchParams,
 } from "@/features/image/types";
 
@@ -29,6 +31,9 @@ export function ImageSearch() {
         conditions: ImageSearchParams;
     }>({ id: 0, conditions: {} });
     const [activeTab, setActiveTab] = useState<PanelTab>("results");
+    const [selectedImage, setSelectedImage] = useState<ImageResponse | null>(
+        null,
+    );
 
     function updateConditions(changes: Partial<ImageSearchParams>) {
         setConditions((prev) => ({ ...prev, ...changes }));
@@ -37,6 +42,7 @@ export function ImageSearch() {
     function runSearch() {
         setSearch((prev) => ({ id: prev.id + 1, conditions }));
         setActiveTab("results");
+        setSelectedImage(null);
     }
 
     useEffect(() => {
@@ -120,12 +126,21 @@ export function ImageSearch() {
                     <ImageResults
                         key={search.id}
                         conditions={search.conditions}
+                        selectedImageId={
+                            selectedImage ? selectedImage.imageId : null
+                        }
+                        onSelect={setSelectedImage}
                     />
                 </section>
             </aside>
 
-            <section className="flex min-h-0 items-center justify-center text-zinc-500">
+            <section className="relative flex min-h-0 items-center justify-center text-zinc-500">
                 지도 영역
+                <ImageDetail
+                    key={selectedImage ? selectedImage.imageId : undefined}
+                    image={selectedImage}
+                    onClose={() => setSelectedImage(null)}
+                />
             </section>
         </div>
     );

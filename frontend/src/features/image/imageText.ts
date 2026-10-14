@@ -52,6 +52,12 @@ export function orbitDirectionText({
     return orbitDirection ? ORBIT_DIRECTION_NAMES[orbitDirection] : "-";
 }
 
+export function sourceUpdatedAtText({
+    sourceUpdatedAt,
+}: Pick<ImageResponse, "sourceUpdatedAt">): string {
+    return sourceUpdatedAt ? formatKstDateTime(sourceUpdatedAt) : "-";
+}
+
 export function providerText({
     provider,
 }: Pick<ImageResponse, "provider">): string {

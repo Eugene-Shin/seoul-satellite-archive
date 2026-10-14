@@ -10,9 +10,15 @@ const PAGE_SIZE = 20;
 
 type ImageResultsProps = {
     conditions: ImageSearchParams;
+    selectedImageId: number | null;
+    onSelect: (image: ImageResponse) => void;
 };
 
-export function ImageResults({ conditions }: ImageResultsProps) {
+export function ImageResults({
+    conditions,
+    selectedImageId,
+    onSelect,
+}: ImageResultsProps) {
     const [images, setImages] = useState<ImageResponse[]>([]);
     const [page, setPage] = useState(0);
     const [loadedPages, setLoadedPages] = useState(0);
@@ -83,7 +89,12 @@ export function ImageResults({ conditions }: ImageResultsProps) {
         <div className="flex flex-col gap-3">
             <ul className="flex flex-col gap-3">
                 {images.map((image) => (
-                    <ImageCard key={image.imageId} image={image} />
+                    <ImageCard
+                        key={image.imageId}
+                        image={image}
+                        selected={image.imageId === selectedImageId}
+                        onSelect={() => onSelect(image)}
+                    />
                 ))}
             </ul>
             <div ref={sentinelRef} className="h-px" />
