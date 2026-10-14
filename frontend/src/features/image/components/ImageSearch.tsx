@@ -1,17 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { fetchFilterOptions } from "@/features/image/api";
 import { ImageDetail } from "@/features/image/components/ImageDetail";
 import { ImageResults } from "@/features/image/components/ImageResults";
 import { ImageSearchForm } from "@/features/image/components/ImageSearchForm";
-import type {
-    ImageFilterOptionsResponse,
-    ImageResponse,
-    ImageSearchParams,
-} from "@/features/image/types";
+import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
+import { useFilterOptions } from "@/features/image/queries";
 
 type PanelTab = "conditions" | "results";
 
@@ -22,11 +18,7 @@ function tabClassName(selected: boolean): string {
 }
 
 export function ImageSearch() {
-    const [options, setOptions] = useState<ImageFilterOptionsResponse | null>(
-        null,
-    );
-    const [error, setError] = useState<unknown>(null);
-    const [optionsAttempt, setOptionsAttempt] = useState(0);
+    const { data: options, error, refetch } = useFilterOptions();
     const [conditions, setConditions] = useState<ImageSearchParams>({});
     const [search, setSearch] = useState<{
         id: number;
@@ -47,35 +39,10 @@ export function ImageSearch() {
         setSelectedImage(null);
     }
 
-    useEffect(() => {
-        let ignore = false;
-
-        fetchFilterOptions()
-            .then((data) => {
-                if (!ignore) {
-                    setOptions(data);
-                }
-            })
-            .catch((e) => {
-                if (!ignore) {
-                    setError(e);
-                }
-            });
-
-        return () => {
-            ignore = true;
-        };
-    }, [optionsAttempt]);
-
-    function retryOptions() {
-        setError(null);
-        setOptionsAttempt((prev) => prev + 1);
-    }
-
     if (error) {
         return (
             <div className="p-6">
-                <ErrorMessage error={error} onRetry={retryOptions} />
+                <ErrorMessage error={error} onRetry={() => refetch()} />
             </div>
         );
     }
