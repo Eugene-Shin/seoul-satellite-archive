@@ -1,10 +1,10 @@
-import { apiGet } from "@/shared/api/client";
-import type { SliceResponse } from "@/shared/api/types";
 import type {
     ImageFilterOptionsResponse,
     ImageResponse,
     ImageSearchParams,
 } from "@/features/image/types";
+import { apiGet } from "@/shared/api/client";
+import type { SliceResponse } from "@/shared/api/types";
 
 export function fetchFilterOptions(): Promise<ImageFilterOptionsResponse> {
     return apiGet<ImageFilterOptionsResponse>("/api/images/filter-options");

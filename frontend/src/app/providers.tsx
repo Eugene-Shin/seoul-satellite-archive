@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+
 import { ApiError } from "@/shared/api/client";
 
 const MAX_RETRIES = 2;
