@@ -16,6 +16,7 @@ import type {
 import { MultiSelect } from "@/shared/components/MultiSelect";
 import { Select } from "@/shared/components/Select";
 import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
 
 function emptyToUndefined<T>(values: T[]): T[] | undefined {
     return values.length > 0 ? values : undefined;
@@ -48,14 +49,13 @@ export function ImageSearchForm({
         >
             <label className="flex flex-col gap-1">
                 <span className="font-semibold">제목</span>
-                <input
+                <Input
                     type="text"
                     value={conditions.keyword ?? ""}
                     onChange={(e) =>
                         onChange({ keyword: e.target.value || undefined })
                     }
                     placeholder="영상 제목을 입력하세요"
-                    className="rounded border px-3 py-2"
                 />
             </label>
 
