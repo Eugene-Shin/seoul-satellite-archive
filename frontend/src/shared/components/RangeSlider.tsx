@@ -28,7 +28,7 @@ export function RangeSlider({
     }
 
     return (
-        <fieldset className="flex w-64 flex-col gap-3">
+        <fieldset className="flex w-full flex-col gap-3">
             <legend className="mb-3 font-semibold tabular-nums">
                 {label}: {low} ~ {high} {unit}
             </legend>

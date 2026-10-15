@@ -65,7 +65,7 @@ export function ImageSearchForm({
                 onChange={onChange}
             />
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-4">
                 <MultiSelect
                     label="위성"
                     options={options.satellites.map((satellite) => ({
@@ -88,20 +88,6 @@ export function ImageSearchForm({
                         onChange({ instruments: emptyToUndefined(instruments) })
                     }
                 />
-                <MultiSelect
-                    label="영상 제공 기관"
-                    options={options.providers.map((provider) => ({
-                        value: provider.code,
-                        label: provider.name,
-                    }))}
-                    selected={conditions.providers ?? []}
-                    onChange={(providers) =>
-                        onChange({ providers: emptyToUndefined(providers) })
-                    }
-                />
-            </div>
-
-            <div className="flex flex-wrap gap-4">
                 <Select
                     label="센서 유형"
                     options={options.sensorTypes.map((type) => ({
@@ -136,6 +122,17 @@ export function ImageSearchForm({
                         })
                     }
                 />
+                <MultiSelect
+                    label="영상 제공 기관"
+                    options={options.providers.map((provider) => ({
+                        value: provider.code,
+                        label: provider.name,
+                    }))}
+                    selected={conditions.providers ?? []}
+                    onChange={(providers) =>
+                        onChange({ providers: emptyToUndefined(providers) })
+                    }
+                />
                 <Select
                     label="유료 여부"
                     options={[
@@ -149,7 +146,7 @@ export function ImageSearchForm({
                 />
             </div>
 
-            <div className="flex flex-wrap gap-8">
+            <div className="flex flex-col gap-4">
                 <GsdRangeField
                     range={options.gsdRange}
                     conditions={conditions}

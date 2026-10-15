@@ -27,7 +27,7 @@ export function Select<T>({ label, options, value, onChange }: SelectProps<T>) {
         <label className="flex flex-col gap-1">
             <span className="font-semibold">{label}</span>
             <SelectRoot items={items} value={value} onValueChange={onChange}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-full">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

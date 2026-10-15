@@ -39,7 +39,7 @@ export function MultiSelect<T>({
                 value={selected}
                 onValueChange={onChange}
             >
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full">
                     <SelectValue>{summaryText}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
