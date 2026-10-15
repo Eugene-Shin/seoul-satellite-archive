@@ -5,7 +5,7 @@ import "./globals.css";
 import { Providers } from "@/app/providers";
 
 const notoSansKr = Noto_Sans_KR({
-    variable: "--font-noto-sans-kr",
+    variable: "--font-sans",
     subsets: ["latin"],
 });
 
