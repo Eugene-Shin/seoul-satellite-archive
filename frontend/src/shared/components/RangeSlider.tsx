@@ -1,5 +1,7 @@
 "use client";
 
+import { Slider } from "@/shared/components/ui/slider";
+
 type RangeSliderProps = {
     label: string;
     min: number;
@@ -21,32 +23,22 @@ export function RangeSlider({
 }: RangeSliderProps) {
     const [low, high] = value;
 
+    function thumbLabel(index: number): string {
+        return `${label} ${index === 0 ? "최소값" : "최대값"}`;
+    }
+
     return (
-        <fieldset className="flex w-64 flex-col gap-1">
-            <legend className="font-semibold tabular-nums">
+        <fieldset className="flex w-64 flex-col gap-3">
+            <legend className="mb-3 font-semibold tabular-nums">
                 {label}: {low} ~ {high} {unit}
             </legend>
-            <input
-                type="range"
-                aria-label={`${label} 최소값`}
+            <Slider
                 min={min}
                 max={max}
                 step={step}
-                value={low}
-                onChange={(e) =>
-                    onChange([Math.min(e.target.valueAsNumber, high), high])
-                }
-            />
-            <input
-                type="range"
-                aria-label={`${label} 최대값`}
-                min={min}
-                max={max}
-                step={step}
-                value={high}
-                onChange={(e) =>
-                    onChange([low, Math.max(e.target.valueAsNumber, low)])
-                }
+                value={value}
+                onValueChange={onChange}
+                getAriaLabel={thumbLabel}
             />
         </fieldset>
     );

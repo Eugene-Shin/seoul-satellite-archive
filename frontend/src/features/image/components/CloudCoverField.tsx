@@ -1,5 +1,7 @@
 "use client";
 
+import { Slider } from "@/shared/components/ui/slider";
+
 const MAX_CLOUD_COVER = 100;
 
 type CloudCoverFieldProps = {
@@ -17,21 +19,20 @@ export function CloudCoverField({
     const hint = disabled ? "SAR 영상은 구름량 정보가 없습니다." : null;
 
     return (
-        <label className="flex w-64 flex-col gap-1">
+        <label className="flex w-64 flex-col gap-3">
             <span className="font-semibold tabular-nums">
                 최대 구름량: {current}%
             </span>
-            <input
-                type="range"
+            <Slider
                 min={0}
                 max={MAX_CLOUD_COVER}
                 step={1}
-                value={current}
+                value={[current]}
                 disabled={disabled}
-                onChange={(e) => {
-                    const next = e.target.valueAsNumber;
-                    onChange(next < MAX_CLOUD_COVER ? next : undefined);
-                }}
+                onValueChange={([next]) =>
+                    onChange(next < MAX_CLOUD_COVER ? next : undefined)
+                }
+                getAriaLabel={() => "최대 구름량"}
             />
             <span className="min-h-5 text-sm text-zinc-500">{hint}</span>
         </label>
