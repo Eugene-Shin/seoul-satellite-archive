@@ -1,6 +1,14 @@
 "use client";
 
+import { CircleAlertIcon } from "lucide-react";
+
 import { ApiError } from "@/shared/api/client";
+import {
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
+} from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 
 type ErrorMessageProps = {
@@ -20,24 +28,24 @@ export function ErrorMessage({ error, onRetry }: ErrorMessageProps) {
     const details = error instanceof ApiError ? error.details : [];
 
     return (
-        <div
-            role="alert"
-            className="flex flex-col gap-2 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+        <Alert
+            variant="destructive"
+            className="border-destructive/50 bg-destructive/10"
         >
-            <p>{message}</p>
-            <ul className="list-disc pl-5">
-                {details.map((detail) => (
-                    <li key={detail}>{detail}</li>
-                ))}
-            </ul>
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={onRetry}
-                className="self-start"
-            >
-                다시 시도
-            </Button>
-        </div>
+            <CircleAlertIcon />
+            <AlertTitle>{message}</AlertTitle>
+            <AlertDescription>
+                <ul className="list-disc pl-5">
+                    {details.map((detail) => (
+                        <li key={detail}>{detail}</li>
+                    ))}
+                </ul>
+            </AlertDescription>
+            <AlertAction>
+                <Button variant="outline" size="sm" onClick={onRetry}>
+                    다시 시도
+                </Button>
+            </AlertAction>
+        </Alert>
     );
 }
