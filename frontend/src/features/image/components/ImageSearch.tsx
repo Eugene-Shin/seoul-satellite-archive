@@ -109,7 +109,6 @@ export function ImageSearch() {
                 <MapIcon className="size-8" />
                 지도는 추후에 추가됩니다
                 <ImageDetail
-                    key={selectedImage ? selectedImage.imageId : undefined}
                     image={selectedImage}
                     onClose={() => setSelectedImage(null)}
                 />
