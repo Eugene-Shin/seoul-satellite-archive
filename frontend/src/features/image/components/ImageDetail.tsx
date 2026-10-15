@@ -24,7 +24,7 @@ export function ImageDetail({ image, onClose }: ImageDetailProps) {
     }
 
     return (
-        <aside className="absolute right-4 bottom-4 h-64 w-[26rem] rounded border bg-background text-foreground shadow-lg">
+        <aside className="absolute right-4 bottom-4 h-64 w-card rounded border bg-background text-foreground shadow-lg">
             <IconButton
                 label="상세 정보 닫기"
                 onClick={onClose}

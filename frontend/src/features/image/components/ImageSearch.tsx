@@ -57,7 +57,7 @@ export function ImageSearch() {
     }
 
     return (
-        <div className="grid min-h-0 flex-1 grid-cols-[28rem_1fr]">
+        <div className="grid min-h-0 flex-1 grid-cols-[var(--spacing-panel)_1fr]">
             <aside className="flex min-h-0 flex-col border-r">
                 <div role="tablist" className="flex shrink-0 border-b">
                     <button
