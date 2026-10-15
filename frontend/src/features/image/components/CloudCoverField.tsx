@@ -34,7 +34,9 @@ export function CloudCoverField({
                 }
                 getAriaLabel={() => "최대 구름량"}
             />
-            <span className="min-h-5 text-sm text-zinc-500">{hint}</span>
+            <span className="min-h-5 text-sm text-muted-foreground">
+                {hint}
+            </span>
         </label>
     );
 }

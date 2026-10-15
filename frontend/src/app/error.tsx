@@ -19,7 +19,7 @@ export default function ErrorPage({ error, retry }: ErrorPageProps) {
             <h2 className="text-lg font-semibold">
                 화면을 표시하는 중 문제가 발생했습니다.
             </h2>
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-muted-foreground">
                 잠시 후 다시 시도해 주세요. 문제가 계속되면 관리자에게 문의해
                 주세요.
             </p>

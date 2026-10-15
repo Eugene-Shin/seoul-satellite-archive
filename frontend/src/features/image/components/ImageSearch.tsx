@@ -106,7 +106,7 @@ export function ImageSearch() {
                 </Tabs>
             </aside>
 
-            <section className="relative flex min-h-0 items-center justify-center text-zinc-500">
+            <section className="relative flex min-h-0 items-center justify-center text-muted-foreground">
                 지도 영역
                 <ImageDetail
                     key={selectedImage ? selectedImage.imageId : undefined}

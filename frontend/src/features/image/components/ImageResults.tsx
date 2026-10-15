@@ -97,7 +97,7 @@ export function ImageResults({
             <ErrorMessage error={error} onRetry={retry} />
             <p
                 hidden={status === null}
-                className="text-center text-sm text-zinc-500"
+                className="text-center text-sm text-muted-foreground"
             >
                 {status}
             </p>

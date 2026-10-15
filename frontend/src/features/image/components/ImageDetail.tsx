@@ -39,23 +39,23 @@ export function ImageDetail({ image, onClose }: ImageDetailProps) {
                 <h2 className="pr-10 font-semibold break-all">{image.title}</h2>
 
                 <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-sm">
-                    <dt className="text-zinc-500">영상 ID</dt>
+                    <dt className="text-muted-foreground">영상 ID</dt>
                     <dd>{image.imageId}</dd>
-                    <dt className="text-zinc-500">위성</dt>
+                    <dt className="text-muted-foreground">위성</dt>
                     <dd>{satelliteText(image)}</dd>
-                    <dt className="text-zinc-500">센서 유형</dt>
+                    <dt className="text-muted-foreground">센서 유형</dt>
                     <dd>{sensorTypeText(image)}</dd>
-                    <dt className="text-zinc-500">촬영일시(KST)</dt>
+                    <dt className="text-muted-foreground">촬영일시(KST)</dt>
                     <dd>{acquiredAtText(image)}</dd>
-                    <dt className="text-zinc-500">해상도</dt>
+                    <dt className="text-muted-foreground">해상도</dt>
                     <dd>{gsdText(image)}</dd>
-                    <dt className="text-zinc-500">구름량</dt>
+                    <dt className="text-muted-foreground">구름량</dt>
                     <dd>{cloudCoverText(image)}</dd>
-                    <dt className="text-zinc-500">궤도 방향</dt>
+                    <dt className="text-muted-foreground">궤도 방향</dt>
                     <dd>{orbitDirectionText(image)}</dd>
-                    <dt className="text-zinc-500">제공 기관</dt>
+                    <dt className="text-muted-foreground">제공 기관</dt>
                     <dd>{providerText(image)}</dd>
-                    <dt className="text-zinc-500">원본 갱신(KST)</dt>
+                    <dt className="text-muted-foreground">원본 갱신(KST)</dt>
                     <dd>{sourceUpdatedAtText(image)}</dd>
                 </dl>
 
@@ -81,7 +81,7 @@ function DownloadLink({ url }: { url: string }) {
 
     if (!url.startsWith("http")) {
         return (
-            <span className="break-all text-zinc-500" title={url}>
+            <span className="break-all text-muted-foreground" title={url}>
                 {fileName}
             </span>
         );

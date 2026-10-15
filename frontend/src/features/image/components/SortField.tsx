@@ -73,7 +73,7 @@ export function SortField({ value, onChange }: SortFieldProps) {
     return (
         <fieldset className="flex flex-col gap-2">
             <legend className="font-semibold">정렬</legend>
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-muted-foreground">
                 정렬 기준이 없으면 촬영일 최신순으로 정렬됩니다.
             </p>
             <DragDropProvider
