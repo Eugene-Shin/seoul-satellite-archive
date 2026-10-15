@@ -48,7 +48,7 @@
 }
 
 @theme {
-    --spacing-panel: 28rem;
+    --spacing-panel: 24rem;
     --spacing-card: calc(var(--spacing-panel) - 2rem);
 }
 
