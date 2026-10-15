@@ -1,53 +1,58 @@
 "use client";
 
-type MultiSelectOption = {
-    value: string;
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/shared/components/ui/select";
+
+type MultiSelectOption<T> = {
+    value: T;
     label: string;
 };
 
-type MultiSelectProps = {
+type MultiSelectProps<T> = {
     label: string;
-    options: MultiSelectOption[];
-    selected: string[];
-    onChange: (selected: string[]) => void;
+    options: MultiSelectOption<T>[];
+    selected: T[];
+    onChange: (selected: T[]) => void;
 };
 
-export function MultiSelect({
+function summaryText(selected: unknown[]): string {
+    return selected.length === 0 ? "전체" : `${selected.length}개 선택됨`;
+}
+
+export function MultiSelect<T>({
     label,
     options,
     selected,
     onChange,
-}: MultiSelectProps) {
-    function toggle(value: string) {
-        onChange(
-            selected.includes(value)
-                ? selected.filter((v) => v !== value)
-                : [...selected, value],
-        );
-    }
-
-    const summary =
-        selected.length === 0 ? "전체" : `${selected.length}개 선택됨`;
-
+}: MultiSelectProps<T>) {
     return (
-        <details className="relative">
-            <summary className="cursor-pointer rounded border px-3 py-2">
-                {label}: {summary}
-            </summary>
-            <ul className="absolute z-10 mt-1 max-h-60 min-w-full overflow-auto rounded border bg-background p-2 shadow">
-                {options.map((option) => (
-                    <li key={option.value}>
-                        <label className="flex items-center gap-2 whitespace-nowrap">
-                            <input
-                                type="checkbox"
-                                checked={selected.includes(option.value)}
-                                onChange={() => toggle(option.value)}
-                            />
+        <label className="flex flex-col gap-1">
+            <span className="font-semibold">{label}</span>
+            <Select
+                multiple
+                items={options}
+                value={selected}
+                onValueChange={onChange}
+            >
+                <SelectTrigger className="w-40">
+                    <SelectValue>{summaryText}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                    {options.map((option) => (
+                        <SelectItem
+                            key={String(option.value)}
+                            value={option.value}
+                        >
                             {option.label}
-                        </label>
-                    </li>
-                ))}
-            </ul>
-        </details>
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </label>
     );
 }
