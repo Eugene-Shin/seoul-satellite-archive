@@ -9,14 +9,14 @@ import { useFilterOptions } from "@/features/image/queries";
 import { useAppliedConditions } from "@/features/image/searchParams";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/shared/components/ui/tabs";
 
 type PanelTab = "conditions" | "results";
-
-function tabClassName(selected: boolean): string {
-    return selected
-        ? "flex-1 border-b-2 border-foreground py-3 font-semibold"
-        : "flex-1 border-b-2 border-transparent py-3 text-zinc-500 hover:border-zinc-300 hover:text-foreground";
-}
 
 export function ImageSearch() {
     const { data: options, error, refetch } = useFilterOptions();
@@ -59,54 +59,51 @@ export function ImageSearch() {
     return (
         <div className="grid min-h-0 flex-1 grid-cols-[var(--spacing-panel)_1fr]">
             <aside className="flex min-h-0 flex-col border-r">
-                <div role="tablist" className="flex shrink-0 border-b">
-                    <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activeTab === "conditions"}
-                        onClick={() => setActiveTab("conditions")}
-                        className={tabClassName(activeTab === "conditions")}
-                    >
-                        검색 조건
-                    </button>
-                    <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activeTab === "results"}
-                        onClick={() => setActiveTab("results")}
-                        className={tabClassName(activeTab === "results")}
-                    >
-                        검색 결과
-                    </button>
-                </div>
-
-                <section
-                    role="tabpanel"
-                    hidden={activeTab !== "conditions"}
-                    className="min-h-0 flex-1 overflow-y-auto p-4"
+                <Tabs
+                    value={activeTab}
+                    onValueChange={setActiveTab}
+                    className="min-h-0 flex-1 gap-0"
                 >
-                    <ImageSearchForm
-                        options={options}
-                        conditions={conditions}
-                        onChange={updateConditions}
-                        onSubmit={runSearch}
-                    />
-                </section>
+                    <TabsList
+                        variant="line"
+                        className="w-full shrink-0 border-b"
+                    >
+                        <TabsTrigger value="conditions" className="py-3">
+                            검색 조건
+                        </TabsTrigger>
+                        <TabsTrigger value="results" className="py-3">
+                            검색 결과
+                        </TabsTrigger>
+                    </TabsList>
 
-                <section
-                    role="tabpanel"
-                    hidden={activeTab !== "results"}
-                    className="min-h-0 flex-1 overflow-y-auto p-4"
-                >
-                    <ImageResults
-                        searchId={searchId}
-                        conditions={appliedConditions}
-                        selectedImageId={
-                            selectedImage ? selectedImage.imageId : null
-                        }
-                        onSelect={setSelectedImage}
-                    />
-                </section>
+                    <TabsContent
+                        value="conditions"
+                        keepMounted
+                        className="min-h-0 overflow-y-auto p-4"
+                    >
+                        <ImageSearchForm
+                            options={options}
+                            conditions={conditions}
+                            onChange={updateConditions}
+                            onSubmit={runSearch}
+                        />
+                    </TabsContent>
+
+                    <TabsContent
+                        value="results"
+                        keepMounted
+                        className="min-h-0 overflow-y-auto p-4"
+                    >
+                        <ImageResults
+                            searchId={searchId}
+                            conditions={appliedConditions}
+                            selectedImageId={
+                                selectedImage ? selectedImage.imageId : null
+                            }
+                            onSelect={setSelectedImage}
+                        />
+                    </TabsContent>
+                </Tabs>
             </aside>
 
             <section className="relative flex min-h-0 items-center justify-center text-zinc-500">
