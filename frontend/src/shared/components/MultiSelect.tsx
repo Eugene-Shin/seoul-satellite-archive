@@ -31,8 +31,8 @@ export function MultiSelect<T>({
     onChange,
 }: MultiSelectProps<T>) {
     return (
-        <label className="flex flex-col gap-1">
-            <span className="font-semibold">{label}</span>
+        <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium">{label}</span>
             <Select
                 multiple
                 items={options}

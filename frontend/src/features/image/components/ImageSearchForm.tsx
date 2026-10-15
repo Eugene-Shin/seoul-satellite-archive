@@ -47,8 +47,8 @@ export function ImageSearchForm({
                 onSubmit();
             }}
         >
-            <label className="flex flex-col gap-1">
-                <span className="font-semibold">제목</span>
+            <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium">제목</span>
                 <Input
                     type="text"
                     value={conditions.keyword ?? ""}
@@ -166,7 +166,7 @@ export function ImageSearchForm({
                 }
             />
 
-            <Button type="submit" className="self-start">
+            <Button type="submit" className="w-full">
                 검색
             </Button>
         </form>

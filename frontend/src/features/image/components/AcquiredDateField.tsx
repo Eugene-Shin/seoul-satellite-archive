@@ -19,8 +19,8 @@ export function AcquiredDateField({
     const lastDate = range.max ? toKstDate(range.max) : undefined;
 
     return (
-        <fieldset className="flex flex-col gap-1">
-            <legend className="font-semibold">촬영일</legend>
+        <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 text-sm font-medium">촬영일</legend>
             <div className="flex items-center gap-2">
                 <Input
                     type="date"

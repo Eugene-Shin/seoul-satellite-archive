@@ -71,12 +71,8 @@ export function ImageSearch() {
                         variant="line"
                         className="w-full shrink-0 border-b"
                     >
-                        <TabsTrigger value="conditions" className="py-3">
-                            검색 조건
-                        </TabsTrigger>
-                        <TabsTrigger value="results" className="py-3">
-                            검색 결과
-                        </TabsTrigger>
+                        <TabsTrigger value="conditions">검색 조건</TabsTrigger>
+                        <TabsTrigger value="results">검색 결과</TabsTrigger>
                     </TabsList>
 
                     <TabsContent

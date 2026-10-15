@@ -19,8 +19,8 @@ export function CloudCoverField({
     const hint = disabled ? "SAR 영상은 구름량 정보가 없습니다." : null;
 
     return (
-        <label className="flex w-full flex-col gap-3">
-            <span className="font-semibold tabular-nums">
+        <label className="flex w-full flex-col gap-2">
+            <span className="text-sm font-medium tabular-nums">
                 최대 구름량: {current}%
             </span>
             <Slider

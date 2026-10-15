@@ -24,8 +24,8 @@ export function Select<T>({ label, options, value, onChange }: SelectProps<T>) {
     const items = [{ value: null, label: "전체" }, ...options];
 
     return (
-        <label className="flex flex-col gap-1">
-            <span className="font-semibold">{label}</span>
+        <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium">{label}</span>
             <SelectRoot items={items} value={value} onValueChange={onChange}>
                 <SelectTrigger className="w-full">
                     <SelectValue />
