@@ -52,6 +52,27 @@
     --spacing-card: calc(var(--spacing-panel) - 2rem);
 }
 
+@utility app-layout {
+    display: grid;
+    grid-template-columns: var(--spacing-panel) 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+        "header map"
+        "panel map";
+}
+
+@utility area-header {
+    grid-area: header;
+}
+
+@utility area-panel {
+    grid-area: panel;
+}
+
+@utility area-map {
+    grid-area: map;
+}
+
 :root {
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);

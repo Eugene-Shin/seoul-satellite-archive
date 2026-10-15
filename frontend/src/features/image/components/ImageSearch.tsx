@@ -1,5 +1,6 @@
 "use client";
 
+import { MapIcon } from "lucide-react";
 import { useState } from "react";
 
 import { ImageDetail } from "@/features/image/components/ImageDetail";
@@ -42,23 +43,25 @@ export function ImageSearch() {
 
     if (error) {
         return (
-            <div className="p-6">
+            <div className="area-panel p-4">
                 <ErrorMessage error={error} onRetry={() => refetch()} />
             </div>
         );
     }
 
     if (!options) {
-        return <p>검색 조건을 불러오는 중입니다...</p>;
+        return (
+            <p className="area-panel p-4">검색 조건을 불러오는 중입니다...</p>
+        );
     }
 
     if (options.satellites.length === 0) {
-        return <p>등록된 영상이 없습니다.</p>;
+        return <p className="area-panel p-4">등록된 영상이 없습니다.</p>;
     }
 
     return (
-        <div className="grid min-h-0 flex-1 grid-cols-[var(--spacing-panel)_1fr]">
-            <aside className="flex min-h-0 flex-col border-r">
+        <div className="contents">
+            <aside className="area-panel flex min-h-0 flex-col border-r">
                 <Tabs
                     value={activeTab}
                     onValueChange={setActiveTab}
@@ -106,8 +109,9 @@ export function ImageSearch() {
                 </Tabs>
             </aside>
 
-            <section className="relative flex min-h-0 items-center justify-center text-muted-foreground">
-                지도 영역
+            <section className="area-map relative flex min-h-0 flex-col items-center justify-center gap-2 bg-muted/40 text-sm text-muted-foreground">
+                <MapIcon className="size-8" />
+                지도는 추후에 추가됩니다
                 <ImageDetail
                     key={selectedImage ? selectedImage.imageId : undefined}
                     image={selectedImage}
