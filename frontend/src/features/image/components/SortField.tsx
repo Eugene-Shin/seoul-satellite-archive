@@ -6,6 +6,13 @@ import { imageSortSchema } from "@/features/image/schemas";
 import type { ImageSort } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
 import { Button } from "@/shared/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/shared/components/ui/select";
 
 const SORT_OPTIONS: Record<ImageSort, { label: string; field: string }> = {
     ACQUIRED_AT_DESC: { label: "촬영일 최신순", field: "acquiredAt" },
@@ -15,6 +22,11 @@ const SORT_OPTIONS: Record<ImageSort, { label: string; field: string }> = {
 };
 
 const SORTS = imageSortSchema.options;
+
+const SORT_ITEMS = SORTS.map((sort) => ({
+    value: sort,
+    label: SORT_OPTIONS[sort].label,
+}));
 
 type SortFieldProps = {
     value: ImageSort[];
@@ -55,13 +67,6 @@ export function SortField({ value, onChange }: SortFieldProps) {
         });
     }
 
-    function changeAt(index: number, selectedValue: string) {
-        const selected = SORTS.find((option) => option === selectedValue);
-        if (selected) {
-            replace(index, selected);
-        }
-    }
-
     return (
         <fieldset className="flex flex-col gap-2">
             <legend className="font-semibold">정렬</legend>
@@ -72,18 +77,29 @@ export function SortField({ value, onChange }: SortFieldProps) {
                 {value.map((sort, index) => (
                     <li key={sort} className="flex items-center gap-2">
                         <span className="w-12">{index + 1}순위</span>
-                        <select
-                            aria-label={`${index + 1}순위 정렬 기준`}
+                        <Select
+                            items={SORT_ITEMS}
                             value={sort}
-                            onChange={(e) => changeAt(index, e.target.value)}
-                            className="w-40 rounded border px-2 py-2"
+                            onValueChange={(next) => {
+                                if (next) {
+                                    replace(index, next);
+                                }
+                            }}
                         >
-                            {availableSorts(sort).map((option) => (
-                                <option key={option} value={option}>
-                                    {SORT_OPTIONS[option].label}
-                                </option>
-                            ))}
-                        </select>
+                            <SelectTrigger
+                                aria-label={`${index + 1}순위 정렬 기준`}
+                                className="w-40"
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableSorts(sort).map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                        {SORT_OPTIONS[option].label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <IconButton
                             label="우선순위 올리기"
                             disabled={index === 0}

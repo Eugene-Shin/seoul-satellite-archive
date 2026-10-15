@@ -109,12 +109,11 @@ export function ImageSearchForm({
                         label: SENSOR_TYPE_NAMES[type],
                     }))}
                     value={
-                        conditions.sensorTypes ? conditions.sensorTypes[0] : ""
+                        conditions.sensorTypes
+                            ? conditions.sensorTypes[0]
+                            : null
                     }
-                    onChange={(value) => {
-                        const type = options.sensorTypes.find(
-                            (t) => t === value,
-                        );
+                    onChange={(type) => {
                         const sensorTypes = type ? [type] : undefined;
                         onChange({
                             sensorTypes,
@@ -130,30 +129,22 @@ export function ImageSearchForm({
                         value: direction,
                         label: ORBIT_DIRECTION_NAMES[direction],
                     }))}
-                    value={conditions.orbitDirection ?? ""}
-                    onChange={(value) =>
+                    value={conditions.orbitDirection ?? null}
+                    onChange={(orbitDirection) =>
                         onChange({
-                            orbitDirection: options.orbitDirections.find(
-                                (direction) => direction === value,
-                            ),
+                            orbitDirection: orbitDirection ?? undefined,
                         })
                     }
                 />
                 <Select
                     label="유료 여부"
                     options={[
-                        { value: "true", label: "유료" },
-                        { value: "false", label: "무료" },
+                        { value: true, label: "유료" },
+                        { value: false, label: "무료" },
                     ]}
-                    value={
-                        conditions.isPaid === undefined
-                            ? ""
-                            : String(conditions.isPaid)
-                    }
-                    onChange={(value) =>
-                        onChange({
-                            isPaid: value === "" ? undefined : value === "true",
-                        })
+                    value={conditions.isPaid ?? null}
+                    onChange={(isPaid) =>
+                        onChange({ isPaid: isPaid ?? undefined })
                     }
                 />
             </div>
