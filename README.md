@@ -35,7 +35,7 @@ npm ci && npm run dev
 `.env.example` 참고. `NEXT_PUBLIC_API_URL`은 프론트 **빌드 시점**에 번들에 박히므로 값을 바꾸면 이미지를 다시 빌드해야 한다.
 
 - 값이 없거나 URL 형식이 아니면 `next.config.ts`에서 빌드(`dev` 포함)가 실패한다.
-- 프론트 Docker 빌드는 `--build-arg NEXT_PUBLIC_API_URL=...`이 있으면 그 값을, 없으면 `frontend/`의 env 파일(`.env.production`, `.env.local` 등) 값을 쓴다. compose는 항상 빌드 인자로 넘긴다.
+- 프론트 Docker 빌드는 `--build-arg NEXT_PUBLIC_API_URL=...`이 있으면 그 값을, 없으면 `frontend/`의 env 파일(`.env.production`, `.env`) 값을 쓴다. `.env*.local`은 로컬 전용이라 Docker 빌드에 들어가지 않는다(`.dockerignore`). compose는 항상 빌드 인자로 넘긴다.
 - 이 값의 출처(origin)가 CSP `connect-src`에 들어간다.
 
 ## 운영 배포
