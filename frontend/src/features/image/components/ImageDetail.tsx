@@ -1,5 +1,7 @@
 "use client";
 
+import { XIcon } from "lucide-react";
+
 import {
     acquiredAtText,
     cloudCoverText,
@@ -30,7 +32,7 @@ export function ImageDetail({ image, onClose }: ImageDetailProps) {
                 onClick={onClose}
                 className="absolute top-3 right-3"
             >
-                ✕
+                <XIcon />
             </IconButton>
 
             <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">

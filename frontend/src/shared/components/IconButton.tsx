@@ -1,29 +1,20 @@
 "use client";
 
-type IconButtonProps = {
+import type { ComponentProps } from "react";
+
+import { Button } from "@/shared/components/ui/button";
+
+type IconButtonProps = ComponentProps<typeof Button> & {
     label: string;
-    onClick: () => void;
-    disabled?: boolean;
-    className?: string;
-    children: React.ReactNode;
 };
 
-export function IconButton({
-    label,
-    onClick,
-    disabled,
-    className,
-    children,
-}: IconButtonProps) {
+export function IconButton({ label, ...props }: IconButtonProps) {
     return (
-        <button
-            type="button"
+        <Button
+            variant="outline"
+            size="icon-sm"
             aria-label={label}
-            disabled={disabled}
-            onClick={onClick}
-            className={`rounded border px-2 py-1 hover:bg-zinc-100 disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-zinc-800 ${className ?? ""}`}
-        >
-            {children}
-        </button>
+            {...props}
+        />
     );
 }

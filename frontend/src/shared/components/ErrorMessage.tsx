@@ -1,6 +1,7 @@
 "use client";
 
 import { ApiError } from "@/shared/api/client";
+import { Button } from "@/shared/components/ui/button";
 
 type ErrorMessageProps = {
     error: unknown;
@@ -29,13 +30,14 @@ export function ErrorMessage({ error, onRetry }: ErrorMessageProps) {
                     <li key={detail}>{detail}</li>
                 ))}
             </ul>
-            <button
-                type="button"
+            <Button
+                variant="outline"
+                size="sm"
                 onClick={onRetry}
-                className="self-start rounded border border-current px-3 py-1 hover:bg-red-100 dark:hover:bg-red-900"
+                className="self-start"
             >
                 다시 시도
-            </button>
+            </Button>
         </div>
     );
 }

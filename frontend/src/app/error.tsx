@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+import { Button } from "@/shared/components/ui/button";
+
 type ErrorPageProps = {
     error: Error & { digest?: string };
     retry: () => void;
@@ -21,13 +23,9 @@ export default function ErrorPage({ error, retry }: ErrorPageProps) {
                 잠시 후 다시 시도해 주세요. 문제가 계속되면 관리자에게 문의해
                 주세요.
             </p>
-            <button
-                type="button"
-                onClick={() => retry()}
-                className="rounded border px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
+            <Button variant="outline" onClick={() => retry()}>
                 다시 시도
-            </button>
+            </Button>
         </main>
     );
 }

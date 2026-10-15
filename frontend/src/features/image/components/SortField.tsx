@@ -1,8 +1,11 @@
 "use client";
 
+import { ArrowUpIcon, XIcon } from "lucide-react";
+
 import { imageSortSchema } from "@/features/image/schemas";
 import type { ImageSort } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
+import { Button } from "@/shared/components/ui/button";
 
 const SORT_OPTIONS: Record<ImageSort, { label: string; field: string }> = {
     ACQUIRED_AT_DESC: { label: "촬영일 최신순", field: "acquiredAt" },
@@ -86,25 +89,25 @@ export function SortField({ value, onChange }: SortFieldProps) {
                             disabled={index === 0}
                             onClick={() => moveUp(index)}
                         >
-                            ↑
+                            <ArrowUpIcon />
                         </IconButton>
                         <IconButton
                             label="정렬 기준 삭제"
                             onClick={() => remove(index)}
                         >
-                            ✕
+                            <XIcon />
                         </IconButton>
                     </li>
                 ))}
             </ol>
-            <button
-                type="button"
+            <Button
+                variant="outline"
                 disabled={!nextSort}
                 onClick={add}
-                className="self-start rounded border px-3 py-2 disabled:opacity-40"
+                className="self-start"
             >
                 + 정렬 기준 추가
-            </button>
+            </Button>
         </fieldset>
     );
 }

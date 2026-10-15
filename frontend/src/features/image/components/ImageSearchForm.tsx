@@ -15,6 +15,7 @@ import type {
 } from "@/features/image/types";
 import { MultiSelect } from "@/shared/components/MultiSelect";
 import { Select } from "@/shared/components/Select";
+import { Button } from "@/shared/components/ui/button";
 
 function emptyToUndefined<T>(values: T[]): T[] | undefined {
     return values.length > 0 ? values : undefined;
@@ -177,12 +178,9 @@ export function ImageSearchForm({
                 }
             />
 
-            <button
-                type="submit"
-                className="self-start rounded bg-foreground px-6 py-2 text-background"
-            >
+            <Button type="submit" className="self-start">
                 검색
-            </button>
+            </Button>
         </form>
     );
 }
