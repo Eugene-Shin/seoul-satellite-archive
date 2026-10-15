@@ -28,7 +28,7 @@ export function ImageCard({ image, selected, onSelect }: ImageCardProps) {
                 type="button"
                 aria-pressed={selected}
                 onClick={onSelect}
-                className={`flex w-full flex-col gap-2 rounded border p-4 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${stateClassName}`}
+                className={`flex w-full flex-col gap-2 rounded-lg border bg-card p-4 text-left text-card-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${stateClassName}`}
             >
                 <h2 className="truncate font-semibold" title={image.title}>
                     {image.title}
