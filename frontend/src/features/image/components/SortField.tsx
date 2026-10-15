@@ -1,6 +1,9 @@
 "use client";
 
-import { ArrowUpIcon, XIcon } from "lucide-react";
+import { move } from "@dnd-kit/helpers";
+import { DragDropProvider } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
+import { ArrowUpIcon, GripVerticalIcon, XIcon } from "lucide-react";
 
 import { imageSortSchema } from "@/features/image/schemas";
 import type { ImageSort } from "@/features/image/types";
@@ -73,49 +76,27 @@ export function SortField({ value, onChange }: SortFieldProps) {
             <p className="text-sm text-zinc-500">
                 정렬 기준이 없으면 촬영일 최신순으로 정렬됩니다.
             </p>
-            <ol className="flex flex-col gap-2">
-                {value.map((sort, index) => (
-                    <li key={sort} className="flex items-center gap-2">
-                        <span className="w-12">{index + 1}순위</span>
-                        <Select
-                            items={SORT_ITEMS}
-                            value={sort}
-                            onValueChange={(next) => {
-                                if (next) {
-                                    replace(index, next);
-                                }
-                            }}
-                        >
-                            <SelectTrigger
-                                aria-label={`${index + 1}순위 정렬 기준`}
-                                className="w-40"
-                            >
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableSorts(sort).map((option) => (
-                                    <SelectItem key={option} value={option}>
-                                        {SORT_OPTIONS[option].label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <IconButton
-                            label="우선순위 올리기"
-                            disabled={index === 0}
-                            onClick={() => moveUp(index)}
-                        >
-                            <ArrowUpIcon />
-                        </IconButton>
-                        <IconButton
-                            label="정렬 기준 삭제"
-                            onClick={() => remove(index)}
-                        >
-                            <XIcon />
-                        </IconButton>
-                    </li>
-                ))}
-            </ol>
+            <DragDropProvider
+                onDragEnd={(event) => {
+                    if (!event.canceled) {
+                        onChange(move(value, event));
+                    }
+                }}
+            >
+                <ol className="flex flex-col gap-2">
+                    {value.map((sort, index) => (
+                        <SortRow
+                            key={sort}
+                            sort={sort}
+                            index={index}
+                            options={availableSorts(sort)}
+                            onChange={(next) => replace(index, next)}
+                            onMoveUp={() => moveUp(index)}
+                            onRemove={() => remove(index)}
+                        />
+                    ))}
+                </ol>
+            </DragDropProvider>
             <Button
                 variant="outline"
                 disabled={!nextSort}
@@ -125,5 +106,71 @@ export function SortField({ value, onChange }: SortFieldProps) {
                 + 정렬 기준 추가
             </Button>
         </fieldset>
+    );
+}
+
+type SortRowProps = {
+    sort: ImageSort;
+    index: number;
+    options: ImageSort[];
+    onChange: (sort: ImageSort) => void;
+    onMoveUp: () => void;
+    onRemove: () => void;
+};
+
+function SortRow({
+    sort,
+    index,
+    options,
+    onChange,
+    onMoveUp,
+    onRemove,
+}: SortRowProps) {
+    const { ref, handleRef } = useSortable({ id: sort, index });
+
+    return (
+        <li ref={ref} className="flex items-center gap-2">
+            <IconButton
+                ref={handleRef}
+                label={`${index + 1}순위 끌어서 옮기기`}
+                variant="ghost"
+            >
+                <GripVerticalIcon />
+            </IconButton>
+            <span className="w-12">{index + 1}순위</span>
+            <Select
+                items={SORT_ITEMS}
+                value={sort}
+                onValueChange={(next) => {
+                    if (next) {
+                        onChange(next);
+                    }
+                }}
+            >
+                <SelectTrigger
+                    aria-label={`${index + 1}순위 정렬 기준`}
+                    className="w-40"
+                >
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {options.map((option) => (
+                        <SelectItem key={option} value={option}>
+                            {SORT_OPTIONS[option].label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <IconButton
+                label="우선순위 올리기"
+                disabled={index === 0}
+                onClick={onMoveUp}
+            >
+                <ArrowUpIcon />
+            </IconButton>
+            <IconButton label="정렬 기준 삭제" onClick={onRemove}>
+                <XIcon />
+            </IconButton>
+        </li>
     );
 }
