@@ -8,7 +8,7 @@ const FILTER_OPTIONS_STALE_TIME = 5 * 60 * 1000;
 export function useFilterOptions() {
     return useQuery({
         queryKey: ["image", "filter-options"],
-        queryFn: fetchFilterOptions,
+        queryFn: ({ signal }) => fetchFilterOptions(signal),
         staleTime: FILTER_OPTIONS_STALE_TIME,
     });
 }
@@ -21,14 +21,12 @@ export function useImageSearch(
 ) {
     return useInfiniteQuery({
         queryKey: ["image", "search", searchId, conditions],
-        queryFn: ({ pageParam }) =>
-            searchImages({
-                ...conditions,
-                page: pageParam,
-                size: SEARCH_PAGE_SIZE,
-            }),
-        initialPageParam: 0,
-        getNextPageParam: (lastPage, allPages) =>
-            lastPage.hasNext ? allPages.length : undefined,
+        queryFn: ({ pageParam, signal }) =>
+            searchImages(
+                { ...conditions, cursor: pageParam, size: SEARCH_PAGE_SIZE },
+                signal,
+            ),
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
 }

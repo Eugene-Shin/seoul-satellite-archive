@@ -121,4 +121,33 @@ describe("apiGet", () => {
         );
         expect(error.status).toBeNull();
     });
+
+    it("취소 신호를 fetch에 넘긴다", async () => {
+        const fetchMock = mockFetch(
+            jsonResponse({
+                success: true,
+                code: "OK",
+                message: "",
+                data: { id: 1 },
+            }),
+        );
+        const controller = new AbortController();
+
+        await apiGet("/x", itemSchema, {}, controller.signal);
+
+        expect(fetchMock.mock.calls[0][1]).toEqual({
+            signal: controller.signal,
+        });
+    });
+
+    it("취소된 요청은 ApiError로 감싸지 않는다", async () => {
+        const controller = new AbortController();
+        controller.abort();
+        const abortError = new DOMException("Aborted", "AbortError");
+        vi.stubGlobal("fetch", vi.fn().mockRejectedValue(abortError));
+
+        await expect(
+            apiGet("/x", itemSchema, {}, controller.signal),
+        ).rejects.toBe(abortError);
+    });
 });

@@ -1,8 +1,10 @@
 package com.all4land.seoulsatellitearchive.image;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.springframework.data.domain.Sort;
 
+@Getter
 @AllArgsConstructor
 public enum ImageSort {
     ACQUIRED_AT_ASC("acquiredAt", Sort.Direction.ASC),

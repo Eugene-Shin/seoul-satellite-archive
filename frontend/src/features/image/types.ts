@@ -44,6 +44,6 @@ export type ImageSearchParams = {
     gsdMax?: number;
     cloudMax?: number;
     sorts?: ImageSort[];
-    page?: number;
+    cursor?: string;
     size?: number;
 };

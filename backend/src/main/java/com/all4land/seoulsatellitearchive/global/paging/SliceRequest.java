@@ -1,22 +1,17 @@
 package com.all4land.seoulsatellitearchive.global.paging;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 
 @Getter
 @Setter
 public class SliceRequest {
 
-    @Min(0) private int page = 0;
+    @Schema(description = "첫 요청은 비워 둔다. 다음 페이지는 이전 응답의 nextCursor")
+    private String cursor;
 
     @Min(1) @Max(100) private int size = 20;
-
-    public Pageable toPageable(Sort sort) {
-        return PageRequest.of(page, size, sort);
-    }
 }

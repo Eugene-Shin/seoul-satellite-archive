@@ -50,6 +50,7 @@ export async function apiGet<S extends z.ZodType>(
     path: string,
     schema: S,
     params: QueryParams = {},
+    signal?: AbortSignal,
 ): Promise<z.infer<S>> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -62,8 +63,11 @@ export async function apiGet<S extends z.ZodType>(
 
     let response: Response;
     try {
-        response = await fetch(url);
-    } catch {
+        response = await fetch(url, { signal });
+    } catch (error) {
+        if (signal?.aborted) {
+            throw error;
+        }
         throw new ApiError(
             "서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
         );
