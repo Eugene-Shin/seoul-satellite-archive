@@ -136,35 +136,58 @@ public final class ImageSearchSpecification {
         return (root, query, cb) -> {
             List<Predicate> branches = new ArrayList<>();
             List<Predicate> same = new ArrayList<>();
+            List<Predicate> notBefore = new ArrayList<>();
             for (ImageSort sort : cursor.sorts()) {
                 boolean ascending = sort.getDirection().isAscending();
-                switch (sort) {
-                    case ACQUIRED_AT_ASC, ACQUIRED_AT_DESC ->
-                        appendKey(cb, root.get("acquiredAt"), cursor.acquiredAt(), ascending, branches, same);
-                    case CLOUD_COVER_ASC, CLOUD_COVER_DESC ->
-                        appendKey(cb, root.get("cloudCover"), cursor.cloudCover(), ascending, branches, same);
-                }
+                notBefore.add(
+                        switch (sort) {
+                            case ACQUIRED_AT_ASC, ACQUIRED_AT_DESC ->
+                                appendKey(
+                                        cb,
+                                        root.get("acquiredAt"),
+                                        cursor.acquiredAt(),
+                                        ascending,
+                                        false,
+                                        branches,
+                                        same);
+                            case CLOUD_COVER_ASC, CLOUD_COVER_DESC ->
+                                appendKey(
+                                        cb,
+                                        root.get("cloudCover"),
+                                        cursor.cloudCover(),
+                                        ascending,
+                                        true,
+                                        branches,
+                                        same);
+                        });
             }
             branches.add(and(cb, same, cb.lessThan(root.get("id"), cursor.id())));
-            return cb.or(branches.toArray(Predicate[]::new));
+            Predicate afterCursor = cb.or(branches.toArray(Predicate[]::new));
+            // OR만으로는 DB가 인덱스 시작 위치를 못 찾아서, 첫 기준의 범위를 따로 걸어 커서 위치로 바로 찾게 한다
+            return notBefore.isEmpty() ? afterCursor : cb.and(notBefore.getFirst(), afterCursor);
         };
     }
 
     // 정렬은 nullsLast: 값이 있으면 NULL도 뒤, 커서 값이 NULL이면 이 기준으로 뒤인 행은 없다
-    private static <T extends Comparable<? super T>> void appendKey(
+    // 반환값은 이 기준에서 커서 행과 같거나 뒤인 조건. NOT NULL 열은 IS NULL을 붙이지 않아야 인덱스 범위 탐색이 된다
+    private static <T extends Comparable<? super T>> Predicate appendKey(
             CriteriaBuilder cb,
             Path<T> path,
             T value,
             boolean ascending,
+            boolean nullable,
             List<Predicate> branches,
             List<Predicate> same) {
         if (value == null) {
-            same.add(cb.isNull(path));
-            return;
+            Predicate isNull = cb.isNull(path);
+            same.add(isNull);
+            return isNull;
         }
         Predicate beyond = ascending ? cb.greaterThan(path, value) : cb.lessThan(path, value);
-        branches.add(and(cb, same, cb.or(beyond, cb.isNull(path))));
+        Predicate beyondOrSame = ascending ? cb.greaterThanOrEqualTo(path, value) : cb.lessThanOrEqualTo(path, value);
+        branches.add(and(cb, same, nullable ? cb.or(beyond, cb.isNull(path)) : beyond));
         same.add(cb.equal(path, value));
+        return nullable ? cb.or(beyondOrSame, cb.isNull(path)) : beyondOrSame;
     }
 
     private static Predicate and(CriteriaBuilder cb, List<Predicate> same, Predicate last) {
