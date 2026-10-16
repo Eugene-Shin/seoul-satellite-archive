@@ -4,6 +4,7 @@ import com.all4land.seoulsatellitearchive.global.paging.SliceRequest;
 import com.all4land.seoulsatellitearchive.image.ImageSort;
 import com.all4land.seoulsatellitearchive.image.OrbitDirection;
 import com.all4land.seoulsatellitearchive.image.SensorType;
+import com.all4land.seoulsatellitearchive.image.annotation.UniqueSortProperties;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -50,6 +51,7 @@ public class ImageSearchRequest extends SliceRequest {
 
     @Size(min = 4, max = 4, message = "minLon,minLat,maxLon,maxLat 4개 값이어야 합니다.") private List<@NotNull Double> bbox;
 
+    @UniqueSortProperties
     private List<@NotNull ImageSort> sorts = List.of(ImageSort.ACQUIRED_AT_DESC);
 
     public Pageable toPageable() {

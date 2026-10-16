@@ -108,5 +108,8 @@ class ImageControllerTest {
         mockMvc.perform(get("/api/images").param("sorts", "FOO"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorDetail[0]").value("sorts: 타입이 올바르지 않습니다."));
+        mockMvc.perform(get("/api/images").param("sorts", "ACQUIRED_AT_ASC", "CLOUD_COVER_ASC", "ACQUIRED_AT_DESC"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorDetail[0]").value("sorts: 같은 정렬 기준은 한 번만 지정할 수 있습니다."));
     }
 }
