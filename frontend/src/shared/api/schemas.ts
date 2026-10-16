@@ -11,6 +11,6 @@ export const apiResponseSchema = z.object({
 export function sliceResponseSchema<T extends z.ZodType>(itemSchema: T) {
     return z.object({
         content: z.array(itemSchema),
-        hasNext: z.boolean(),
+        nextCursor: z.string().nullable(),
     });
 }
