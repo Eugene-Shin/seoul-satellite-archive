@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -54,10 +53,10 @@ public class ImageSearchRequest extends SliceRequest {
     @UniqueSortProperties
     private List<@NotNull ImageSort> sorts = List.of(ImageSort.ACQUIRED_AT_DESC);
 
-    public Pageable toPageable() {
+    public Sort toSort() {
         List<Sort.Order> orders =
                 new ArrayList<>(sorts.stream().map(ImageSort::toOrder).toList());
         orders.add(Sort.Order.desc("id"));
-        return toPageable(Sort.by(orders));
+        return Sort.by(orders);
     }
 }

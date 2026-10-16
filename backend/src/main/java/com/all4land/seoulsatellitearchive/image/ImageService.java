@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -22,9 +23,19 @@ public class ImageService {
     private final ProviderRepository providerRepository;
 
     public SliceResponse<ImageResponse> search(ImageSearchRequest request) {
-        return SliceResponse.from(satelliteImageRepository
-                .findBy(ImageSearchSpecification.of(request), query -> query.slice(request.toPageable()))
-                .map(ImageResponse::from));
+        ImageCursor cursor = StringUtils.hasText(request.getCursor())
+                ? ImageCursor.decode(request.getCursor(), request.getSorts())
+                : null;
+        int size = request.getSize();
+        // 한 건 더 가져와서 다음 페이지가 있는지 판단한다
+        List<SatelliteImage> rows = satelliteImageRepository.findBy(
+                ImageSearchSpecification.of(request).and(ImageSearchSpecification.after(cursor)),
+                query -> query.sortBy(request.toSort()).limit(size + 1).all());
+        List<SatelliteImage> page = rows.size() > size ? rows.subList(0, size) : rows;
+        String nextCursor = rows.size() > size
+                ? ImageCursor.of(page.getLast(), request.getSorts()).encode()
+                : null;
+        return new SliceResponse<>(page.stream().map(ImageResponse::from).toList(), nextCursor);
     }
 
     public ImageFilterOptionsResponse getFilterOptions() {

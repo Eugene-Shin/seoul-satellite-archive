@@ -2,9 +2,13 @@ package com.all4land.seoulsatellitearchive.image;
 
 import com.all4land.seoulsatellitearchive.global.config.ClockConfig;
 import com.all4land.seoulsatellitearchive.image.dto.ImageSearchRequest;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -122,6 +126,51 @@ public final class ImageSearchSpecification {
         return (root, query, cb) -> ((HibernateCriteriaBuilder) cb)
                 .unwrap(JTSSpatialCriteriaBuilder.class)
                 .intersects(root.<Geometry>get("footprint"), envelope);
+    }
+
+    // 정렬 순서에서 커서 행보다 뒤인 행. 앞 기준들이 같고 이번 기준에서 처음 뒤인 경우를 기준마다 OR로 묶는다
+    public static Specification<SatelliteImage> after(ImageCursor cursor) {
+        if (cursor == null) {
+            return Specification.unrestricted();
+        }
+        return (root, query, cb) -> {
+            List<Predicate> branches = new ArrayList<>();
+            List<Predicate> same = new ArrayList<>();
+            for (ImageSort sort : cursor.sorts()) {
+                boolean ascending = sort.getDirection().isAscending();
+                switch (sort) {
+                    case ACQUIRED_AT_ASC, ACQUIRED_AT_DESC ->
+                        appendKey(cb, root.get("acquiredAt"), cursor.acquiredAt(), ascending, branches, same);
+                    case CLOUD_COVER_ASC, CLOUD_COVER_DESC ->
+                        appendKey(cb, root.get("cloudCover"), cursor.cloudCover(), ascending, branches, same);
+                }
+            }
+            branches.add(and(cb, same, cb.lessThan(root.get("id"), cursor.id())));
+            return cb.or(branches.toArray(Predicate[]::new));
+        };
+    }
+
+    // 정렬은 nullsLast: 값이 있으면 NULL도 뒤, 커서 값이 NULL이면 이 기준으로 뒤인 행은 없다
+    private static <T extends Comparable<? super T>> void appendKey(
+            CriteriaBuilder cb,
+            Path<T> path,
+            T value,
+            boolean ascending,
+            List<Predicate> branches,
+            List<Predicate> same) {
+        if (value == null) {
+            same.add(cb.isNull(path));
+            return;
+        }
+        Predicate beyond = ascending ? cb.greaterThan(path, value) : cb.lessThan(path, value);
+        branches.add(and(cb, same, cb.or(beyond, cb.isNull(path))));
+        same.add(cb.equal(path, value));
+    }
+
+    private static Predicate and(CriteriaBuilder cb, List<Predicate> same, Predicate last) {
+        List<Predicate> all = new ArrayList<>(same);
+        all.add(last);
+        return cb.and(all.toArray(Predicate[]::new));
     }
 
     private static String escapeLike(String keyword) {
