@@ -30,6 +30,7 @@ type ImageMapProps = {
     images: ImageResponse[];
     selectedImage: ImageResponse | null;
     area: Bbox | undefined;
+    allLoaded: boolean;
     onSelect: (image: ImageResponse) => void;
     onAreaChange: (area: Bbox | undefined) => void;
 };
@@ -62,9 +63,9 @@ const VWORLD_EXTENT = transformExtent(
     "EPSG:4326",
     "EPSG:3857",
 );
-const REVEAL_PADDING = 32;
-const REVEAL_MAX_ZOOM = 14;
-const REVEAL_DURATION = 300;
+const FIT_PADDING = 32;
+const FIT_MAX_ZOOM = 14;
+const FIT_DURATION = 300;
 
 const FOOTPRINT_STYLE_OPTIONS: VectorStyleOptions = {
     colorVariable: "--map-footprint",
@@ -126,31 +127,29 @@ function isOutOfView(map: OlMap, geometry: MultiPolygon): boolean {
     );
 }
 
-function revealIfOutOfView(map: OlMap, image: ImageResponse) {
-    const geometry = toFeature(image).getGeometry();
-    if (!geometry || !isOutOfView(map, geometry)) {
-        return;
-    }
-
+function fitView(map: OlMap, extent: Extent) {
     const reduceMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
     ).matches;
-    map.getView().fit(geometry, {
-        padding: [
-            REVEAL_PADDING,
-            REVEAL_PADDING,
-            REVEAL_PADDING,
-            REVEAL_PADDING,
-        ],
-        maxZoom: REVEAL_MAX_ZOOM,
-        duration: reduceMotion ? 0 : REVEAL_DURATION,
+    map.getView().fit(extent, {
+        padding: [FIT_PADDING, FIT_PADDING, FIT_PADDING, FIT_PADDING],
+        maxZoom: FIT_MAX_ZOOM,
+        duration: reduceMotion ? 0 : FIT_DURATION,
     });
+}
+
+function revealIfOutOfView(map: OlMap, image: ImageResponse) {
+    const geometry = toFeature(image).getGeometry();
+    if (geometry && isOutOfView(map, geometry)) {
+        fitView(map, geometry.getExtent());
+    }
 }
 
 export function ImageMap({
     images,
     selectedImage,
     area,
+    allLoaded,
     onSelect,
     onAreaChange,
 }: ImageMapProps) {
@@ -275,6 +274,16 @@ export function ImageMap({
         footprintSource.addFeatures(images.map(toFeature));
         return () => footprintSource.clear();
     }, [footprintSource, images]);
+
+    // 마지막 페이지가 오면 images와 allLoaded가 같이 바뀌므로, footprint를 넣는 effect보다 아래에 둬야 채워진 범위로 맞춘다
+    useEffect(() => {
+        const map = mapRef.current;
+        const extent = footprintSource.getExtent();
+        if (!map || !allLoaded || !extent || footprintSource.isEmpty()) {
+            return;
+        }
+        fitView(map, extent);
+    }, [allLoaded, footprintSource]);
 
     useEffect(() => {
         if (!selectedImage) {

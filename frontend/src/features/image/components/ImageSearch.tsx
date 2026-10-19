@@ -42,7 +42,12 @@ export function ImageSearch() {
         null,
     );
 
-    const { data: searchData } = useImageSearch(searchId, appliedConditions);
+    const {
+        data: searchData,
+        hasNextPage,
+        isFetching,
+    } = useImageSearch(searchId, appliedConditions);
+    const allLoaded = searchData !== undefined && !hasNextPage && !isFetching;
     const images = useMemo(
         () =>
             searchData ? searchData.pages.flatMap((page) => page.content) : [],
@@ -142,6 +147,7 @@ export function ImageSearch() {
                     images={images}
                     selectedImage={selectedImage}
                     area={appliedConditions.bbox}
+                    allLoaded={allLoaded}
                     onSelect={selectFromMap}
                     onAreaChange={changeArea}
                 />
