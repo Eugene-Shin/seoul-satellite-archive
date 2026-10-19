@@ -3,14 +3,11 @@
 import "ol/ol.css";
 
 import { asArray } from "ol/color";
-import Feature from "ol/Feature";
-import MultiPolygon from "ol/geom/MultiPolygon";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import OlMap from "ol/Map";
 import type MapBrowserEvent from "ol/MapBrowserEvent";
 import { fromLonLat, transformExtent } from "ol/proj";
-import type { OrderFunction } from "ol/render";
 import VectorSource from "ol/source/Vector";
 import XYZ from "ol/source/XYZ";
 import { Fill, Stroke, Style } from "ol/style";
@@ -18,6 +15,7 @@ import View from "ol/View";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import { FootprintChooser } from "@/features/image/components/FootprintChooser";
+import { largerFirst, pickImages, toFeature } from "@/features/image/footprint";
 import type { ImageResponse } from "@/features/image/types";
 
 type ImageMapProps = {
@@ -92,18 +90,6 @@ function createFootprintStyle({
     });
 }
 
-const largerFirst: OrderFunction = (a, b) => b.get("area") - a.get("area");
-
-function toFeature(image: ImageResponse): Feature {
-    const geometry = new MultiPolygon(image.footprint.coordinates).transform(
-        "EPSG:4326",
-        "EPSG:3857",
-    );
-    const feature = new Feature({ geometry, area: geometry.getArea() });
-    feature.setId(image.imageId);
-    return feature;
-}
-
 export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
     const mapRef = useRef<HTMLDivElement | null>(null);
     const [footprintSource] = useState(() => new VectorSource());
@@ -111,9 +97,7 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
     const [chooser, setChooser] = useState<Chooser | null>(null);
     const [chooserOpen, setChooserOpen] = useState(false);
 
-    const chooserImages = chooser
-        ? images.filter((image) => chooser.imageIds.includes(image.imageId))
-        : [];
+    const chooserImages = chooser ? pickImages(images, chooser.imageIds) : [];
 
     const handleMapClick = useEffectEvent((event: MapBrowserEvent) => {
         const hitIds = event.map
@@ -121,7 +105,7 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
                 layerFilter: (layer) => layer.getSource() === footprintSource,
             })
             .map((feature) => feature.getId());
-        const hits = images.filter((image) => hitIds.includes(image.imageId));
+        const hits = pickImages(images, hitIds);
 
         if (hits.length > 1 && event.originalEvent instanceof MouseEvent) {
             setChooser({
