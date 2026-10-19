@@ -7,18 +7,30 @@ import MultiPolygon from "ol/geom/MultiPolygon";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import OlMap from "ol/Map";
+import type MapBrowserEvent from "ol/MapBrowserEvent";
 import { fromLonLat, transformExtent } from "ol/proj";
 import type { OrderFunction } from "ol/render";
 import VectorSource from "ol/source/Vector";
 import XYZ from "ol/source/XYZ";
 import { Fill, Stroke, Style } from "ol/style";
 import View from "ol/View";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 
+import { FootprintChooser } from "@/features/image/components/FootprintChooser";
 import type { ImageResponse } from "@/features/image/types";
 
 type ImageMapProps = {
     images: ImageResponse[];
+    selectedImage: ImageResponse | null;
+    onSelect: (image: ImageResponse) => void;
+};
+
+type Chooser = {
+    imageIds: number[];
+    x: number;
+    y: number;
+    flipX: boolean;
+    flipY: boolean;
 };
 
 const SEOUL_LON_LAT = [126.978, 37.566];
@@ -37,6 +49,11 @@ const FOOTPRINT_STYLE = new Style({
     fill: new Fill({ color: "rgba(37, 99, 235, 0.04)" }),
 });
 
+const SELECTED_STYLE = new Style({
+    stroke: new Stroke({ color: "#f97316", width: 3 }),
+    fill: new Fill({ color: "rgba(249, 115, 22, 0.15)" }),
+});
+
 const largerFirst: OrderFunction = (a, b) => b.get("area") - a.get("area");
 
 function toFeature(image: ImageResponse): Feature {
@@ -49,9 +66,41 @@ function toFeature(image: ImageResponse): Feature {
     return feature;
 }
 
-export function ImageMap({ images }: ImageMapProps) {
+export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
     const mapRef = useRef<HTMLDivElement | null>(null);
     const [footprintSource] = useState(() => new VectorSource());
+    const [selectionSource] = useState(() => new VectorSource());
+    const [chooser, setChooser] = useState<Chooser | null>(null);
+
+    const chooserImages = chooser
+        ? images.filter((image) => chooser.imageIds.includes(image.imageId))
+        : [];
+
+    const handleMapClick = useEffectEvent((event: MapBrowserEvent) => {
+        const hitIds = event.map
+            .getFeaturesAtPixel(event.pixel, {
+                layerFilter: (layer) => layer.getSource() === footprintSource,
+            })
+            .map((feature) => feature.getId());
+        const hits = images.filter((image) => hitIds.includes(image.imageId));
+
+        if (hits.length === 1) {
+            setChooser(null);
+            onSelect(hits[0]);
+        } else if (hits.length > 1) {
+            const [width, height] = event.map.getSize() ?? [0, 0];
+            const [x, y] = event.pixel;
+            setChooser({
+                imageIds: hits.map((image) => image.imageId),
+                x,
+                y,
+                flipX: x > width / 2,
+                flipY: y > height / 2,
+            });
+        } else {
+            setChooser(null);
+        }
+    });
 
     useEffect(() => {
         const baseLayers = VWORLD_KEY
@@ -74,6 +123,10 @@ export function ImageMap({ images }: ImageMapProps) {
                     style: FOOTPRINT_STYLE,
                     renderOrder: largerFirst,
                 }),
+                new VectorLayer({
+                    source: selectionSource,
+                    style: SELECTED_STYLE,
+                }),
             ],
             view: new View({
                 center: fromLonLat(SEOUL_LON_LAT),
@@ -84,13 +137,41 @@ export function ImageMap({ images }: ImageMapProps) {
             }),
         });
 
+        map.on("singleclick", (event) => handleMapClick(event));
+        map.on("movestart", () => setChooser(null));
+
         return () => map.dispose();
-    }, [footprintSource]);
+    }, [footprintSource, selectionSource]);
 
     useEffect(() => {
         footprintSource.clear();
         footprintSource.addFeatures(images.map(toFeature));
     }, [footprintSource, images]);
 
-    return <div ref={mapRef} className="absolute inset-0" />;
+    useEffect(() => {
+        selectionSource.clear();
+        if (selectedImage) {
+            selectionSource.addFeature(toFeature(selectedImage));
+        }
+    }, [selectionSource, selectedImage]);
+
+    return (
+        <>
+            <div ref={mapRef} className="absolute inset-0" />
+            {chooser && chooserImages.length > 0 && (
+                <FootprintChooser
+                    images={chooserImages}
+                    x={chooser.x}
+                    y={chooser.y}
+                    flipX={chooser.flipX}
+                    flipY={chooser.flipY}
+                    onSelect={(image) => {
+                        setChooser(null);
+                        onSelect(image);
+                    }}
+                    onClose={() => setChooser(null)}
+                />
+            )}
+        </>
+    );
 }

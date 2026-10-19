@@ -1,7 +1,7 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 
 import { ImageCard } from "@/features/image/components/ImageCard";
 import { useImageSearch } from "@/features/image/queries";
@@ -44,6 +44,17 @@ export function ImageResults({
         estimateSize: () => CARD_HEIGHT_ESTIMATE,
         gap: CARD_GAP,
     });
+
+    const scrollToImage = useEffectEvent((imageId: number | null) => {
+        const index = images.findIndex((image) => image.imageId === imageId);
+        if (index !== -1) {
+            virtualizer.scrollToIndex(index);
+        }
+    });
+
+    useEffect(() => {
+        scrollToImage(selectedImageId);
+    }, [selectedImageId]);
 
     useEffect(() => {
         if (hasNextPage && !isFetching && !error) {

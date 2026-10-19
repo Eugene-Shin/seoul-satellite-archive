@@ -56,6 +56,11 @@ export function ImageSearch() {
         setSelectedImage(null);
     }
 
+    function selectFromMap(image: ImageResponse) {
+        setSelectedImage(image);
+        setActiveTab("results");
+    }
+
     if (error) {
         return (
             <div className="area-panel p-4">
@@ -121,7 +126,11 @@ export function ImageSearch() {
             </aside>
 
             <section className="area-map relative min-h-0 bg-muted/40">
-                <ImageMap images={images} />
+                <ImageMap
+                    images={images}
+                    selectedImage={selectedImage}
+                    onSelect={selectFromMap}
+                />
                 <ImageDetail
                     image={selectedImage}
                     onClose={() => setSelectedImage(null)}
