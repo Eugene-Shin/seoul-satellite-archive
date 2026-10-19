@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSourceResolvable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -104,6 +105,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception ex) {
         log.error("Unhandled exception", ex);
         return toResponse(CommonErrorCode.INTERNAL_SERVER_ERROR, List.of());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException violation
+                    && "23505".equals(violation.getSQLState())
+                    && "uq_image_source".equals(violation.getConstraintName())) {
+                return toResponse(CommonErrorCode.CONFLICT, List.of("해당 제공 기관에 같은 sourceId의 영상이 존재합니다."));
+            }
+        }
+        return handleUnexpected(ex);
     }
 
     // Content-Type을 JSON으로 고정한다. 요청의 Accept가 JSON이 아니면(예: application/xml) 에러 응답을 쓰는
