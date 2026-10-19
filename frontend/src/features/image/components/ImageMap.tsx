@@ -217,15 +217,16 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
     }, [footprintSource, selectionSource]);
 
     useEffect(() => {
-        footprintSource.clear();
         footprintSource.addFeatures(images.map(toFeature));
+        return () => footprintSource.clear();
     }, [footprintSource, images]);
 
     useEffect(() => {
-        selectionSource.clear();
-        if (selectedImage) {
-            selectionSource.addFeature(toFeature(selectedImage));
+        if (!selectedImage) {
+            return;
         }
+        selectionSource.addFeature(toFeature(selectedImage));
+        return () => selectionSource.clear();
     }, [selectionSource, selectedImage]);
 
     useEffect(() => {
