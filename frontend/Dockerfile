@@ -5,6 +5,7 @@ RUN npm ci
 COPY . .
 # NEXT_PUBLIC_* 값은 빌드 시점에 번들에 박힌다
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_VWORLD_KEY
 RUN npm run build
 
 FROM node:22-alpine

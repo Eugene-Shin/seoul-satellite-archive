@@ -37,6 +37,7 @@ npm ci && npm run dev
 - 값이 없거나 URL 형식이 아니면 `next.config.ts`에서 빌드(`dev` 포함)가 실패한다.
 - 프론트 Docker 빌드는 `--build-arg NEXT_PUBLIC_API_URL=...`이 있으면 그 값을, 없으면 `frontend/`의 env 파일(`.env.production`, `.env`) 값을 쓴다. `.env*.local`은 로컬 전용이라 Docker 빌드에 들어가지 않는다(`.dockerignore`). compose는 항상 빌드 인자로 넘긴다.
 - 이 값의 출처(origin)가 CSP `connect-src`에 들어간다.
+- `NEXT_PUBLIC_VWORLD_KEY`(선택)는 VWorld 배경지도(WMTS/TMS) 키다. 역시 빌드 시점에 박히고, 없으면 배경 없이 footprint만 표시한다. 로컬 개발은 `frontend/.env.local`, Docker는 루트 `.env` 값을 compose가 빌드 인자로 넘긴다. 키는 브라우저에 노출되는 값이다.
 
 ## 운영 배포
 

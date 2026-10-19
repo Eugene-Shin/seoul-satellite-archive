@@ -13,7 +13,7 @@ export function useFilterOptions() {
     });
 }
 
-const SEARCH_PAGE_SIZE = 20;
+const SEARCH_PAGE_SIZE = 100;
 
 export function useImageSearch(
     searchId: number,

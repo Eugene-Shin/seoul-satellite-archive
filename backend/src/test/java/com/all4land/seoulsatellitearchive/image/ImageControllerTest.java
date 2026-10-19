@@ -114,6 +114,47 @@ class ImageControllerTest {
                 .andExpect(jsonPath("$.data.content[0].footprint.type").value("MultiPolygon"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"128.9,35.0,129.2", "128.9,35.0,129.2,35.3,1"})
+    void wrongBboxCountReturnsValidationError(String bbox) throws Exception {
+        mockMvc.perform(get("/api/images").param("bbox", bbox))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorDetail", hasSize(1)))
+                .andExpect(jsonPath("$.errorDetail[0]").value("bbox: minLon,minLat,maxLon,maxLat 4개 값이어야 합니다."));
+    }
+
+    @Test
+    void emptyBboxValueReturnsValidationError() throws Exception {
+        mockMvc.perform(get("/api/images").param("bbox", "128.9,,129.2,35.3"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorDetail", hasSize(1)))
+                .andExpect(jsonPath("$.errorDetail[0]").value("bbox: 빈 값이 있으면 안 됩니다."));
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "NaN,35.0,129.2,35.3",
+                "Infinity,35.0,129.2,35.3",
+                "-181,35.0,129.2,35.3",
+                "128.9,-91,129.2,35.3",
+                "129.2,35.0,128.9,35.3",
+                "128.9,35.3,129.2,35.0"
+            })
+    void invalidBboxRangeOrOrderReturnsValidationError(String bbox) throws Exception {
+        mockMvc.perform(get("/api/images").param("bbox", bbox))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorDetail", hasSize(1)))
+                .andExpect(jsonPath("$.errorDetail[0]").value("bbox: 경도는 -180~180, 위도는 -90~90, 최소값은 최대값 이하여야 합니다."));
+    }
+
+    @Test
+    void pointBboxFindsCoveringImages() throws Exception {
+        mockMvc.perform(get("/api/images").param("bbox", "129.0,35.1,129.0,35.1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(2)));
+    }
+
     @Test
     void cloudSortPutsNullsLast() throws Exception {
         mockMvc.perform(get("/api/images")

@@ -1,14 +1,18 @@
 "use client";
 
-import { MapIcon } from "lucide-react";
-import { useState } from "react";
+import dynamic from "next/dynamic";
+import { useMemo, useState } from "react";
 
 import { ImageDetail } from "@/features/image/components/ImageDetail";
 import { ImageResults } from "@/features/image/components/ImageResults";
 import { ImageSearchForm } from "@/features/image/components/ImageSearchForm";
-import { useFilterOptions } from "@/features/image/queries";
+import { useFilterOptions, useImageSearch } from "@/features/image/queries";
 import { useAppliedConditions } from "@/features/image/searchParams";
-import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
+import type {
+    Bbox,
+    ImageResponse,
+    ImageSearchParams,
+} from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import {
     Tabs,
@@ -16,6 +20,14 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/shared/components/ui/tabs";
+
+const ImageMap = dynamic(
+    () =>
+        import("@/features/image/components/ImageMap").then(
+            (module) => module.ImageMap,
+        ),
+    { ssr: false },
+);
 
 type PanelTab = "conditions" | "results";
 
@@ -30,15 +42,40 @@ export function ImageSearch() {
         null,
     );
 
+    const {
+        data: searchData,
+        hasNextPage,
+        isFetching,
+    } = useImageSearch(searchId, appliedConditions);
+    const allLoaded = searchData !== undefined && !hasNextPage && !isFetching;
+    const images = useMemo(
+        () =>
+            searchData ? searchData.pages.flatMap((page) => page.content) : [],
+        [searchData],
+    );
+
     function updateConditions(changes: Partial<ImageSearchParams>) {
         setConditions((prev) => ({ ...prev, ...changes }));
     }
 
-    function runSearch() {
-        setAppliedConditions(conditions);
+    function applyConditions(next: ImageSearchParams) {
+        setAppliedConditions(next);
         setSearchId((prev) => prev + 1);
         setActiveTab("results");
         setSelectedImage(null);
+    }
+
+    function runSearch() {
+        applyConditions({ ...conditions, bbox: appliedConditions.bbox });
+    }
+
+    function changeArea(area: Bbox | undefined) {
+        applyConditions({ ...appliedConditions, bbox: area });
+    }
+
+    function selectFromMap(image: ImageResponse) {
+        setSelectedImage(image);
+        setActiveTab("results");
     }
 
     if (error) {
@@ -91,7 +128,7 @@ export function ImageSearch() {
                     <TabsContent
                         value="results"
                         keepMounted
-                        className="min-h-0 overflow-y-auto p-4"
+                        className="flex min-h-0 flex-col"
                     >
                         <ImageResults
                             searchId={searchId}
@@ -105,9 +142,15 @@ export function ImageSearch() {
                 </Tabs>
             </aside>
 
-            <section className="area-map relative flex min-h-0 flex-col items-center justify-center gap-2 bg-muted/40 text-sm text-muted-foreground">
-                <MapIcon className="size-8" />
-                지도는 추후에 추가됩니다
+            <section className="area-map relative min-h-0 bg-muted/40">
+                <ImageMap
+                    images={images}
+                    selectedImage={selectedImage}
+                    area={appliedConditions.bbox}
+                    allLoaded={allLoaded}
+                    onSelect={selectFromMap}
+                    onAreaChange={changeArea}
+                />
                 <ImageDetail
                     image={selectedImage}
                     onClose={() => setSelectedImage(null)}
