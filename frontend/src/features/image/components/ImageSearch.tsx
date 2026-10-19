@@ -91,7 +91,7 @@ export function ImageSearch() {
                     <TabsContent
                         value="results"
                         keepMounted
-                        className="min-h-0 overflow-y-auto p-4"
+                        className="flex min-h-0 flex-col"
                     >
                         <ImageResults
                             searchId={searchId}

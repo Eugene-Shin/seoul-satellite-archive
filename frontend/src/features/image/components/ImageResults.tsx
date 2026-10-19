@@ -1,5 +1,6 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useRef } from "react";
 
 import { ImageCard } from "@/features/image/components/ImageCard";
@@ -14,6 +15,9 @@ type ImageResultsProps = {
     onSelect: (image: ImageResponse) => void;
 };
 
+const CARD_HEIGHT_ESTIMATE = 250;
+const CARD_GAP = 12;
+
 export function ImageResults({
     searchId,
     conditions,
@@ -26,30 +30,26 @@ export function ImageResults({
         fetchNextPage,
         hasNextPage,
         isPending,
-        isFetchingNextPage,
+        isFetching,
         isFetchNextPageError,
         refetch,
     } = useImageSearch(searchId, conditions);
-    const sentinelRef = useRef<HTMLDivElement | null>(null);
+    const scrollRef = useRef<HTMLDivElement | null>(null);
 
     const images = data ? data.pages.flatMap((page) => page.content) : [];
 
+    const virtualizer = useVirtualizer({
+        count: images.length,
+        getScrollElement: () => scrollRef.current,
+        estimateSize: () => CARD_HEIGHT_ESTIMATE,
+        gap: CARD_GAP,
+    });
+
     useEffect(() => {
-        const sentinel = sentinelRef.current;
-        if (!sentinel || !hasNextPage || isFetchingNextPage || error) {
-            return;
+        if (hasNextPage && !isFetching && !error) {
+            fetchNextPage();
         }
-
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                fetchNextPage();
-            }
-        });
-
-        observer.observe(sentinel);
-
-        return () => observer.disconnect();
-    }, [hasNextPage, isFetchingNextPage, error, fetchNextPage]);
+    }, [hasNextPage, isFetching, error, fetchNextPage]);
 
     function statusMessage(): string | null {
         if (error) {
@@ -60,15 +60,13 @@ export function ImageResults({
             return "검색 중입니다...";
         }
 
-        if (isFetchingNextPage) {
-            return "더 불러오는 중입니다...";
-        }
-
         if (images.length === 0) {
             return "검색 결과가 없습니다.";
         }
 
-        return hasNextPage ? null : "마지막 결과입니다.";
+        return hasNextPage
+            ? `${images.length}건 불러오는 중...`
+            : `총 ${images.length}건`;
     }
 
     function retry() {
@@ -82,25 +80,46 @@ export function ImageResults({
     const status = statusMessage();
 
     return (
-        <div className="flex flex-col gap-3">
-            <ul className="flex flex-col gap-3">
-                {images.map((image) => (
-                    <ImageCard
-                        key={image.imageId}
-                        image={image}
-                        selected={image.imageId === selectedImageId}
-                        onSelect={() => onSelect(image)}
-                    />
-                ))}
-            </ul>
-            <div ref={sentinelRef} className="h-px" />
-            <ErrorMessage error={error} onRetry={retry} />
-            <p
-                hidden={status === null}
-                className="text-center text-sm text-muted-foreground"
+        <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex shrink-0 flex-col gap-3 p-4">
+                <ErrorMessage error={error} onRetry={retry} />
+                <p
+                    hidden={status === null}
+                    className="text-sm text-muted-foreground"
+                >
+                    {status}
+                </p>
+            </div>
+            <div
+                ref={scrollRef}
+                className="min-h-0 flex-1 overflow-y-auto px-4 pb-4"
             >
-                {status}
-            </p>
+                <ul
+                    className="relative"
+                    style={{ height: virtualizer.getTotalSize() }}
+                >
+                    {virtualizer.getVirtualItems().map((item) => {
+                        const image = images[item.index];
+                        return (
+                            <li
+                                key={image.imageId}
+                                ref={virtualizer.measureElement}
+                                data-index={item.index}
+                                className="absolute top-0 left-0 w-full"
+                                style={{
+                                    transform: `translateY(${item.start}px)`,
+                                }}
+                            >
+                                <ImageCard
+                                    image={image}
+                                    selected={image.imageId === selectedImageId}
+                                    onSelect={() => onSelect(image)}
+                                />
+                            </li>
+                        );
+                    })}
+                </ul>
+            </div>
         </div>
     );
 }
