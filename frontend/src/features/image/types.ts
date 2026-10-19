@@ -30,6 +30,13 @@ export type AcquiredRange = ImageFilterOptionsResponse["acquiredRange"];
 
 export type ImageSort = z.infer<typeof imageSortSchema>;
 
+export type Bbox = [
+    minLon: number,
+    minLat: number,
+    maxLon: number,
+    maxLat: number,
+];
+
 export type ImageSearchParams = {
     keyword?: string;
     acquiredFrom?: string;
@@ -44,6 +51,7 @@ export type ImageSearchParams = {
     gsdMax?: number;
     cloudMax?: number;
     sorts?: ImageSort[];
+    bbox?: Bbox;
     cursor?: string;
     size?: number;
 };

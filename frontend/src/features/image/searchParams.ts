@@ -1,4 +1,5 @@
 import {
+    createParser,
     type inferParserType,
     parseAsArrayOf,
     parseAsBoolean,
@@ -8,12 +9,18 @@ import {
     useQueryStates,
 } from "nuqs";
 
+import { toBbox } from "@/features/image/bbox";
 import {
     imageSortSchema,
     orbitDirectionSchema,
     sensorTypeSchema,
 } from "@/features/image/schemas";
 import type { ImageSearchParams } from "@/features/image/types";
+
+const parseAsBbox = createParser({
+    parse: (value) => toBbox(value.split(",").map(parseFloat)),
+    serialize: (bbox) => bbox.join(","),
+});
 
 const imageSearchParsers = {
     keyword: parseAsString,
@@ -29,6 +36,7 @@ const imageSearchParsers = {
     gsdMax: parseAsFloat,
     cloudMax: parseAsFloat,
     sorts: parseAsArrayOf(parseAsStringLiteral(imageSortSchema.options)),
+    bbox: parseAsBbox,
 };
 
 type ImageSearchValues = inferParserType<typeof imageSearchParsers>;
@@ -48,6 +56,7 @@ function fromSearchValues(values: ImageSearchValues): ImageSearchParams {
         gsdMax: values.gsdMax ?? undefined,
         cloudMax: values.cloudMax ?? undefined,
         sorts: values.sorts ?? undefined,
+        bbox: values.bbox ?? undefined,
     };
 }
 
@@ -66,6 +75,7 @@ function toSearchValues(conditions: ImageSearchParams): ImageSearchValues {
         gsdMax: conditions.gsdMax ?? null,
         cloudMax: conditions.cloudMax ?? null,
         sorts: conditions.sorts ?? null,
+        bbox: conditions.bbox ?? null,
     };
 }
 
