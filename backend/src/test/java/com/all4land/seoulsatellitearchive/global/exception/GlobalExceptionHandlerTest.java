@@ -10,10 +10,12 @@ import com.all4land.seoulsatellitearchive.global.response.CommonErrorCode;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import java.sql.SQLException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -85,8 +87,35 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("COMMON_404_001"));
     }
 
+    @Test
+    void onlyImageSourceUniqueViolationIsConflict() throws Exception {
+        mockMvc.perform(get("/test/integrity")
+                        .param("constraint", "uq_image_source")
+                        .param("state", "23505"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("COMMON_409_001"));
+        mockMvc.perform(get("/test/integrity")
+                        .param("constraint", "other_unique")
+                        .param("state", "23505"))
+                .andExpect(status().isInternalServerError());
+        mockMvc.perform(get("/test/integrity")
+                        .param("constraint", "uq_image_source")
+                        .param("state", "23514"))
+                .andExpect(status().isInternalServerError());
+    }
+
     @RestController
     static class ThrowingController {
+
+        @GetMapping("/test/integrity")
+        void integrity(
+                @org.springframework.web.bind.annotation.RequestParam String constraint,
+                @org.springframework.web.bind.annotation.RequestParam String state) {
+            throw new DataIntegrityViolationException(
+                    "database detail",
+                    new org.hibernate.exception.ConstraintViolationException(
+                            "constraint violation", new SQLException("database detail", state), "insert", constraint));
+        }
 
         @GetMapping("/test/business")
         void business() {
