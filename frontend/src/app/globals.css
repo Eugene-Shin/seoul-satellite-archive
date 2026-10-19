@@ -110,6 +110,8 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    --map-footprint: oklch(0.546 0.245 262.881); /* blue-600 */
+    --map-selected: oklch(0.705 0.213 47.604); /* orange-500 */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -146,7 +148,21 @@
         --sidebar-accent-foreground: oklch(0.985 0 0);
         --sidebar-border: oklch(1 0 0 / 10%);
         --sidebar-ring: oklch(0.556 0 0);
+        --map-footprint: oklch(0.707 0.165 254.624); /* blue-400 */
+        --map-selected: oklch(0.75 0.183 55.934); /* orange-400 */
     }
+}
+
+.ol-viewport {
+    --ol-background-color: var(--popover);
+    --ol-accent-background-color: var(--accent);
+    --ol-partial-background-color: color-mix(
+        in oklch,
+        var(--background) 75%,
+        transparent
+    );
+    --ol-foreground-color: var(--foreground);
+    --ol-subtle-foreground-color: var(--muted-foreground);
 }
 
 @layer base {

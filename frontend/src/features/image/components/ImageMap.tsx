@@ -2,6 +2,7 @@
 
 import "ol/ol.css";
 
+import { asArray } from "ol/color";
 import Feature from "ol/Feature";
 import MultiPolygon from "ol/geom/MultiPolygon";
 import TileLayer from "ol/layer/Tile";
@@ -31,6 +32,14 @@ type Chooser = {
     y: number;
 };
 
+type VworldLayer = "Base" | "midnight";
+
+type FootprintStyleOptions = {
+    colorVariable: string;
+    width: number;
+    fillOpacity: number;
+};
+
 const SEOUL_LON_LAT = [126.978, 37.566];
 const INITIAL_ZOOM = 11;
 const VWORLD_KEY = process.env.NEXT_PUBLIC_VWORLD_KEY;
@@ -42,15 +51,41 @@ const VWORLD_EXTENT = transformExtent(
     "EPSG:3857",
 );
 
-const FOOTPRINT_STYLE = new Style({
-    stroke: new Stroke({ color: "#2563eb", width: 1.5 }),
-    fill: new Fill({ color: "rgba(37, 99, 235, 0.04)" }),
-});
+const FOOTPRINT_STYLE_OPTIONS: FootprintStyleOptions = {
+    colorVariable: "--map-footprint",
+    width: 1.5,
+    fillOpacity: 0.04,
+};
 
-const SELECTED_STYLE = new Style({
-    stroke: new Stroke({ color: "#f97316", width: 3 }),
-    fill: new Fill({ color: "rgba(249, 115, 22, 0.15)" }),
-});
+const SELECTED_STYLE_OPTIONS: FootprintStyleOptions = {
+    colorVariable: "--map-selected",
+    width: 3,
+    fillOpacity: 0.15,
+};
+
+function vworldUrl(layer: VworldLayer): string {
+    return `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.png`;
+}
+
+function readCssVariable(name: string): string {
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue(name)
+        .trim();
+}
+
+function createFootprintStyle({
+    colorVariable,
+    width,
+    fillOpacity,
+}: FootprintStyleOptions): Style {
+    const color = readCssVariable(colorVariable);
+    const [red, green, blue] = asArray(color);
+
+    return new Style({
+        stroke: new Stroke({ color, width }),
+        fill: new Fill({ color: [red, green, blue, fillOpacity] }),
+    });
+}
 
 const largerFirst: OrderFunction = (a, b) => b.get("area") - a.get("area");
 
@@ -100,31 +135,21 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
     });
 
     useEffect(() => {
-        const baseLayers = VWORLD_KEY
-            ? [
-                  new TileLayer({
-                      source: new XYZ({
-                          url: `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Base/{z}/{y}/{x}.png`,
-                          maxZoom: VWORLD_MAX_ZOOM,
-                      }),
-                  }),
-              ]
+        const baseSource = VWORLD_KEY
+            ? new XYZ({ maxZoom: VWORLD_MAX_ZOOM })
+            : null;
+        const baseLayers = baseSource
+            ? [new TileLayer({ source: baseSource })]
             : [];
+        const footprintLayer = new VectorLayer({
+            source: footprintSource,
+            renderOrder: largerFirst,
+        });
+        const selectionLayer = new VectorLayer({ source: selectionSource });
 
         const map = new OlMap({
             target: mapRef.current ?? undefined,
-            layers: [
-                ...baseLayers,
-                new VectorLayer({
-                    source: footprintSource,
-                    style: FOOTPRINT_STYLE,
-                    renderOrder: largerFirst,
-                }),
-                new VectorLayer({
-                    source: selectionSource,
-                    style: SELECTED_STYLE,
-                }),
-            ],
+            layers: [...baseLayers, footprintLayer, selectionLayer],
             view: new View({
                 center: fromLonLat(SEOUL_LON_LAT),
                 zoom: INITIAL_ZOOM,
@@ -134,10 +159,30 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
             }),
         });
 
+        const darkMode = window.matchMedia("(prefers-color-scheme: dark)");
+
+        function applyTheme() {
+            baseSource?.setUrl(
+                vworldUrl(darkMode.matches ? "midnight" : "Base"),
+            );
+            footprintLayer.setStyle(
+                createFootprintStyle(FOOTPRINT_STYLE_OPTIONS),
+            );
+            selectionLayer.setStyle(
+                createFootprintStyle(SELECTED_STYLE_OPTIONS),
+            );
+        }
+
+        applyTheme();
+        darkMode.addEventListener("change", applyTheme);
+
         map.on("singleclick", (event) => handleMapClick(event));
         map.on("movestart", () => setChooserOpen(false));
 
-        return () => map.dispose();
+        return () => {
+            darkMode.removeEventListener("change", applyTheme);
+            map.dispose();
+        };
     }, [footprintSource, selectionSource]);
 
     useEffect(() => {
