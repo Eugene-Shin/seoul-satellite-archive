@@ -1,12 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ImageDetail } from "@/features/image/components/ImageDetail";
 import { ImageResults } from "@/features/image/components/ImageResults";
 import { ImageSearchForm } from "@/features/image/components/ImageSearchForm";
-import { useFilterOptions } from "@/features/image/queries";
+import { useFilterOptions, useImageSearch } from "@/features/image/queries";
 import { useAppliedConditions } from "@/features/image/searchParams";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
@@ -36,6 +36,13 @@ export function ImageSearch() {
     const [activeTab, setActiveTab] = useState<PanelTab>("results");
     const [selectedImage, setSelectedImage] = useState<ImageResponse | null>(
         null,
+    );
+
+    const { data: searchData } = useImageSearch(searchId, appliedConditions);
+    const images = useMemo(
+        () =>
+            searchData ? searchData.pages.flatMap((page) => page.content) : [],
+        [searchData],
     );
 
     function updateConditions(changes: Partial<ImageSearchParams>) {
@@ -114,7 +121,7 @@ export function ImageSearch() {
             </aside>
 
             <section className="area-map relative min-h-0 bg-muted/40">
-                <ImageMap />
+                <ImageMap images={images} />
                 <ImageDetail
                     image={selectedImage}
                     onClose={() => setSelectedImage(null)}
