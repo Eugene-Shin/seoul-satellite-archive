@@ -5,10 +5,10 @@ import com.all4land.seoulsatellitearchive.image.ImageSort;
 import com.all4land.seoulsatellitearchive.image.OrbitDirection;
 import com.all4land.seoulsatellitearchive.image.SensorType;
 import com.all4land.seoulsatellitearchive.image.annotation.UniqueSortProperties;
+import com.all4land.seoulsatellitearchive.image.annotation.ValidBbox;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -48,7 +48,8 @@ public class ImageSearchRequest extends SliceRequest {
 
     @DecimalMin("0") @DecimalMax("100") private BigDecimal cloudMax;
 
-    @Size(min = 4, max = 4, message = "minLon,minLat,maxLon,maxLat 4개 값이어야 합니다.") private List<@NotNull Double> bbox;
+    @ValidBbox
+    private List<Double> bbox;
 
     @UniqueSortProperties
     private List<@NotNull ImageSort> sorts = List.of(ImageSort.ACQUIRED_AT_DESC);
