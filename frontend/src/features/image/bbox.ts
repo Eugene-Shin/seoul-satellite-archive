@@ -1,3 +1,6 @@
+import type { Extent } from "ol/extent";
+import { transformExtent } from "ol/proj";
+
 import type { Bbox } from "@/features/image/types";
 
 const MAX_LON = 180;
@@ -23,4 +26,12 @@ export function toBbox(values: readonly number[]): Bbox | null {
         minLat <= maxLat;
 
     return isValid ? [minLon, minLat, maxLon, maxLat] : null;
+}
+
+export function extentToBbox(extent: Extent): Bbox | null {
+    return toBbox(transformExtent(extent, "EPSG:3857", "EPSG:4326"));
+}
+
+export function bboxToExtent(bbox: Bbox): Extent {
+    return transformExtent(bbox, "EPSG:4326", "EPSG:3857");
 }

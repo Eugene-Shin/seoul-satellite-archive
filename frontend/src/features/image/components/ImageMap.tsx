@@ -3,12 +3,16 @@
 import "ol/ol.css";
 
 import { asArray } from "ol/color";
-import { intersects } from "ol/extent";
+import { type Extent, intersects } from "ol/extent";
+import Feature from "ol/Feature";
 import type MultiPolygon from "ol/geom/MultiPolygon";
+import { fromExtent } from "ol/geom/Polygon";
+import DragBox from "ol/interaction/DragBox";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import OlMap from "ol/Map";
 import type MapBrowserEvent from "ol/MapBrowserEvent";
+import { unByKey } from "ol/Observable";
 import { fromLonLat, transformExtent } from "ol/proj";
 import VectorSource from "ol/source/Vector";
 import XYZ from "ol/source/XYZ";
@@ -16,14 +20,18 @@ import { Fill, Stroke, Style } from "ol/style";
 import View from "ol/View";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
+import { bboxToExtent, extentToBbox } from "@/features/image/bbox";
+import { AreaToolbar } from "@/features/image/components/AreaToolbar";
 import { FootprintChooser } from "@/features/image/components/FootprintChooser";
 import { largerFirst, pickImages, toFeature } from "@/features/image/footprint";
-import type { ImageResponse } from "@/features/image/types";
+import type { Bbox, ImageResponse } from "@/features/image/types";
 
 type ImageMapProps = {
     images: ImageResponse[];
     selectedImage: ImageResponse | null;
+    area: Bbox | undefined;
     onSelect: (image: ImageResponse) => void;
+    onAreaChange: (area: Bbox | undefined) => void;
 };
 
 type Chooser = {
@@ -34,10 +42,11 @@ type Chooser = {
 
 type VworldLayer = "Base" | "midnight";
 
-type FootprintStyleOptions = {
+type VectorStyleOptions = {
     colorVariable: string;
     width: number;
     fillOpacity: number;
+    lineDash?: number[];
 };
 
 const SEOUL_LON_LAT = [126.978, 37.566];
@@ -57,16 +66,23 @@ const REVEAL_PADDING = 32;
 const REVEAL_MAX_ZOOM = 14;
 const REVEAL_DURATION = 300;
 
-const FOOTPRINT_STYLE_OPTIONS: FootprintStyleOptions = {
+const FOOTPRINT_STYLE_OPTIONS: VectorStyleOptions = {
     colorVariable: "--map-footprint",
     width: 1.5,
     fillOpacity: 0.04,
 };
 
-const SELECTED_STYLE_OPTIONS: FootprintStyleOptions = {
+const SELECTED_STYLE_OPTIONS: VectorStyleOptions = {
     colorVariable: "--map-selected",
     width: 3,
     fillOpacity: 0.15,
+};
+
+const AREA_STYLE_OPTIONS: VectorStyleOptions = {
+    colorVariable: "--map-area",
+    width: 2,
+    fillOpacity: 0.06,
+    lineDash: [8, 6],
 };
 
 function createVworldLayer(layer: VworldLayer): TileLayer {
@@ -84,16 +100,17 @@ function readCssVariable(name: string): string {
         .trim();
 }
 
-function createFootprintStyle({
+function createVectorStyle({
     colorVariable,
     width,
     fillOpacity,
-}: FootprintStyleOptions): Style {
+    lineDash,
+}: VectorStyleOptions): Style {
     const color = readCssVariable(colorVariable);
     const [red, green, blue] = asArray(color);
 
     return new Style({
-        stroke: new Stroke({ color, width }),
+        stroke: new Stroke({ color, width, lineDash }),
         fill: new Fill({ color: [red, green, blue, fillOpacity] }),
     });
 }
@@ -130,11 +147,20 @@ function revealIfOutOfView(map: OlMap, image: ImageResponse) {
     });
 }
 
-export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
+export function ImageMap({
+    images,
+    selectedImage,
+    area,
+    onSelect,
+    onAreaChange,
+}: ImageMapProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<OlMap | null>(null);
+    const dragBoxRef = useRef<DragBox | null>(null);
     const [footprintSource] = useState(() => new VectorSource());
     const [selectionSource] = useState(() => new VectorSource());
+    const [areaSource] = useState(() => new VectorSource());
+    const [drawing, setDrawing] = useState(false);
     const [chooser, setChooser] = useState<Chooser | null>(null);
     const [chooserOpen, setChooserOpen] = useState(false);
 
@@ -164,6 +190,14 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
         }
     });
 
+    const handleBoxEnd = useEffectEvent((extent: Extent) => {
+        setDrawing(false);
+        const bbox = extentToBbox(extent);
+        if (bbox) {
+            onAreaChange(bbox);
+        }
+    });
+
     useEffect(() => {
         const lightBaseLayer = VWORLD_KEY ? createVworldLayer("Base") : null;
         const darkBaseLayer = VWORLD_KEY ? createVworldLayer("midnight") : null;
@@ -175,11 +209,12 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
             source: footprintSource,
             renderOrder: largerFirst,
         });
+        const areaLayer = new VectorLayer({ source: areaSource });
         const selectionLayer = new VectorLayer({ source: selectionSource });
 
         const map = new OlMap({
             target: containerRef.current ?? undefined,
-            layers: [...baseLayers, footprintLayer, selectionLayer],
+            layers: [...baseLayers, footprintLayer, areaLayer, selectionLayer],
             view: new View({
                 center: fromLonLat(SEOUL_LON_LAT),
                 zoom: INITIAL_ZOOM,
@@ -195,26 +230,46 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
         function applyTheme() {
             lightBaseLayer?.setVisible(!darkMode.matches);
             darkBaseLayer?.setVisible(darkMode.matches);
-            footprintLayer.setStyle(
-                createFootprintStyle(FOOTPRINT_STYLE_OPTIONS),
-            );
-            selectionLayer.setStyle(
-                createFootprintStyle(SELECTED_STYLE_OPTIONS),
-            );
+            footprintLayer.setStyle(createVectorStyle(FOOTPRINT_STYLE_OPTIONS));
+            areaLayer.setStyle(createVectorStyle(AREA_STYLE_OPTIONS));
+            selectionLayer.setStyle(createVectorStyle(SELECTED_STYLE_OPTIONS));
         }
 
         applyTheme();
         darkMode.addEventListener("change", applyTheme);
 
-        map.on("singleclick", (event) => handleMapClick(event));
+        const dragBox = new DragBox();
+        dragBox.setActive(false);
+        dragBox.on("boxend", () =>
+            handleBoxEnd(dragBox.getGeometry().getExtent()),
+        );
+        map.addInteraction(dragBox);
+        dragBoxRef.current = dragBox;
+
         map.on("movestart", () => setChooserOpen(false));
 
         return () => {
             darkMode.removeEventListener("change", applyTheme);
             map.dispose();
             mapRef.current = null;
+            dragBoxRef.current = null;
         };
-    }, [footprintSource, selectionSource]);
+    }, [footprintSource, selectionSource, areaSource]);
+
+    useEffect(() => {
+        dragBoxRef.current?.setActive(drawing);
+    }, [drawing]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || drawing) {
+            return;
+        }
+        const clickKey = map.on("singleclick", (event) =>
+            handleMapClick(event),
+        );
+        return () => unByKey(clickKey);
+    }, [drawing]);
 
     useEffect(() => {
         footprintSource.addFeatures(images.map(toFeature));
@@ -230,15 +285,52 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
     }, [selectionSource, selectedImage]);
 
     useEffect(() => {
+        if (!area) {
+            return;
+        }
+        areaSource.addFeature(new Feature(fromExtent(bboxToExtent(area))));
+        return () => areaSource.clear();
+    }, [areaSource, area]);
+
+    useEffect(() => {
         const map = mapRef.current;
         if (map && selectedImage) {
             revealIfOutOfView(map, selectedImage);
         }
     }, [selectedImage]);
 
+    function selectCurrentView() {
+        const map = mapRef.current;
+        const size = map?.getSize();
+        if (!map || !size) {
+            return;
+        }
+        const bbox = extentToBbox(map.getView().calculateExtent(size));
+        if (bbox) {
+            onAreaChange(bbox);
+        }
+    }
+
+    function cancelArea() {
+        if (drawing) {
+            setDrawing(false);
+        } else {
+            onAreaChange(undefined);
+        }
+    }
+
     return (
         <>
             <div ref={containerRef} className="absolute inset-0" />
+            <div className="absolute top-2 right-2 flex gap-2">
+                <AreaToolbar
+                    drawing={drawing}
+                    hasArea={area !== undefined}
+                    onUseCurrentView={selectCurrentView}
+                    onStartDrawing={() => setDrawing(true)}
+                    onCancel={cancelArea}
+                />
+            </div>
             {chooser && (
                 <FootprintChooser
                     open={chooserOpen && chooserImages.length > 0}

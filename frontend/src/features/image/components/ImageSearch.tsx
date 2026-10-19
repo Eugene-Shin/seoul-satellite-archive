@@ -8,7 +8,11 @@ import { ImageResults } from "@/features/image/components/ImageResults";
 import { ImageSearchForm } from "@/features/image/components/ImageSearchForm";
 import { useFilterOptions, useImageSearch } from "@/features/image/queries";
 import { useAppliedConditions } from "@/features/image/searchParams";
-import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
+import type {
+    Bbox,
+    ImageResponse,
+    ImageSearchParams,
+} from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import {
     Tabs,
@@ -49,11 +53,19 @@ export function ImageSearch() {
         setConditions((prev) => ({ ...prev, ...changes }));
     }
 
-    function runSearch() {
-        setAppliedConditions(conditions);
+    function applyConditions(next: ImageSearchParams) {
+        setAppliedConditions(next);
         setSearchId((prev) => prev + 1);
         setActiveTab("results");
         setSelectedImage(null);
+    }
+
+    function runSearch() {
+        applyConditions({ ...conditions, bbox: appliedConditions.bbox });
+    }
+
+    function changeArea(area: Bbox | undefined) {
+        applyConditions({ ...appliedConditions, bbox: area });
     }
 
     function selectFromMap(image: ImageResponse) {
@@ -129,7 +141,9 @@ export function ImageSearch() {
                 <ImageMap
                     images={images}
                     selectedImage={selectedImage}
+                    area={appliedConditions.bbox}
                     onSelect={selectFromMap}
+                    onAreaChange={changeArea}
                 />
                 <ImageDetail
                     image={selectedImage}

@@ -1,6 +1,7 @@
+import { fromLonLat } from "ol/proj";
 import { describe, expect, it } from "vitest";
 
-import { toBbox } from "@/features/image/bbox";
+import { bboxToExtent, extentToBbox, toBbox } from "@/features/image/bbox";
 
 describe("toBbox", () => {
     it("올바른 값은 소수점 6자리로 반올림해 돌려준다", () => {
@@ -24,5 +25,22 @@ describe("toBbox", () => {
         ["위도 순서 뒤바뀜", [126.9, 37.7, 127.2, 37.4]],
     ])("%s이면 null", (_, values) => {
         expect(toBbox(values)).toBeNull();
+    });
+});
+
+describe("extentToBbox / bboxToExtent", () => {
+    it("지도 범위를 경위도 bbox로 바꾼다", () => {
+        const extent = [
+            ...fromLonLat([126.9, 37.4]),
+            ...fromLonLat([127.2, 37.7]),
+        ];
+
+        expect(extentToBbox(extent)).toEqual([126.9, 37.4, 127.2, 37.7]);
+    });
+
+    it("bbox → 지도 범위 → bbox가 원래 값과 같다", () => {
+        const bbox = toBbox([126.9, 37.4, 127.2, 37.7]);
+
+        expect(bbox && extentToBbox(bboxToExtent(bbox))).toEqual(bbox);
     });
 });
