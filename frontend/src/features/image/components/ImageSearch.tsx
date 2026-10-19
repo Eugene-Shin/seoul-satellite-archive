@@ -1,6 +1,6 @@
 "use client";
 
-import { MapIcon } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import { ImageDetail } from "@/features/image/components/ImageDetail";
@@ -16,6 +16,14 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/shared/components/ui/tabs";
+
+const ImageMap = dynamic(
+    () =>
+        import("@/features/image/components/ImageMap").then(
+            (module) => module.ImageMap,
+        ),
+    { ssr: false },
+);
 
 type PanelTab = "conditions" | "results";
 
@@ -105,9 +113,8 @@ export function ImageSearch() {
                 </Tabs>
             </aside>
 
-            <section className="area-map relative flex min-h-0 flex-col items-center justify-center gap-2 bg-muted/40 text-sm text-muted-foreground">
-                <MapIcon className="size-8" />
-                지도는 추후에 추가됩니다
+            <section className="area-map relative min-h-0 bg-muted/40">
+                <ImageMap />
                 <ImageDetail
                     image={selectedImage}
                     onClose={() => setSelectedImage(null)}
