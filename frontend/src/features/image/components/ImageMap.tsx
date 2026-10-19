@@ -63,8 +63,13 @@ const SELECTED_STYLE_OPTIONS: FootprintStyleOptions = {
     fillOpacity: 0.15,
 };
 
-function vworldUrl(layer: VworldLayer): string {
-    return `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.png`;
+function createVworldLayer(layer: VworldLayer): TileLayer {
+    return new TileLayer({
+        source: new XYZ({
+            url: `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.png`,
+            maxZoom: VWORLD_MAX_ZOOM,
+        }),
+    });
 }
 
 function readCssVariable(name: string): string {
@@ -135,12 +140,12 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
     });
 
     useEffect(() => {
-        const baseSource = VWORLD_KEY
-            ? new XYZ({ maxZoom: VWORLD_MAX_ZOOM })
-            : null;
-        const baseLayers = baseSource
-            ? [new TileLayer({ source: baseSource })]
-            : [];
+        const lightBaseLayer = VWORLD_KEY ? createVworldLayer("Base") : null;
+        const darkBaseLayer = VWORLD_KEY ? createVworldLayer("midnight") : null;
+        const baseLayers =
+            lightBaseLayer && darkBaseLayer
+                ? [lightBaseLayer, darkBaseLayer]
+                : [];
         const footprintLayer = new VectorLayer({
             source: footprintSource,
             renderOrder: largerFirst,
@@ -162,9 +167,8 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
         const darkMode = window.matchMedia("(prefers-color-scheme: dark)");
 
         function applyTheme() {
-            baseSource?.setUrl(
-                vworldUrl(darkMode.matches ? "midnight" : "Base"),
-            );
+            lightBaseLayer?.setVisible(!darkMode.matches);
+            darkBaseLayer?.setVisible(darkMode.matches);
             footprintLayer.setStyle(
                 createFootprintStyle(FOOTPRINT_STYLE_OPTIONS),
             );
