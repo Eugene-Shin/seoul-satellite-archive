@@ -48,7 +48,12 @@ export function ImageResults({
     const scrollToImage = useEffectEvent((imageId: number | null) => {
         const index = images.findIndex((image) => image.imageId === imageId);
         if (index !== -1) {
-            virtualizer.scrollToIndex(index);
+            const reduceMotion = window.matchMedia(
+                "(prefers-reduced-motion: reduce)",
+            ).matches;
+            virtualizer.scrollToIndex(index, {
+                behavior: reduceMotion ? "auto" : "smooth",
+            });
         }
     });
 

@@ -50,6 +50,7 @@
 @theme {
     --spacing-panel: 24rem;
     --spacing-card: calc(var(--spacing-panel) - 2rem);
+    --spacing-chooser: 18rem;
 }
 
 @utility app-layout {

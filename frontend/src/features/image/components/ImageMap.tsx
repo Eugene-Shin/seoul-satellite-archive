@@ -29,8 +29,6 @@ type Chooser = {
     imageIds: number[];
     x: number;
     y: number;
-    flipX: boolean;
-    flipY: boolean;
 };
 
 const SEOUL_LON_LAT = [126.978, 37.566];
@@ -71,6 +69,7 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
     const [footprintSource] = useState(() => new VectorSource());
     const [selectionSource] = useState(() => new VectorSource());
     const [chooser, setChooser] = useState<Chooser | null>(null);
+    const [chooserOpen, setChooserOpen] = useState(false);
 
     const chooserImages = chooser
         ? images.filter((image) => chooser.imageIds.includes(image.imageId))
@@ -84,21 +83,19 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
             .map((feature) => feature.getId());
         const hits = images.filter((image) => hitIds.includes(image.imageId));
 
-        if (hits.length === 1) {
-            setChooser(null);
-            onSelect(hits[0]);
-        } else if (hits.length > 1) {
-            const [width, height] = event.map.getSize() ?? [0, 0];
-            const [x, y] = event.pixel;
+        if (hits.length > 1 && event.originalEvent instanceof MouseEvent) {
             setChooser({
                 imageIds: hits.map((image) => image.imageId),
-                x,
-                y,
-                flipX: x > width / 2,
-                flipY: y > height / 2,
+                x: event.originalEvent.clientX,
+                y: event.originalEvent.clientY,
             });
-        } else {
-            setChooser(null);
+            setChooserOpen(true);
+            return;
+        }
+
+        setChooserOpen(false);
+        if (hits.length === 1) {
+            onSelect(hits[0]);
         }
     });
 
@@ -138,7 +135,7 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
         });
 
         map.on("singleclick", (event) => handleMapClick(event));
-        map.on("movestart", () => setChooser(null));
+        map.on("movestart", () => setChooserOpen(false));
 
         return () => map.dispose();
     }, [footprintSource, selectionSource]);
@@ -158,18 +155,22 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
     return (
         <>
             <div ref={mapRef} className="absolute inset-0" />
-            {chooser && chooserImages.length > 0 && (
+            {chooser && (
                 <FootprintChooser
-                    images={chooserImages}
+                    open={chooserOpen && chooserImages.length > 0}
                     x={chooser.x}
                     y={chooser.y}
-                    flipX={chooser.flipX}
-                    flipY={chooser.flipY}
+                    images={chooserImages}
+                    onOpenChange={setChooserOpen}
+                    onOpenChangeComplete={(open) => {
+                        if (!open) {
+                            setChooser(null);
+                        }
+                    }}
                     onSelect={(image) => {
-                        setChooser(null);
+                        setChooserOpen(false);
                         onSelect(image);
                     }}
-                    onClose={() => setChooser(null)}
                 />
             )}
         </>
