@@ -10,6 +10,10 @@ import org.springframework.data.jpa.repository.Query;
 public interface SatelliteImageRepository
         extends JpaRepository<SatelliteImage, Long>, JpaSpecificationExecutor<SatelliteImage> {
 
+    boolean existsByProvider_CodeAndSourceId(String providerCode, String sourceId);
+
+    boolean existsByProvider_CodeAndSourceIdAndIdNot(String providerCode, String sourceId, Long id);
+
     @Query("select distinct i.satellite from SatelliteImage i order by i.satellite")
     List<String> findDistinctSatellites();
 
