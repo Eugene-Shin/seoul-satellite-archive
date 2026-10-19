@@ -42,7 +42,10 @@ const SEOUL_LON_LAT = [126.978, 37.566];
 const INITIAL_ZOOM = 11;
 const VWORLD_KEY = process.env.NEXT_PUBLIC_VWORLD_KEY;
 const VWORLD_MIN_ZOOM = 6;
-const VWORLD_MAX_ZOOM = 19;
+const VWORLD_MAX_ZOOM: Record<VworldLayer, number> = {
+    Base: 19,
+    midnight: 18,
+};
 const VWORLD_EXTENT = transformExtent(
     [111.1, 25, 145, 47],
     "EPSG:4326",
@@ -65,7 +68,7 @@ function createVworldLayer(layer: VworldLayer): TileLayer {
     return new TileLayer({
         source: new XYZ({
             url: `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.png`,
-            maxZoom: VWORLD_MAX_ZOOM,
+            maxZoom: VWORLD_MAX_ZOOM[layer],
         }),
     });
 }
