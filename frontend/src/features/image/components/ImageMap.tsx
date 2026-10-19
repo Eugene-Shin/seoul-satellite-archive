@@ -3,6 +3,8 @@
 import "ol/ol.css";
 
 import { asArray } from "ol/color";
+import { intersects } from "ol/extent";
+import type MultiPolygon from "ol/geom/MultiPolygon";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import OlMap from "ol/Map";
@@ -51,6 +53,9 @@ const VWORLD_EXTENT = transformExtent(
     "EPSG:4326",
     "EPSG:3857",
 );
+const REVEAL_PADDING = 32;
+const REVEAL_MAX_ZOOM = 14;
+const REVEAL_DURATION = 300;
 
 const FOOTPRINT_STYLE_OPTIONS: FootprintStyleOptions = {
     colorVariable: "--map-footprint",
@@ -93,8 +98,41 @@ function createFootprintStyle({
     });
 }
 
+function isOutOfView(map: OlMap, geometry: MultiPolygon): boolean {
+    const size = map.getSize();
+    if (!size) {
+        return false;
+    }
+    return !intersects(
+        map.getView().calculateExtent(size),
+        geometry.getExtent(),
+    );
+}
+
+function revealIfOutOfView(map: OlMap, image: ImageResponse) {
+    const geometry = toFeature(image).getGeometry();
+    if (!geometry || !isOutOfView(map, geometry)) {
+        return;
+    }
+
+    const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+    ).matches;
+    map.getView().fit(geometry, {
+        padding: [
+            REVEAL_PADDING,
+            REVEAL_PADDING,
+            REVEAL_PADDING,
+            REVEAL_PADDING,
+        ],
+        maxZoom: REVEAL_MAX_ZOOM,
+        duration: reduceMotion ? 0 : REVEAL_DURATION,
+    });
+}
+
 export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
-    const mapRef = useRef<HTMLDivElement | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const mapRef = useRef<OlMap | null>(null);
     const [footprintSource] = useState(() => new VectorSource());
     const [selectionSource] = useState(() => new VectorSource());
     const [chooser, setChooser] = useState<Chooser | null>(null);
@@ -140,7 +178,7 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
         const selectionLayer = new VectorLayer({ source: selectionSource });
 
         const map = new OlMap({
-            target: mapRef.current ?? undefined,
+            target: containerRef.current ?? undefined,
             layers: [...baseLayers, footprintLayer, selectionLayer],
             view: new View({
                 center: fromLonLat(SEOUL_LON_LAT),
@@ -150,6 +188,7 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
                 smoothExtentConstraint: false,
             }),
         });
+        mapRef.current = map;
 
         const darkMode = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -173,6 +212,7 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
         return () => {
             darkMode.removeEventListener("change", applyTheme);
             map.dispose();
+            mapRef.current = null;
         };
     }, [footprintSource, selectionSource]);
 
@@ -188,9 +228,16 @@ export function ImageMap({ images, selectedImage, onSelect }: ImageMapProps) {
         }
     }, [selectionSource, selectedImage]);
 
+    useEffect(() => {
+        const map = mapRef.current;
+        if (map && selectedImage) {
+            revealIfOutOfView(map, selectedImage);
+        }
+    }, [selectedImage]);
+
     return (
         <>
-            <div ref={mapRef} className="absolute inset-0" />
+            <div ref={containerRef} className="absolute inset-0" />
             {chooser && (
                 <FootprintChooser
                     open={chooserOpen && chooserImages.length > 0}
