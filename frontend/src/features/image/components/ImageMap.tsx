@@ -7,7 +7,7 @@ import MultiPolygon from "ol/geom/MultiPolygon";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import OlMap from "ol/Map";
-import { fromLonLat } from "ol/proj";
+import { fromLonLat, transformExtent } from "ol/proj";
 import type { OrderFunction } from "ol/render";
 import VectorSource from "ol/source/Vector";
 import XYZ from "ol/source/XYZ";
@@ -26,6 +26,11 @@ const INITIAL_ZOOM = 11;
 const VWORLD_KEY = process.env.NEXT_PUBLIC_VWORLD_KEY;
 const VWORLD_MIN_ZOOM = 6;
 const VWORLD_MAX_ZOOM = 19;
+const VWORLD_EXTENT = transformExtent(
+    [111.1, 25, 145, 47],
+    "EPSG:4326",
+    "EPSG:3857",
+);
 
 const FOOTPRINT_STYLE = new Style({
     stroke: new Stroke({ color: "#2563eb", width: 1.5 }),
@@ -74,6 +79,8 @@ export function ImageMap({ images }: ImageMapProps) {
                 center: fromLonLat(SEOUL_LON_LAT),
                 zoom: INITIAL_ZOOM,
                 minZoom: VWORLD_MIN_ZOOM,
+                extent: VWORLD_EXTENT,
+                smoothExtentConstraint: false,
             }),
         });
 
