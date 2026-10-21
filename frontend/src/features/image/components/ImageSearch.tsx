@@ -34,8 +34,6 @@ type PanelTab = "conditions" | "results";
 export function ImageSearch() {
     const { data: options, error, refetch } = useFilterOptions();
     const [appliedConditions, setAppliedConditions] = useAppliedConditions();
-    const [conditions, setConditions] =
-        useState<ImageSearchParams>(appliedConditions);
     const [searchId, setSearchId] = useState(0);
     const [activeTab, setActiveTab] = useState<PanelTab>("results");
     const [selectedImage, setSelectedImage] = useState<ImageResponse | null>(
@@ -78,9 +76,8 @@ export function ImageSearch() {
         setDrawingStartedSearchKey(null);
     }
 
-    function updateConditions(changes: Partial<ImageSearchParams>) {
-        setConditions((prev) => ({ ...prev, ...changes }));
-    }
+    // 적용된 조건이 바뀌면(뒤로 가기 포함) 폼을 새로 만들어 입력값을 맞춘다. 영역은 폼에 없어서 영역만 바뀔 땐 입력 중인 값을 지키려 키에서 뺀다
+    const formKey = JSON.stringify({ ...appliedConditions, bbox: undefined });
 
     function applyConditions(next: ImageSearchParams) {
         setAppliedConditions(next);
@@ -89,7 +86,7 @@ export function ImageSearch() {
         setSelectedImage(null);
     }
 
-    function runSearch() {
+    function runSearch(conditions: ImageSearchParams) {
         applyConditions({ ...conditions, bbox: appliedConditions.bbox });
     }
 
@@ -142,9 +139,9 @@ export function ImageSearch() {
                         className="min-h-0 overflow-y-auto p-4"
                     >
                         <ImageSearchForm
+                            key={formKey}
                             options={options}
-                            conditions={conditions}
-                            onChange={updateConditions}
+                            initialConditions={appliedConditions}
                             onSubmit={runSearch}
                         />
                     </TabsContent>
