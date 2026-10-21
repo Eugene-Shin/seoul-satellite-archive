@@ -54,6 +54,14 @@ export function ImageSearch() {
         [searchData],
     );
 
+    // 선택한 영상이 지금 결과에 없으면(뒤로 가기 등으로 결과가 바뀐 경우) 카드 강조·지도 선택 표시·상세 패널에 넘기지 않는다.
+    // 렌더링마다 계산하되, 받는 중엔 아직 안 온 페이지에 있을 수 있어 결과에 있는 것으로 보고 다 받은 뒤에만 실제로 찾아본다
+    const selectionInResults =
+        selectedImage !== null &&
+        (!allLoaded ||
+            images.some((image) => image.imageId === selectedImage.imageId));
+    const shownSelectedImage = selectionInResults ? selectedImage : null;
+
     function updateConditions(changes: Partial<ImageSearchParams>) {
         setConditions((prev) => ({ ...prev, ...changes }));
     }
@@ -134,7 +142,9 @@ export function ImageSearch() {
                             searchId={searchId}
                             conditions={appliedConditions}
                             selectedImageId={
-                                selectedImage ? selectedImage.imageId : null
+                                shownSelectedImage
+                                    ? shownSelectedImage.imageId
+                                    : null
                             }
                             onSelect={setSelectedImage}
                         />
@@ -145,14 +155,14 @@ export function ImageSearch() {
             <section className="area-map relative min-h-0 bg-muted/40">
                 <ImageMap
                     images={images}
-                    selectedImage={selectedImage}
+                    selectedImage={shownSelectedImage}
                     area={appliedConditions.bbox}
                     allLoaded={allLoaded}
                     onSelect={selectFromMap}
                     onAreaChange={changeArea}
                 />
                 <ImageDetail
-                    image={selectedImage}
+                    image={shownSelectedImage}
                     onClose={() => setSelectedImage(null)}
                 />
             </section>
