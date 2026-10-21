@@ -35,7 +35,7 @@ export function AreaToolbar({
         return (
             <ToolbarButton
                 label={drawing ? "그리기 취소" : "영역 지우기"}
-                onClick={onCancel}
+                onClick={() => onCancel()}
             >
                 <XIcon />
             </ToolbarButton>
@@ -46,11 +46,11 @@ export function AreaToolbar({
         <>
             <ToolbarButton
                 label="현재 화면 범위로 검색"
-                onClick={onUseCurrentView}
+                onClick={() => onUseCurrentView()}
             >
                 <ScanIcon />
             </ToolbarButton>
-            <ToolbarButton label="영역 그리기" onClick={onStartDrawing}>
+            <ToolbarButton label="영역 그리기" onClick={() => onStartDrawing()}>
                 <SquareDashedIcon />
             </ToolbarButton>
         </>
