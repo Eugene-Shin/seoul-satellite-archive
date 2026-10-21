@@ -41,6 +41,9 @@ export function ImageSearch() {
     const [selectedImage, setSelectedImage] = useState<ImageResponse | null>(
         null,
     );
+    const [drawingStartedSearchKey, setDrawingStartedSearchKey] = useState<
+        string | null
+    >(null);
 
     const {
         data: searchData,
@@ -61,6 +64,19 @@ export function ImageSearch() {
         (!allLoaded ||
             images.some((image) => image.imageId === selectedImage.imageId));
     const shownSelectedImage = selectionInResults ? selectedImage : null;
+
+    // 그리기는 시작한 검색에서만 유효하다. 검색이 어떤 경로로 바뀌든(검색 버튼, 영역 변경, 뒤로 가기) 그리기는 끝난다.
+    // searchId는 우리 코드로 검색할 때, appliedConditions는 URL이 바뀔 때 달라져서 둘을 함께 쓴다
+    const shownSearchKey = JSON.stringify([searchId, appliedConditions]);
+    const drawing = drawingStartedSearchKey === shownSearchKey;
+
+    function startDrawing() {
+        setDrawingStartedSearchKey(shownSearchKey);
+    }
+
+    function stopDrawing() {
+        setDrawingStartedSearchKey(null);
+    }
 
     function updateConditions(changes: Partial<ImageSearchParams>) {
         setConditions((prev) => ({ ...prev, ...changes }));
@@ -158,8 +174,11 @@ export function ImageSearch() {
                     selectedImage={shownSelectedImage}
                     area={appliedConditions.bbox}
                     allLoaded={allLoaded}
+                    drawing={drawing}
                     onSelect={selectFromMap}
                     onAreaChange={changeArea}
+                    onDrawingStart={startDrawing}
+                    onDrawingStop={stopDrawing}
                 />
                 <ImageDetail
                     image={shownSelectedImage}

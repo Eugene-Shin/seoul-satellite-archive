@@ -31,8 +31,11 @@ type ImageMapProps = {
     selectedImage: ImageResponse | null;
     area: Bbox | undefined;
     allLoaded: boolean;
+    drawing: boolean;
     onSelect: (image: ImageResponse) => void;
     onAreaChange: (area: Bbox | undefined) => void;
+    onDrawingStart: () => void;
+    onDrawingStop: () => void;
 };
 
 type Chooser = {
@@ -150,8 +153,11 @@ export function ImageMap({
     selectedImage,
     area,
     allLoaded,
+    drawing,
     onSelect,
     onAreaChange,
+    onDrawingStart,
+    onDrawingStop,
 }: ImageMapProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<OlMap | null>(null);
@@ -159,7 +165,6 @@ export function ImageMap({
     const [footprintSource] = useState(() => new VectorSource());
     const [selectionSource] = useState(() => new VectorSource());
     const [areaSource] = useState(() => new VectorSource());
-    const [drawing, setDrawing] = useState(false);
     const [chooser, setChooser] = useState<Chooser | null>(null);
     const [chooserOpen, setChooserOpen] = useState(false);
 
@@ -190,7 +195,7 @@ export function ImageMap({
     });
 
     const handleBoxEnd = useEffectEvent((extent: Extent) => {
-        setDrawing(false);
+        onDrawingStop();
         const bbox = extentToBbox(extent);
         if (bbox) {
             onAreaChange(bbox);
@@ -322,7 +327,7 @@ export function ImageMap({
 
     function cancelArea() {
         if (drawing) {
-            setDrawing(false);
+            onDrawingStop();
         } else {
             onAreaChange(undefined);
         }
@@ -336,7 +341,7 @@ export function ImageMap({
                     drawing={drawing}
                     hasArea={area !== undefined}
                     onUseCurrentView={selectCurrentView}
-                    onStartDrawing={() => setDrawing(true)}
+                    onStartDrawing={onDrawingStart}
                     onCancel={cancelArea}
                 />
             </div>
