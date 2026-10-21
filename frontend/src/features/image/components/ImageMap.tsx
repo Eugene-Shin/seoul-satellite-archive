@@ -194,6 +194,8 @@ export function ImageMap({
         }
     });
 
+    const cancelDrawing = useEffectEvent(() => onDrawingStop());
+
     const handleBoxEnd = useEffectEvent((extent: Extent) => {
         onDrawingStop();
         const bbox = extentToBbox(extent);
@@ -262,6 +264,19 @@ export function ImageMap({
 
     useEffect(() => {
         dragBoxRef.current?.setActive(drawing);
+    }, [drawing]);
+
+    useEffect(() => {
+        if (!drawing) {
+            return;
+        }
+        function cancelOnEscape(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                cancelDrawing();
+            }
+        }
+        document.addEventListener("keydown", cancelOnEscape);
+        return () => document.removeEventListener("keydown", cancelOnEscape);
     }, [drawing]);
 
     useEffect(() => {
