@@ -8,9 +8,12 @@ import OverviewMap from "ol/control/OverviewMap";
 import ScaleLine from "ol/control/ScaleLine";
 import { type Extent, intersects } from "ol/extent";
 import Feature from "ol/Feature";
+import LineString from "ol/geom/LineString";
 import type MultiPolygon from "ol/geom/MultiPolygon";
-import { fromExtent } from "ol/geom/Polygon";
+import Point from "ol/geom/Point";
+import Polygon, { fromExtent } from "ol/geom/Polygon";
 import DragBox from "ol/interaction/DragBox";
+import Draw from "ol/interaction/Draw";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import OlMap from "ol/Map";
@@ -19,7 +22,9 @@ import { unByKey } from "ol/Observable";
 import { fromLonLat, transformExtent } from "ol/proj";
 import VectorSource from "ol/source/Vector";
 import XYZ from "ol/source/XYZ";
-import { Fill, Stroke, Style } from "ol/style";
+import { getArea, getLength } from "ol/sphere";
+import { Circle as CircleStyle, Fill, Stroke, Style, Text } from "ol/style";
+import type { StyleFunction } from "ol/style/Style";
 import View from "ol/View";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
@@ -33,6 +38,7 @@ import { bboxToExtent, extentToBbox } from "@/features/image/bbox";
 import { AreaToolbar } from "@/features/image/components/AreaToolbar";
 import { FootprintChooser } from "@/features/image/components/FootprintChooser";
 import { MapLayerControl } from "@/features/image/components/MapLayerControl";
+import { MeasureToolbar } from "@/features/image/components/MeasureToolbar";
 import { formatLatLon } from "@/features/image/coordinate";
 import {
     largerFirst,
@@ -40,7 +46,8 @@ import {
     sameIds,
     toFeature,
 } from "@/features/image/footprint";
-import type { Bbox, ImageResponse } from "@/features/image/types";
+import { formatArea, formatLength } from "@/features/image/measure";
+import type { Bbox, ImageResponse, MapTool } from "@/features/image/types";
 
 type ImageMapProps = {
     images: ImageResponse[];
@@ -49,12 +56,12 @@ type ImageMapProps = {
     area: Bbox | undefined;
     areaApplied: boolean;
     allLoaded: boolean;
-    drawing: boolean;
+    tool: MapTool | null;
     onSelect: (image: ImageResponse) => void;
     onHover: (imageIds: number[]) => void;
     onAreaChange: (area: Bbox | undefined) => void;
-    onDrawingStart: () => void;
-    onDrawingStop: () => void;
+    onToolStart: (tool: MapTool) => void;
+    onToolStop: () => void;
 };
 
 type Chooser = {
@@ -127,6 +134,12 @@ const UNAPPLIED_AREA_STYLE_OPTIONS: VectorStyleOptions = {
     width: 2,
     fillOpacity: 0,
     lineDash: AREA_LINE_DASH,
+};
+
+const MEASURE_STYLE_OPTIONS: VectorStyleOptions = {
+    colorVariable: "--map-measure",
+    width: 2,
+    fillOpacity: 0.1,
 };
 
 function createVworldLayer(layer: VworldLayer): TileLayer {
@@ -202,6 +215,52 @@ function areaDashOffset(): number {
         : -(performance.now() * AREA_DASH_SPEED) % AREA_DASH_PERIOD;
 }
 
+// 도형과 함께 실제 지구 위 길이·넓이를 글자로 그린다. 선은 끝점, 면은 안쪽 점에
+function createMeasureStyle(): StyleFunction {
+    const color = readCssVariable("--map-measure");
+    const halo = readCssVariable("--background");
+    const shapeStyle = createVectorStyle(MEASURE_STYLE_OPTIONS);
+    const vertexStyle = new Style({
+        image: new CircleStyle({ radius: 4, fill: new Fill({ color }) }),
+    });
+
+    function labelStyle(text: string, at: Point): Style {
+        return new Style({
+            geometry: at,
+            text: new Text({
+                text,
+                font: "bold 13px sans-serif",
+                offsetY: -12,
+                fill: new Fill({ color }),
+                stroke: new Stroke({ color: halo, width: 4 }),
+            }),
+        });
+    }
+
+    return (feature) => {
+        const geometry = feature.getGeometry();
+        if (geometry instanceof Polygon) {
+            return [
+                shapeStyle,
+                labelStyle(
+                    formatArea(getArea(geometry)),
+                    geometry.getInteriorPoint(),
+                ),
+            ];
+        }
+        if (geometry instanceof LineString) {
+            return [
+                shapeStyle,
+                labelStyle(
+                    formatLength(getLength(geometry)),
+                    new Point(geometry.getLastCoordinate()),
+                ),
+            ];
+        }
+        return vertexStyle;
+    };
+}
+
 function isOutOfView(map: OlMap, geometry: MultiPolygon): boolean {
     const size = map.getSize();
     if (!size) {
@@ -235,12 +294,12 @@ export function ImageMap({
     area,
     areaApplied,
     allLoaded,
-    drawing,
+    tool,
     onSelect,
     onHover,
     onAreaChange,
-    onDrawingStart,
-    onDrawingStop,
+    onToolStart,
+    onToolStop,
 }: ImageMapProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<OlMap | null>(null);
@@ -251,6 +310,10 @@ export function ImageMap({
     const [selectionSource] = useState(() => new VectorSource());
     const [hoverSource] = useState(() => new VectorSource());
     const [areaSource] = useState(() => new VectorSource());
+    const [measureSource] = useState(() => new VectorSource());
+    const [measureLayer] = useState(
+        () => new VectorLayer({ source: measureSource }),
+    );
     const [vworldLayers] = useState(() =>
         VWORLD_KEY ? createVworldLayers() : null,
     );
@@ -266,6 +329,9 @@ export function ImageMap({
     const [chooser, setChooser] = useState<Chooser | null>(null);
     const [chooserOpen, setChooserOpen] = useState(false);
 
+    const drawing = tool === "area";
+    const measuring = tool === "distance" || tool === "surface";
+    const toolActive = tool !== null;
     const chooserImages = chooser ? pickImages(images, chooser.imageIds) : [];
 
     // 그 지점에 겹쳐 있는 footprint들의 영상
@@ -330,10 +396,10 @@ export function ImageMap({
         );
     });
 
-    const cancelDrawing = useEffectEvent(() => onDrawingStop());
+    const stopActiveTool = useEffectEvent(() => onToolStop());
 
     const handleBoxEnd = useEffectEvent((extent: Extent) => {
-        onDrawingStop();
+        onToolStop();
         const bbox = extentToBbox(extent);
         if (bbox) {
             onAreaChange(bbox);
@@ -354,6 +420,7 @@ export function ImageMap({
                 ...baseLayers,
                 footprintLayer,
                 areaLayer,
+                measureLayer,
                 hoverLayer,
                 selectionLayer,
             ],
@@ -400,6 +467,7 @@ export function ImageMap({
                 style.getStroke()?.setLineDashOffset(areaDashOffset());
                 return style;
             });
+            measureLayer.setStyle(createMeasureStyle());
             hoverLayer.setStyle(createVectorStyle(HOVERED_STYLE_OPTIONS));
             selectionLayer.setStyle(createVectorStyle(SELECTED_STYLE_OPTIONS));
         }
@@ -430,6 +498,7 @@ export function ImageMap({
         areaSource,
         vworldLayers,
         footprintLayer,
+        measureLayer,
     ]);
 
     useEffect(() => {
@@ -450,7 +519,7 @@ export function ImageMap({
         }
         function cancelOnEscape(event: KeyboardEvent) {
             if (event.key === "Escape") {
-                cancelDrawing();
+                stopActiveTool();
             }
         }
         document.addEventListener("keydown", cancelOnEscape);
@@ -459,16 +528,60 @@ export function ImageMap({
 
     useEffect(() => {
         const map = mapRef.current;
-        if (!map || drawing) {
+        if (!map || (tool !== "distance" && tool !== "surface")) {
             return;
         }
-        // footprint 클릭(선택)과 마우스 올리기(강조)는 그리기가 아닐 때만
+        const draw = new Draw({
+            source: measureSource,
+            type: tool === "distance" ? "LineString" : "Polygon",
+            // 면적을 그릴 땐 테두리를 따라가는 보조선에 길이 글자가 붙지 않게 면만 그린다
+            style: (feature, resolution) =>
+                tool === "surface" &&
+                feature.getGeometry() instanceof LineString
+                    ? undefined
+                    : measureLayer.getStyleFunction()?.(feature, resolution),
+        });
+        let sketching = false;
+        draw.on("drawstart", () => {
+            // 측정은 하나만 보인다
+            measureSource.clear();
+            sketching = true;
+        });
+        draw.on(["drawend", "drawabort"], () => {
+            sketching = false;
+        });
+        // 그리던 도형이 있으면 그것만 취소하고, 없으면 도구를 끈다
+        function cancelOnEscape(event: KeyboardEvent) {
+            if (event.key !== "Escape") {
+                return;
+            }
+            if (sketching) {
+                draw.abortDrawing();
+            } else {
+                stopActiveTool();
+            }
+        }
+        map.addInteraction(draw);
+        document.addEventListener("keydown", cancelOnEscape);
+        return () => {
+            document.removeEventListener("keydown", cancelOnEscape);
+            map.removeInteraction(draw);
+            measureSource.clear();
+        };
+    }, [tool, measureSource, measureLayer]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || toolActive) {
+            return;
+        }
+        // footprint 클릭(선택)과 마우스 올리기(강조)는 도구를 쓰지 않을 때만
         const keys = [
             map.on("singleclick", (event) => handleMapClick(event)),
             map.on("pointermove", (event) => handlePointerMove(event)),
         ];
         return () => unByKey(keys);
-    }, [drawing]);
+    }, [toolActive]);
 
     useEffect(() => {
         footprintSource.addFeatures(images.map(toFeature));
@@ -547,7 +660,7 @@ export function ImageMap({
 
     function cancelArea() {
         if (drawing) {
-            onDrawingStop();
+            onToolStop();
         } else {
             onAreaChange(undefined);
         }
@@ -570,8 +683,14 @@ export function ImageMap({
                     drawing={drawing}
                     hasArea={area !== undefined}
                     onUseCurrentView={selectCurrentView}
-                    onStartDrawing={onDrawingStart}
+                    onStartDrawing={() => onToolStart("area")}
                     onCancel={cancelArea}
+                />
+                <MeasureToolbar
+                    measuring={measuring}
+                    onStartDistance={() => onToolStart("distance")}
+                    onStartSurface={() => onToolStart("surface")}
+                    onStop={onToolStop}
                 />
                 <MapLayerControl
                     baseMap={baseMap}

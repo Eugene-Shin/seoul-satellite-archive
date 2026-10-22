@@ -114,6 +114,7 @@
     --map-selected: oklch(0.705 0.213 47.604); /* orange-500 */
     --map-area: oklch(0.591 0.293 322.896); /* fuchsia-600 */
     --map-area-unapplied: oklch(0.372 0.044 257.287); /* slate-700 */
+    --map-measure: oklch(0.577 0.245 27.325); /* red-600 */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -154,6 +155,7 @@
         --map-selected: oklch(0.75 0.183 55.934); /* orange-400 */
         --map-area: oklch(0.74 0.238 322.16); /* fuchsia-400 */
         --map-area-unapplied: oklch(0.869 0.022 252.894); /* slate-300 */
+        --map-measure: oklch(0.704 0.191 22.216); /* red-400 */
     }
 }
 

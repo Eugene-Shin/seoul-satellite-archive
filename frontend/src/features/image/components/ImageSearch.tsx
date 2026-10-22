@@ -17,6 +17,7 @@ import type {
     Bbox,
     ImageResponse,
     ImageSearchParams,
+    MapTool,
 } from "@/features/image/types";
 import { useSearchScopedState } from "@/features/image/useSearchScopedState";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
@@ -57,9 +58,9 @@ export function ImageSearch() {
     const [selectedImage, setSelectedImage] = useState<ImageResponse | null>(
         null,
     );
-    // 그리기와 적용 전 편집은 시작한 검색에서만 유효하다
-    const [drawingMark, markDrawing, stopDrawing] =
-        useSearchScopedState<true>(currentSearchKey);
+    // 지도 도구와 적용 전 편집은 시작한 검색에서만 유효하다
+    const [activeTool, startTool, stopTool] =
+        useSearchScopedState<MapTool>(currentSearchKey);
     const [editedConditions, setEditedConditions, discardEdit] =
         useSearchScopedState<ImageSearchParams>(currentSearchKey);
     const [hover, setHover] = useState<Hover>({
@@ -87,19 +88,13 @@ export function ImageSearch() {
             images.some((image) => image.imageId === selectedImage.imageId));
     const shownSelectedImage = selectionInResults ? selectedImage : null;
 
-    const drawing = drawingMark !== null;
-
-    // 그리는 중엔 강조하지 않는다. 결과에 없는 id(검색이 바뀐 경우)는 pickImages가 걸러낸다
-    const hoveredImages = drawing ? [] : pickImages(images, hover.imageIds);
+    // 도구를 쓰는 중엔 강조하지 않는다. 결과에 없는 id(검색이 바뀐 경우)는 pickImages가 걸러낸다
+    const hoveredImages = activeTool ? [] : pickImages(images, hover.imageIds);
     // 지도에서 한 영상만 가리킬 때만 그 카드로 스크롤한다. 겹친 여러 개면 강조만
     const scrollTargetImageId =
         hover.fromMap && hoveredImages.length === 1
             ? hoveredImages[0].imageId
             : null;
-
-    function startDrawing() {
-        markDrawing(true);
-    }
 
     // 입력값과 영역은 검색 버튼을 눌러야 적용된다
     // 조건 탭과 지도에 보이는 조건
@@ -232,14 +227,14 @@ export function ImageSearch() {
                     area={inputConditions.bbox}
                     areaApplied={areaApplied}
                     allLoaded={allLoaded}
-                    drawing={drawing}
+                    tool={activeTool}
                     onSelect={selectFromMap}
                     onHover={(imageIds) =>
                         setHover({ imageIds, fromMap: true })
                     }
                     onAreaChange={changeArea}
-                    onDrawingStart={startDrawing}
-                    onDrawingStop={stopDrawing}
+                    onToolStart={startTool}
+                    onToolStop={stopTool}
                 />
                 <ImageDetail
                     image={shownSelectedImage}
