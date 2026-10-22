@@ -18,6 +18,7 @@ import type {
     ImageResponse,
     ImageSearchParams,
 } from "@/features/image/types";
+import { useSearchScopedState } from "@/features/image/useSearchScopedState";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import { IconButton } from "@/shared/components/IconButton";
 import { Button } from "@/shared/components/ui/button";
@@ -44,11 +45,6 @@ type Hover = {
     fromMap: boolean;
 };
 
-type UnappliedEdit = {
-    startedSearchKey: string;
-    conditions: ImageSearchParams;
-};
-
 export function ImageSearch() {
     const { data: options, error, refetch } = useFilterOptions();
     const [appliedConditions, setAppliedConditions] = useAppliedConditions();
@@ -57,12 +53,13 @@ export function ImageSearch() {
     const [selectedImage, setSelectedImage] = useState<ImageResponse | null>(
         null,
     );
-    const [drawingStartedSearchKey, setDrawingStartedSearchKey] = useState<
-        string | null
-    >(null);
-    const [unappliedEdit, setUnappliedEdit] = useState<UnappliedEdit | null>(
-        null,
-    );
+    // searchId는 우리 코드로 검색할 때, appliedConditions는 URL이 바뀔 때 달라져서 둘을 함께 쓴다
+    const shownSearchKey = JSON.stringify([searchId, appliedConditions]);
+    // 그리기와 적용 전 편집은 시작한 검색에서만 유효하다
+    const [drawingMark, markDrawing, stopDrawing] =
+        useSearchScopedState<true>(shownSearchKey);
+    const [editedConditions, setEditedConditions, discardEdit] =
+        useSearchScopedState<ImageSearchParams>(shownSearchKey);
     const [hover, setHover] = useState<Hover>({
         imageIds: [],
         fromMap: false,
@@ -88,10 +85,7 @@ export function ImageSearch() {
             images.some((image) => image.imageId === selectedImage.imageId));
     const shownSelectedImage = selectionInResults ? selectedImage : null;
 
-    // 그리기는 시작한 검색에서만 유효하다. 검색이 어떤 경로로 바뀌든(검색 버튼, 뒤로 가기) 그리기는 끝난다.
-    // searchId는 우리 코드로 검색할 때, appliedConditions는 URL이 바뀔 때 달라져서 둘을 함께 쓴다
-    const shownSearchKey = JSON.stringify([searchId, appliedConditions]);
-    const drawing = drawingStartedSearchKey === shownSearchKey;
+    const drawing = drawingMark !== null;
 
     // 그리는 중엔 강조하지 않는다. 결과에 없는 id(검색이 바뀐 경우)는 pickImages가 걸러낸다
     const hoveredImages = drawing ? [] : pickImages(images, hover.imageIds);
@@ -102,32 +96,19 @@ export function ImageSearch() {
             : null;
 
     function startDrawing() {
-        setDrawingStartedSearchKey(shownSearchKey);
+        markDrawing(true);
     }
 
-    function stopDrawing() {
-        setDrawingStartedSearchKey(null);
-    }
-
-    // 입력값과 영역은 검색 버튼을 눌러야 적용된다. 편집은 시작한 검색에서만 유효해서 검색이 바뀌면(검색 버튼, 뒤로 가기) null
-    const currentEdit =
-        unappliedEdit?.startedSearchKey === shownSearchKey
-            ? unappliedEdit
-            : null;
+    // 입력값과 영역은 검색 버튼을 눌러야 적용된다
     // 조건 탭과 지도에 보이는 조건
-    const inputConditions = currentEdit
-        ? currentEdit.conditions
-        : appliedConditions;
+    const inputConditions = editedConditions ?? appliedConditions;
     // 지도의 영역이 결과에 적용된 영역인지. 적용된 영역만 색으로 표시한다
     const areaApplied =
         JSON.stringify(inputConditions.bbox) ===
         JSON.stringify(appliedConditions.bbox);
 
     function updateConditions(changes: Partial<ImageSearchParams>) {
-        setUnappliedEdit({
-            startedSearchKey: shownSearchKey,
-            conditions: { ...inputConditions, ...changes },
-        });
+        setEditedConditions({ ...inputConditions, ...changes });
     }
 
     function runSearch() {
@@ -220,14 +201,14 @@ export function ImageSearch() {
 
                 {/* 두 탭 위에 떠 있는 버튼들. 탭 내용은 아래 여백(pb-16)을 둬서 끝까지 스크롤하면 버튼에 가리지 않는다 */}
                 <div className="absolute inset-x-4 bottom-4 flex gap-2">
-                    {currentEdit && (
+                    {editedConditions && (
                         <IconButton
                             label="되돌리기"
                             title="되돌리기"
                             variant="secondary"
                             size="icon"
                             className="shadow-md"
-                            onClick={() => setUnappliedEdit(null)}
+                            onClick={() => discardEdit()}
                         >
                             <Undo2Icon />
                         </IconButton>
