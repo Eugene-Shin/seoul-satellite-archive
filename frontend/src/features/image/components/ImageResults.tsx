@@ -17,6 +17,7 @@ type ImageResultsProps = {
 
 const CARD_HEIGHT_ESTIMATE = 250;
 const CARD_GAP = 12;
+const SEARCH_BUTTON_SPACE = 64;
 
 export function ImageResults({
     searchId,
@@ -43,6 +44,8 @@ export function ImageResults({
         getScrollElement: () => scrollRef.current,
         estimateSize: () => CARD_HEIGHT_ESTIMATE,
         gap: CARD_GAP,
+        // 선택한 카드로 스크롤할 때 패널 하단의 검색 버튼에 가리지 않게 한다 (pb-16과 같은 64px)
+        scrollPaddingEnd: SEARCH_BUTTON_SPACE,
     });
 
     const scrollToImage = useEffectEvent((imageId: number | null) => {
@@ -108,7 +111,7 @@ export function ImageResults({
             </div>
             <div
                 ref={scrollRef}
-                className="min-h-0 flex-1 overflow-y-auto px-4 pb-4"
+                className="min-h-0 flex-1 overflow-y-auto px-4 pb-16"
             >
                 <ul
                     className="relative"

@@ -112,7 +112,8 @@
     --sidebar-ring: oklch(0.708 0 0);
     --map-footprint: oklch(0.546 0.245 262.881); /* blue-600 */
     --map-selected: oklch(0.705 0.213 47.604); /* orange-500 */
-    --map-area: oklch(0.372 0.044 257.287); /* slate-700 */
+    --map-area: oklch(0.591 0.293 322.896); /* fuchsia-600 */
+    --map-area-unapplied: oklch(0.372 0.044 257.287); /* slate-700 */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -151,7 +152,8 @@
         --sidebar-ring: oklch(0.556 0 0);
         --map-footprint: oklch(0.707 0.165 254.624); /* blue-400 */
         --map-selected: oklch(0.75 0.183 55.934); /* orange-400 */
-        --map-area: oklch(0.869 0.022 252.894); /* slate-300 */
+        --map-area: oklch(0.74 0.238 322.16); /* fuchsia-400 */
+        --map-area-unapplied: oklch(0.869 0.022 252.894); /* slate-300 */
     }
 }
 
@@ -168,7 +170,7 @@
 }
 
 .ol-viewport .ol-box {
-    border: 2px dashed var(--map-area);
+    border: 2px dashed var(--map-area-unapplied);
     background-color: transparent;
 }
 

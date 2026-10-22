@@ -45,7 +45,7 @@ export function AreaToolbar({
     return (
         <>
             <ToolbarButton
-                label="현재 화면 범위로 검색"
+                label="현재 화면을 영역으로"
                 onClick={() => onUseCurrentView()}
             >
                 <ScanIcon />

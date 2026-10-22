@@ -30,6 +30,7 @@ type ImageMapProps = {
     images: ImageResponse[];
     selectedImage: ImageResponse | null;
     area: Bbox | undefined;
+    areaApplied: boolean;
     allLoaded: boolean;
     drawing: boolean;
     onSelect: (image: ImageResponse) => void;
@@ -82,11 +83,20 @@ const SELECTED_STYLE_OPTIONS: VectorStyleOptions = {
     fillOpacity: 0.15,
 };
 
+const AREA_LINE_DASH = [8, 6];
+
 const AREA_STYLE_OPTIONS: VectorStyleOptions = {
     colorVariable: "--map-area",
     width: 2,
     fillOpacity: 0.06,
-    lineDash: [8, 6],
+    lineDash: AREA_LINE_DASH,
+};
+
+const UNAPPLIED_AREA_STYLE_OPTIONS: VectorStyleOptions = {
+    colorVariable: "--map-area-unapplied",
+    width: 2,
+    fillOpacity: 0,
+    lineDash: AREA_LINE_DASH,
 };
 
 function createVworldLayer(layer: VworldLayer): TileLayer {
@@ -152,6 +162,7 @@ export function ImageMap({
     images,
     selectedImage,
     area,
+    areaApplied,
     allLoaded,
     drawing,
     onSelect,
@@ -237,7 +248,13 @@ export function ImageMap({
             lightBaseLayer?.setVisible(!darkMode.matches);
             darkBaseLayer?.setVisible(darkMode.matches);
             footprintLayer.setStyle(createVectorStyle(FOOTPRINT_STYLE_OPTIONS));
-            areaLayer.setStyle(createVectorStyle(AREA_STYLE_OPTIONS));
+            const areaStyle = createVectorStyle(AREA_STYLE_OPTIONS);
+            const unappliedAreaStyle = createVectorStyle(
+                UNAPPLIED_AREA_STYLE_OPTIONS,
+            );
+            areaLayer.setStyle((feature) =>
+                feature.get("applied") ? areaStyle : unappliedAreaStyle,
+            );
             selectionLayer.setStyle(createVectorStyle(SELECTED_STYLE_OPTIONS));
         }
 
@@ -317,9 +334,14 @@ export function ImageMap({
         if (!area) {
             return;
         }
-        areaSource.addFeature(new Feature(fromExtent(bboxToExtent(area))));
+        areaSource.addFeature(
+            new Feature({
+                geometry: fromExtent(bboxToExtent(area)),
+                applied: areaApplied,
+            }),
+        );
         return () => areaSource.clear();
-    }, [areaSource, area]);
+    }, [areaSource, area, areaApplied]);
 
     useEffect(() => {
         const map = mapRef.current;

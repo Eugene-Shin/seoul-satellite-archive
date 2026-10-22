@@ -1,11 +1,15 @@
 "use client";
 
+import { Undo2Icon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
 import { ImageDetail } from "@/features/image/components/ImageDetail";
 import { ImageResults } from "@/features/image/components/ImageResults";
-import { ImageSearchForm } from "@/features/image/components/ImageSearchForm";
+import {
+    IMAGE_SEARCH_FORM_ID,
+    ImageSearchForm,
+} from "@/features/image/components/ImageSearchForm";
 import { useFilterOptions, useImageSearch } from "@/features/image/queries";
 import { useAppliedConditions } from "@/features/image/searchParams";
 import type {
@@ -14,6 +18,8 @@ import type {
     ImageSearchParams,
 } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
+import { IconButton } from "@/shared/components/IconButton";
+import { Button } from "@/shared/components/ui/button";
 import {
     Tabs,
     TabsContent,
@@ -31,6 +37,11 @@ const ImageMap = dynamic(
 
 type PanelTab = "conditions" | "results";
 
+type UnappliedEdit = {
+    startedSearchKey: string;
+    conditions: ImageSearchParams;
+};
+
 export function ImageSearch() {
     const { data: options, error, refetch } = useFilterOptions();
     const [appliedConditions, setAppliedConditions] = useAppliedConditions();
@@ -42,6 +53,9 @@ export function ImageSearch() {
     const [drawingStartedSearchKey, setDrawingStartedSearchKey] = useState<
         string | null
     >(null);
+    const [unappliedEdit, setUnappliedEdit] = useState<UnappliedEdit | null>(
+        null,
+    );
 
     const {
         data: searchData,
@@ -63,7 +77,7 @@ export function ImageSearch() {
             images.some((image) => image.imageId === selectedImage.imageId));
     const shownSelectedImage = selectionInResults ? selectedImage : null;
 
-    // 그리기는 시작한 검색에서만 유효하다. 검색이 어떤 경로로 바뀌든(검색 버튼, 영역 변경, 뒤로 가기) 그리기는 끝난다.
+    // 그리기는 시작한 검색에서만 유효하다. 검색이 어떤 경로로 바뀌든(검색 버튼, 뒤로 가기) 그리기는 끝난다.
     // searchId는 우리 코드로 검색할 때, appliedConditions는 URL이 바뀔 때 달라져서 둘을 함께 쓴다
     const shownSearchKey = JSON.stringify([searchId, appliedConditions]);
     const drawing = drawingStartedSearchKey === shownSearchKey;
@@ -76,22 +90,36 @@ export function ImageSearch() {
         setDrawingStartedSearchKey(null);
     }
 
-    // 적용된 조건이 바뀌면(뒤로 가기 포함) 폼을 새로 만들어 입력값을 맞춘다. 영역은 폼에 없어서 영역만 바뀔 땐 입력 중인 값을 지키려 키에서 뺀다
-    const formKey = JSON.stringify({ ...appliedConditions, bbox: undefined });
+    // 입력값과 영역은 검색 버튼을 눌러야 적용된다. 편집은 시작한 검색에서만 유효해서 검색이 바뀌면(검색 버튼, 뒤로 가기) null
+    const currentEdit =
+        unappliedEdit?.startedSearchKey === shownSearchKey
+            ? unappliedEdit
+            : null;
+    // 조건 탭과 지도에 보이는 조건
+    const inputConditions = currentEdit
+        ? currentEdit.conditions
+        : appliedConditions;
+    // 지도의 영역이 결과에 적용된 영역인지. 적용된 영역만 색으로 표시한다
+    const areaApplied =
+        JSON.stringify(inputConditions.bbox) ===
+        JSON.stringify(appliedConditions.bbox);
 
-    function applyConditions(next: ImageSearchParams) {
-        setAppliedConditions(next);
+    function updateConditions(changes: Partial<ImageSearchParams>) {
+        setUnappliedEdit({
+            startedSearchKey: shownSearchKey,
+            conditions: { ...inputConditions, ...changes },
+        });
+    }
+
+    function runSearch() {
+        setAppliedConditions(inputConditions);
         setSearchId((prev) => prev + 1);
         setActiveTab("results");
         setSelectedImage(null);
     }
 
-    function runSearch(conditions: ImageSearchParams) {
-        applyConditions({ ...conditions, bbox: appliedConditions.bbox });
-    }
-
     function changeArea(area: Bbox | undefined) {
-        applyConditions({ ...appliedConditions, bbox: area });
+        updateConditions({ bbox: area });
     }
 
     function selectFromMap(image: ImageResponse) {
@@ -119,7 +147,7 @@ export function ImageSearch() {
 
     return (
         <div className="contents">
-            <aside className="area-panel flex min-h-0 flex-col border-r">
+            <aside className="area-panel relative flex min-h-0 flex-col border-r">
                 <Tabs
                     value={activeTab}
                     onValueChange={setActiveTab}
@@ -136,12 +164,12 @@ export function ImageSearch() {
                     <TabsContent
                         value="conditions"
                         keepMounted
-                        className="min-h-0 overflow-y-auto p-4"
+                        className="min-h-0 overflow-y-auto p-4 pb-16"
                     >
                         <ImageSearchForm
-                            key={formKey}
                             options={options}
-                            initialConditions={appliedConditions}
+                            conditions={inputConditions}
+                            onChange={updateConditions}
                             onSubmit={runSearch}
                         />
                     </TabsContent>
@@ -163,13 +191,37 @@ export function ImageSearch() {
                         />
                     </TabsContent>
                 </Tabs>
+
+                {/* 두 탭 위에 떠 있는 버튼들. 탭 내용은 아래 여백(pb-16)을 둬서 끝까지 스크롤하면 버튼에 가리지 않는다 */}
+                <div className="absolute inset-x-4 bottom-4 flex gap-2">
+                    {currentEdit && (
+                        <IconButton
+                            label="되돌리기"
+                            title="되돌리기"
+                            variant="secondary"
+                            size="icon"
+                            className="shadow-md"
+                            onClick={() => setUnappliedEdit(null)}
+                        >
+                            <Undo2Icon />
+                        </IconButton>
+                    )}
+                    <Button
+                        type="submit"
+                        form={IMAGE_SEARCH_FORM_ID}
+                        className="flex-1 shadow-md"
+                    >
+                        검색
+                    </Button>
+                </div>
             </aside>
 
             <section className="area-map relative min-h-0 bg-muted/40">
                 <ImageMap
                     images={images}
                     selectedImage={shownSelectedImage}
-                    area={appliedConditions.bbox}
+                    area={inputConditions.bbox}
+                    areaApplied={areaApplied}
                     allLoaded={allLoaded}
                     drawing={drawing}
                     onSelect={selectFromMap}

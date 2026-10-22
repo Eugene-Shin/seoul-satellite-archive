@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import { AcquiredDateField } from "@/features/image/components/AcquiredDateField";
 import { CloudCoverField } from "@/features/image/components/CloudCoverField";
 import { GsdRangeField } from "@/features/image/components/GsdRangeField";
@@ -17,7 +15,6 @@ import type {
 } from "@/features/image/types";
 import { MultiSelect } from "@/shared/components/MultiSelect";
 import { Select } from "@/shared/components/Select";
-import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 
 function emptyToUndefined<T>(values: T[]): T[] | undefined {
@@ -28,29 +25,29 @@ function isSarOnly(sensorTypes: SensorType[] | undefined): boolean {
     return sensorTypes ? sensorTypes.every((type) => type === "SAR") : false;
 }
 
+// 검색 버튼은 두 탭이 함께 쓰려고 폼 밖에 있어서, 이 id로 폼에 연결한다
+export const IMAGE_SEARCH_FORM_ID = "image-search-form";
+
 type ImageSearchFormProps = {
     options: ImageFilterOptionsResponse;
-    initialConditions: ImageSearchParams;
-    onSubmit: (conditions: ImageSearchParams) => void;
+    conditions: ImageSearchParams;
+    onChange: (changes: Partial<ImageSearchParams>) => void;
+    onSubmit: () => void;
 };
 
 export function ImageSearchForm({
     options,
-    initialConditions,
+    conditions,
+    onChange,
     onSubmit,
 }: ImageSearchFormProps) {
-    const [conditions, setConditions] = useState(initialConditions);
-
-    function updateConditions(changes: Partial<ImageSearchParams>) {
-        setConditions((prev) => ({ ...prev, ...changes }));
-    }
-
     return (
         <form
+            id={IMAGE_SEARCH_FORM_ID}
             className="flex flex-col gap-4"
             onSubmit={(e) => {
                 e.preventDefault();
-                onSubmit(conditions);
+                onSubmit();
             }}
         >
             <label className="flex flex-col gap-2">
@@ -59,7 +56,7 @@ export function ImageSearchForm({
                     type="text"
                     value={conditions.keyword ?? ""}
                     onChange={(e) =>
-                        updateConditions({
+                        onChange({
                             keyword: e.target.value || undefined,
                         })
                     }
@@ -70,7 +67,7 @@ export function ImageSearchForm({
             <AcquiredDateField
                 range={options.acquiredRange}
                 conditions={conditions}
-                onChange={updateConditions}
+                onChange={onChange}
             />
 
             <div className="grid grid-cols-2 gap-x-2 gap-y-4">
@@ -82,7 +79,7 @@ export function ImageSearchForm({
                     }))}
                     selected={conditions.satellites ?? []}
                     onChange={(satellites) =>
-                        updateConditions({
+                        onChange({
                             satellites: emptyToUndefined(satellites),
                         })
                     }
@@ -95,7 +92,7 @@ export function ImageSearchForm({
                     }))}
                     selected={conditions.instruments ?? []}
                     onChange={(instruments) =>
-                        updateConditions({
+                        onChange({
                             instruments: emptyToUndefined(instruments),
                         })
                     }
@@ -113,7 +110,7 @@ export function ImageSearchForm({
                     }
                     onChange={(type) => {
                         const sensorTypes = type ? [type] : undefined;
-                        updateConditions({
+                        onChange({
                             sensorTypes,
                             cloudMax: isSarOnly(sensorTypes)
                                 ? undefined
@@ -129,7 +126,7 @@ export function ImageSearchForm({
                     }))}
                     value={conditions.orbitDirection ?? null}
                     onChange={(orbitDirection) =>
-                        updateConditions({
+                        onChange({
                             orbitDirection: orbitDirection ?? undefined,
                         })
                     }
@@ -142,7 +139,7 @@ export function ImageSearchForm({
                     }))}
                     selected={conditions.providers ?? []}
                     onChange={(providers) =>
-                        updateConditions({
+                        onChange({
                             providers: emptyToUndefined(providers),
                         })
                     }
@@ -155,7 +152,7 @@ export function ImageSearchForm({
                     ]}
                     value={conditions.isPaid ?? null}
                     onChange={(isPaid) =>
-                        updateConditions({ isPaid: isPaid ?? undefined })
+                        onChange({ isPaid: isPaid ?? undefined })
                     }
                 />
             </div>
@@ -164,25 +161,21 @@ export function ImageSearchForm({
                 <GsdRangeField
                     range={options.gsdRange}
                     conditions={conditions}
-                    onChange={updateConditions}
+                    onChange={onChange}
                 />
                 <CloudCoverField
                     value={conditions.cloudMax}
                     disabled={isSarOnly(conditions.sensorTypes)}
-                    onChange={(cloudMax) => updateConditions({ cloudMax })}
+                    onChange={(cloudMax) => onChange({ cloudMax })}
                 />
             </div>
 
             <SortField
                 value={conditions.sorts ?? []}
                 onChange={(sorts) =>
-                    updateConditions({ sorts: emptyToUndefined(sorts) })
+                    onChange({ sorts: emptyToUndefined(sorts) })
                 }
             />
-
-            <Button type="submit" className="w-full">
-                검색
-            </Button>
         </form>
     );
 }
