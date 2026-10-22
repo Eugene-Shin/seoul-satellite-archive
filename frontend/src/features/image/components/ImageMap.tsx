@@ -2,7 +2,6 @@
 
 import "ol/ol.css";
 
-import { asArray } from "ol/color";
 import MousePosition from "ol/control/MousePosition";
 import OverviewMap from "ol/control/OverviewMap";
 import ScaleLine from "ol/control/ScaleLine";
@@ -10,8 +9,7 @@ import { type Extent, intersects } from "ol/extent";
 import Feature from "ol/Feature";
 import LineString from "ol/geom/LineString";
 import type MultiPolygon from "ol/geom/MultiPolygon";
-import Point from "ol/geom/Point";
-import Polygon, { fromExtent } from "ol/geom/Polygon";
+import { fromExtent } from "ol/geom/Polygon";
 import DragBox from "ol/interaction/DragBox";
 import Draw from "ol/interaction/Draw";
 import TileLayer from "ol/layer/Tile";
@@ -22,9 +20,6 @@ import { unByKey } from "ol/Observable";
 import { fromLonLat, transformExtent } from "ol/proj";
 import VectorSource from "ol/source/Vector";
 import XYZ from "ol/source/XYZ";
-import { getArea, getLength } from "ol/sphere";
-import { Circle as CircleStyle, Fill, Stroke, Style, Text } from "ol/style";
-import type { StyleFunction } from "ol/style/Style";
 import View from "ol/View";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
@@ -46,7 +41,14 @@ import {
     sameIds,
     toFeature,
 } from "@/features/image/footprint";
-import { formatArea, formatLength } from "@/features/image/measure";
+import {
+    createAreaStyle,
+    createFootprintStyle,
+    createHoveredStyle,
+    createMeasureStyle,
+    createSelectedStyle,
+    prefersReducedMotion,
+} from "@/features/image/mapStyles";
 import type { Bbox, ImageResponse, MapTool } from "@/features/image/types";
 
 type ImageMapProps = {
@@ -68,13 +70,6 @@ type Chooser = {
     imageIds: number[];
     x: number;
     y: number;
-};
-
-type VectorStyleOptions = {
-    colorVariable: string;
-    width: number;
-    fillOpacity: number;
-    lineDash?: number[];
 };
 
 const SEOUL_LON_LAT = [126.978, 37.566];
@@ -99,48 +94,6 @@ const VWORLD_EXTENT = transformExtent(
 const FIT_PADDING = 32;
 const FIT_MAX_ZOOM = 14;
 const FIT_DURATION = 300;
-
-const FOOTPRINT_STYLE_OPTIONS: VectorStyleOptions = {
-    colorVariable: "--map-footprint",
-    width: 1.5,
-    fillOpacity: 0.04,
-};
-
-const HOVERED_STYLE_OPTIONS: VectorStyleOptions = {
-    colorVariable: "--map-footprint",
-    width: 3,
-    fillOpacity: 0.02,
-};
-
-const SELECTED_STYLE_OPTIONS: VectorStyleOptions = {
-    colorVariable: "--map-selected",
-    width: 3,
-    fillOpacity: 0.15,
-};
-
-const AREA_LINE_DASH = [8, 6];
-const AREA_DASH_PERIOD = AREA_LINE_DASH[0] + AREA_LINE_DASH[1];
-const AREA_DASH_SPEED = 0.03; // px/ms
-
-const AREA_STYLE_OPTIONS: VectorStyleOptions = {
-    colorVariable: "--map-area",
-    width: 2,
-    fillOpacity: 0.06,
-    lineDash: AREA_LINE_DASH,
-};
-
-const UNAPPLIED_AREA_STYLE_OPTIONS: VectorStyleOptions = {
-    colorVariable: "--map-area-unapplied",
-    width: 2,
-    fillOpacity: 0,
-    lineDash: AREA_LINE_DASH,
-};
-
-const MEASURE_STYLE_OPTIONS: VectorStyleOptions = {
-    colorVariable: "--map-measure",
-    width: 2,
-    fillOpacity: 0.1,
-};
 
 function createVworldLayer(layer: VworldLayer): TileLayer {
     const { format, maxZoom } = VWORLD_LAYERS[layer];
@@ -182,83 +135,6 @@ function createOverviewMap() {
     }
 
     return { control, showTheme };
-}
-
-function readCssVariable(name: string): string {
-    return getComputedStyle(document.documentElement)
-        .getPropertyValue(name)
-        .trim();
-}
-
-function createVectorStyle({
-    colorVariable,
-    width,
-    fillOpacity,
-    lineDash,
-}: VectorStyleOptions): Style {
-    const color = readCssVariable(colorVariable);
-    const [red, green, blue] = asArray(color);
-
-    return new Style({
-        stroke: new Stroke({ color, width, lineDash }),
-        fill: new Fill({ color: [red, green, blue, fillOpacity] }),
-    });
-}
-
-function prefersReducedMotion(): boolean {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-function areaDashOffset(): number {
-    return prefersReducedMotion()
-        ? 0
-        : -(performance.now() * AREA_DASH_SPEED) % AREA_DASH_PERIOD;
-}
-
-// 도형과 함께 실제 지구 위 길이·넓이를 글자로 그린다. 선은 끝점, 면은 안쪽 점에
-function createMeasureStyle(): StyleFunction {
-    const color = readCssVariable("--map-measure");
-    const halo = readCssVariable("--background");
-    const shapeStyle = createVectorStyle(MEASURE_STYLE_OPTIONS);
-    const vertexStyle = new Style({
-        image: new CircleStyle({ radius: 4, fill: new Fill({ color }) }),
-    });
-
-    function labelStyle(text: string, at: Point): Style {
-        return new Style({
-            geometry: at,
-            text: new Text({
-                text,
-                font: "bold 13px sans-serif",
-                offsetY: -12,
-                fill: new Fill({ color }),
-                stroke: new Stroke({ color: halo, width: 4 }),
-            }),
-        });
-    }
-
-    return (feature) => {
-        const geometry = feature.getGeometry();
-        if (geometry instanceof Polygon) {
-            return [
-                shapeStyle,
-                labelStyle(
-                    formatArea(getArea(geometry)),
-                    geometry.getInteriorPoint(),
-                ),
-            ];
-        }
-        if (geometry instanceof LineString) {
-            return [
-                shapeStyle,
-                labelStyle(
-                    formatLength(getLength(geometry)),
-                    new Point(geometry.getLastCoordinate()),
-                ),
-            ];
-        }
-        return vertexStyle;
-    };
 }
 
 function isOutOfView(map: OlMap, geometry: MultiPolygon): boolean {
@@ -387,13 +263,7 @@ export function ImageMap({
     });
 
     const applyFootprintStyle = useEffectEvent(() => {
-        footprintLayer.setStyle(
-            createVectorStyle({
-                ...FOOTPRINT_STYLE_OPTIONS,
-                fillOpacity:
-                    FOOTPRINT_STYLE_OPTIONS.fillOpacity * footprintFillScale,
-            }),
-        );
+        footprintLayer.setStyle(createFootprintStyle(footprintFillScale));
     });
 
     const stopActiveTool = useEffectEvent(() => onToolStop());
@@ -456,20 +326,10 @@ export function ImageMap({
             overviewMap?.showTheme(darkMode.matches);
             showBaseMap();
             applyFootprintStyle();
-            const areaStyle = createVectorStyle(AREA_STYLE_OPTIONS);
-            const unappliedAreaStyle = createVectorStyle(
-                UNAPPLIED_AREA_STYLE_OPTIONS,
-            );
-            areaLayer.setStyle((feature) => {
-                const style = feature.get("applied")
-                    ? areaStyle
-                    : unappliedAreaStyle;
-                style.getStroke()?.setLineDashOffset(areaDashOffset());
-                return style;
-            });
+            areaLayer.setStyle(createAreaStyle());
             measureLayer.setStyle(createMeasureStyle());
-            hoverLayer.setStyle(createVectorStyle(HOVERED_STYLE_OPTIONS));
-            selectionLayer.setStyle(createVectorStyle(SELECTED_STYLE_OPTIONS));
+            hoverLayer.setStyle(createHoveredStyle());
+            selectionLayer.setStyle(createSelectedStyle());
         }
 
         applyTheme();
