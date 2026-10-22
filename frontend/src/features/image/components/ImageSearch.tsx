@@ -12,7 +12,7 @@ import {
 } from "@/features/image/components/ImageSearchForm";
 import { pickImages } from "@/features/image/footprint";
 import { useFilterOptions, useImageSearch } from "@/features/image/queries";
-import { useAppliedConditions } from "@/features/image/searchParams";
+import { useCurrentSearch } from "@/features/image/searchParams";
 import type {
     Bbox,
     ImageResponse,
@@ -47,19 +47,21 @@ type Hover = {
 
 export function ImageSearch() {
     const { data: options, error, refetch } = useFilterOptions();
-    const [appliedConditions, setAppliedConditions] = useAppliedConditions();
-    const [searchId, setSearchId] = useState(0);
+    const {
+        conditions: appliedConditions,
+        id: searchId,
+        key: currentSearchKey,
+        searchWith,
+    } = useCurrentSearch();
     const [activeTab, setActiveTab] = useState<PanelTab>("results");
     const [selectedImage, setSelectedImage] = useState<ImageResponse | null>(
         null,
     );
-    // searchId는 우리 코드로 검색할 때, appliedConditions는 URL이 바뀔 때 달라져서 둘을 함께 쓴다
-    const shownSearchKey = JSON.stringify([searchId, appliedConditions]);
     // 그리기와 적용 전 편집은 시작한 검색에서만 유효하다
     const [drawingMark, markDrawing, stopDrawing] =
-        useSearchScopedState<true>(shownSearchKey);
+        useSearchScopedState<true>(currentSearchKey);
     const [editedConditions, setEditedConditions, discardEdit] =
-        useSearchScopedState<ImageSearchParams>(shownSearchKey);
+        useSearchScopedState<ImageSearchParams>(currentSearchKey);
     const [hover, setHover] = useState<Hover>({
         imageIds: [],
         fromMap: false,
@@ -112,8 +114,7 @@ export function ImageSearch() {
     }
 
     function runSearch() {
-        setAppliedConditions(inputConditions);
-        setSearchId((prev) => prev + 1);
+        searchWith(inputConditions);
         setActiveTab("results");
         setSelectedImage(null);
     }
