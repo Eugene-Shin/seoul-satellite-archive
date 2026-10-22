@@ -21,7 +21,7 @@ import View from "ol/View";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import {
-    type BaseMap,
+    useStoredBaseMap,
     visibleVworldLayers,
     VWORLD_LAYER_NAMES,
     type VworldLayer,
@@ -234,7 +234,7 @@ export function ImageMap({
                 renderOrder: largerFirst,
             }),
     );
-    const [baseMap, setBaseMap] = useState<BaseMap>("map");
+    const [baseMap, changeBaseMap] = useStoredBaseMap();
     const [footprintFillScale, setFootprintFillScale] = useState(1);
     const [chooser, setChooser] = useState<Chooser | null>(null);
     const [chooserOpen, setChooserOpen] = useState(false);
@@ -528,7 +528,7 @@ export function ImageMap({
                 <MapLayerControl
                     baseMap={baseMap}
                     footprintFillScale={footprintFillScale}
-                    onBaseMapChange={setBaseMap}
+                    onBaseMapChange={changeBaseMap}
                     onFootprintFillScaleChange={setFootprintFillScale}
                 />
             </div>
