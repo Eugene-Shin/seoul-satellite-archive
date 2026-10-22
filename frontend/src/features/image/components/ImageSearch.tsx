@@ -10,6 +10,7 @@ import {
     IMAGE_SEARCH_FORM_ID,
     ImageSearchForm,
 } from "@/features/image/components/ImageSearchForm";
+import { pickImages } from "@/features/image/footprint";
 import { useFilterOptions, useImageSearch } from "@/features/image/queries";
 import { useAppliedConditions } from "@/features/image/searchParams";
 import type {
@@ -37,6 +38,12 @@ const ImageMap = dynamic(
 
 type PanelTab = "conditions" | "results";
 
+type Hover = {
+    imageIds: number[];
+    // 지도(footprint·겹침 목록)에서 온 hover만 결과 목록을 스크롤한다
+    fromMap: boolean;
+};
+
 type UnappliedEdit = {
     startedSearchKey: string;
     conditions: ImageSearchParams;
@@ -56,6 +63,10 @@ export function ImageSearch() {
     const [unappliedEdit, setUnappliedEdit] = useState<UnappliedEdit | null>(
         null,
     );
+    const [hover, setHover] = useState<Hover>({
+        imageIds: [],
+        fromMap: false,
+    });
 
     const {
         data: searchData,
@@ -81,6 +92,14 @@ export function ImageSearch() {
     // searchId는 우리 코드로 검색할 때, appliedConditions는 URL이 바뀔 때 달라져서 둘을 함께 쓴다
     const shownSearchKey = JSON.stringify([searchId, appliedConditions]);
     const drawing = drawingStartedSearchKey === shownSearchKey;
+
+    // 그리는 중엔 강조하지 않는다. 결과에 없는 id(검색이 바뀐 경우)는 pickImages가 걸러낸다
+    const hoveredImages = drawing ? [] : pickImages(images, hover.imageIds);
+    // 지도에서 한 영상만 가리킬 때만 그 카드로 스크롤한다. 겹친 여러 개면 강조만
+    const scrollTargetImageId =
+        hover.fromMap && hoveredImages.length === 1
+            ? hoveredImages[0].imageId
+            : null;
 
     function startDrawing() {
         setDrawingStartedSearchKey(shownSearchKey);
@@ -187,7 +206,14 @@ export function ImageSearch() {
                                     ? shownSelectedImage.imageId
                                     : null
                             }
+                            hoveredImageIds={hoveredImages.map(
+                                (image) => image.imageId,
+                            )}
+                            scrollTargetImageId={scrollTargetImageId}
                             onSelect={setSelectedImage}
+                            onHover={(imageIds) =>
+                                setHover({ imageIds, fromMap: false })
+                            }
                         />
                     </TabsContent>
                 </Tabs>
@@ -220,11 +246,15 @@ export function ImageSearch() {
                 <ImageMap
                     images={images}
                     selectedImage={shownSelectedImage}
+                    hoveredImages={hoveredImages}
                     area={inputConditions.bbox}
                     areaApplied={areaApplied}
                     allLoaded={allLoaded}
                     drawing={drawing}
                     onSelect={selectFromMap}
+                    onHover={(imageIds) =>
+                        setHover({ imageIds, fromMap: true })
+                    }
                     onAreaChange={changeArea}
                     onDrawingStart={startDrawing}
                     onDrawingStop={stopDrawing}

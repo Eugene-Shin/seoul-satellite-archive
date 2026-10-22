@@ -1,7 +1,12 @@
 import { fromLonLat } from "ol/proj";
 import { describe, expect, it } from "vitest";
 
-import { largerFirst, pickImages, toFeature } from "@/features/image/footprint";
+import {
+    largerFirst,
+    pickImages,
+    sameIds,
+    toFeature,
+} from "@/features/image/footprint";
 
 function footprint(lon: number, lat: number, size: number) {
     return {
@@ -75,5 +80,22 @@ describe("pickImages", () => {
         expect(pickImages(images, [1, 1, 99, undefined])).toEqual([
             { imageId: 1 },
         ]);
+    });
+});
+
+describe("sameIds", () => {
+    it("순서가 달라도 같은 id들이면 같다", () => {
+        expect(sameIds([1, 2, 3], [3, 1, 2])).toBe(true);
+        expect(sameIds([], [])).toBe(true);
+    });
+
+    it("중복이 있어도 같은 id들이면 같다", () => {
+        expect(sameIds([1, 1, 2], [2, 1])).toBe(true);
+    });
+
+    it("한쪽에만 있는 id가 있으면 다르다", () => {
+        expect(sameIds([1, 2], [1, 3])).toBe(false);
+        expect(sameIds([1], [1, 2])).toBe(false);
+        expect(sameIds([1, 2], [])).toBe(false);
     });
 });

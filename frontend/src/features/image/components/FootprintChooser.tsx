@@ -15,6 +15,7 @@ type FootprintChooserProps = {
     onOpenChange: (open: boolean) => void;
     onOpenChangeComplete: (open: boolean) => void;
     onSelect: (image: ImageResponse) => void;
+    onHover: (imageIds: number[]) => void;
 };
 
 const EDGE_GAP = 16;
@@ -27,6 +28,7 @@ export function FootprintChooser({
     onOpenChange,
     onOpenChangeComplete,
     onSelect,
+    onHover,
 }: FootprintChooserProps) {
     const anchor = {
         getBoundingClientRect: () => DOMRect.fromRect({ x, y }),
@@ -58,6 +60,8 @@ export function FootprintChooser({
                             <button
                                 type="button"
                                 onClick={() => onSelect(image)}
+                                onPointerEnter={() => onHover([image.imageId])}
+                                onPointerLeave={() => onHover([])}
                                 className="flex w-full flex-col rounded-md px-2 py-1.5 text-left hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                             >
                                 <span className="truncate font-medium">

@@ -23,17 +23,24 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { bboxToExtent, extentToBbox } from "@/features/image/bbox";
 import { AreaToolbar } from "@/features/image/components/AreaToolbar";
 import { FootprintChooser } from "@/features/image/components/FootprintChooser";
-import { largerFirst, pickImages, toFeature } from "@/features/image/footprint";
+import {
+    largerFirst,
+    pickImages,
+    sameIds,
+    toFeature,
+} from "@/features/image/footprint";
 import type { Bbox, ImageResponse } from "@/features/image/types";
 
 type ImageMapProps = {
     images: ImageResponse[];
     selectedImage: ImageResponse | null;
+    hoveredImages: ImageResponse[];
     area: Bbox | undefined;
     areaApplied: boolean;
     allLoaded: boolean;
     drawing: boolean;
     onSelect: (image: ImageResponse) => void;
+    onHover: (imageIds: number[]) => void;
     onAreaChange: (area: Bbox | undefined) => void;
     onDrawingStart: () => void;
     onDrawingStop: () => void;
@@ -75,6 +82,12 @@ const FOOTPRINT_STYLE_OPTIONS: VectorStyleOptions = {
     colorVariable: "--map-footprint",
     width: 1.5,
     fillOpacity: 0.04,
+};
+
+const HOVERED_STYLE_OPTIONS: VectorStyleOptions = {
+    colorVariable: "--map-footprint",
+    width: 3,
+    fillOpacity: 0.02,
 };
 
 const SELECTED_STYLE_OPTIONS: VectorStyleOptions = {
@@ -170,11 +183,13 @@ function revealIfOutOfView(map: OlMap, image: ImageResponse) {
 export function ImageMap({
     images,
     selectedImage,
+    hoveredImages,
     area,
     areaApplied,
     allLoaded,
     drawing,
     onSelect,
+    onHover,
     onAreaChange,
     onDrawingStart,
     onDrawingStop,
@@ -184,19 +199,25 @@ export function ImageMap({
     const dragBoxRef = useRef<DragBox | null>(null);
     const [footprintSource] = useState(() => new VectorSource());
     const [selectionSource] = useState(() => new VectorSource());
+    const [hoverSource] = useState(() => new VectorSource());
     const [areaSource] = useState(() => new VectorSource());
     const [chooser, setChooser] = useState<Chooser | null>(null);
     const [chooserOpen, setChooserOpen] = useState(false);
 
     const chooserImages = chooser ? pickImages(images, chooser.imageIds) : [];
 
-    const handleMapClick = useEffectEvent((event: MapBrowserEvent) => {
+    // 그 지점에 겹쳐 있는 footprint들의 영상
+    function imagesAt(event: MapBrowserEvent): ImageResponse[] {
         const hitIds = event.map
             .getFeaturesAtPixel(event.pixel, {
                 layerFilter: (layer) => layer.getSource() === footprintSource,
             })
             .map((feature) => feature.getId());
-        const hits = pickImages(images, hitIds);
+        return pickImages(images, hitIds);
+    }
+
+    const handleMapClick = useEffectEvent((event: MapBrowserEvent) => {
+        const hits = imagesAt(event);
 
         if (hits.length > 1 && event.originalEvent instanceof MouseEvent) {
             setChooser({
@@ -211,6 +232,18 @@ export function ImageMap({
         setChooserOpen(false);
         if (hits.length === 1) {
             onSelect(hits[0]);
+        }
+    });
+
+    const handlePointerMove = useEffectEvent((event: MapBrowserEvent) => {
+        if (event.dragging) {
+            return;
+        }
+        const hitIds = imagesAt(event).map((image) => image.imageId);
+        // 같은 footprint들 위에서 움직일 땐 state를 바꾸지 않는다
+        const hoveredIds = hoveredImages.map((image) => image.imageId);
+        if (!sameIds(hitIds, hoveredIds)) {
+            onHover(hitIds);
         }
     });
 
@@ -236,11 +269,18 @@ export function ImageMap({
             renderOrder: largerFirst,
         });
         const areaLayer = new VectorLayer({ source: areaSource });
+        const hoverLayer = new VectorLayer({ source: hoverSource });
         const selectionLayer = new VectorLayer({ source: selectionSource });
 
         const map = new OlMap({
             target: containerRef.current ?? undefined,
-            layers: [...baseLayers, footprintLayer, areaLayer, selectionLayer],
+            layers: [
+                ...baseLayers,
+                footprintLayer,
+                areaLayer,
+                hoverLayer,
+                selectionLayer,
+            ],
             view: new View({
                 center: fromLonLat(SEOUL_LON_LAT),
                 zoom: INITIAL_ZOOM,
@@ -268,6 +308,7 @@ export function ImageMap({
                 style.getStroke()?.setLineDashOffset(areaDashOffset());
                 return style;
             });
+            hoverLayer.setStyle(createVectorStyle(HOVERED_STYLE_OPTIONS));
             selectionLayer.setStyle(createVectorStyle(SELECTED_STYLE_OPTIONS));
         }
 
@@ -290,7 +331,7 @@ export function ImageMap({
             mapRef.current = null;
             dragBoxRef.current = null;
         };
-    }, [footprintSource, selectionSource, areaSource]);
+    }, [footprintSource, selectionSource, hoverSource, areaSource]);
 
     useEffect(() => {
         dragBoxRef.current?.setActive(drawing);
@@ -314,10 +355,12 @@ export function ImageMap({
         if (!map || drawing) {
             return;
         }
-        const clickKey = map.on("singleclick", (event) =>
-            handleMapClick(event),
-        );
-        return () => unByKey(clickKey);
+        // footprint 클릭(선택)과 마우스 올리기(강조)는 그리기가 아닐 때만
+        const keys = [
+            map.on("singleclick", (event) => handleMapClick(event)),
+            map.on("pointermove", (event) => handlePointerMove(event)),
+        ];
+        return () => unByKey(keys);
     }, [drawing]);
 
     useEffect(() => {
@@ -342,6 +385,11 @@ export function ImageMap({
         selectionSource.addFeature(toFeature(selectedImage));
         return () => selectionSource.clear();
     }, [selectionSource, selectedImage]);
+
+    useEffect(() => {
+        hoverSource.addFeatures(hoveredImages.map(toFeature));
+        return () => hoverSource.clear();
+    }, [hoverSource, hoveredImages]);
 
     useEffect(() => {
         if (!area) {
@@ -400,7 +448,12 @@ export function ImageMap({
 
     return (
         <>
-            <div ref={containerRef} className="absolute inset-0" />
+            {/* 지도의 pointermove는 지도 밖으로 나가는 순간을 알려주지 않아서 여기서 강조를 지운다 */}
+            <div
+                ref={containerRef}
+                className={`absolute inset-0 ${hoveredImages.length > 0 ? "cursor-pointer" : ""}`}
+                onPointerLeave={() => onHover([])}
+            />
             <div className="absolute top-2 right-2 flex gap-2">
                 <AreaToolbar
                     drawing={drawing}
@@ -426,6 +479,7 @@ export function ImageMap({
                         setChooserOpen(false);
                         onSelect(image);
                     }}
+                    onHover={onHover}
                 />
             )}
         </>

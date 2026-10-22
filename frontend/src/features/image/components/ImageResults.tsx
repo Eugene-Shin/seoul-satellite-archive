@@ -12,7 +12,10 @@ type ImageResultsProps = {
     searchId: number;
     conditions: ImageSearchParams;
     selectedImageId: number | null;
+    hoveredImageIds: number[];
+    scrollTargetImageId: number | null;
     onSelect: (image: ImageResponse) => void;
+    onHover: (imageIds: number[]) => void;
 };
 
 const CARD_HEIGHT_ESTIMATE = 250;
@@ -23,7 +26,10 @@ export function ImageResults({
     searchId,
     conditions,
     selectedImageId,
+    hoveredImageIds,
+    scrollTargetImageId,
     onSelect,
+    onHover,
 }: ImageResultsProps) {
     const {
         data,
@@ -63,6 +69,10 @@ export function ImageResults({
     useEffect(() => {
         scrollToImage(selectedImageId);
     }, [selectedImageId]);
+
+    useEffect(() => {
+        scrollToImage(scrollTargetImageId);
+    }, [scrollTargetImageId]);
 
     useEffect(() => {
         if (hasNextPage && !isFetching && !error) {
@@ -132,7 +142,14 @@ export function ImageResults({
                                 <ImageCard
                                     image={image}
                                     selected={image.imageId === selectedImageId}
+                                    hovered={hoveredImageIds.includes(
+                                        image.imageId,
+                                    )}
                                     onSelect={() => onSelect(image)}
+                                    onHoverStart={() =>
+                                        onHover([image.imageId])
+                                    }
+                                    onHoverEnd={() => onHover([])}
                                 />
                             </li>
                         );
