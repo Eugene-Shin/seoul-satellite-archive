@@ -3,6 +3,9 @@
 import "ol/ol.css";
 
 import { asArray } from "ol/color";
+import MousePosition from "ol/control/MousePosition";
+import OverviewMap from "ol/control/OverviewMap";
+import ScaleLine from "ol/control/ScaleLine";
 import { type Extent, intersects } from "ol/extent";
 import Feature from "ol/Feature";
 import type MultiPolygon from "ol/geom/MultiPolygon";
@@ -30,6 +33,7 @@ import { bboxToExtent, extentToBbox } from "@/features/image/bbox";
 import { AreaToolbar } from "@/features/image/components/AreaToolbar";
 import { FootprintChooser } from "@/features/image/components/FootprintChooser";
 import { MapLayerControl } from "@/features/image/components/MapLayerControl";
+import { formatLatLon } from "@/features/image/coordinate";
 import {
     largerFirst,
     pickImages,
@@ -131,6 +135,8 @@ function createVworldLayer(layer: VworldLayer): TileLayer {
         visible: false,
         source: new XYZ({
             url: `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.${format}`,
+            // 줌 5 이하는 타일이 없어서, 미니맵처럼 더 축소한 지도는 줌 6 타일을 줄여 그린다
+            minZoom: VWORLD_MIN_ZOOM,
             maxZoom,
         }),
     });
@@ -143,6 +149,26 @@ function createVworldLayers(): Record<VworldLayer, TileLayer> {
         Satellite: createVworldLayer("Satellite"),
         Hybrid: createVworldLayer("Hybrid"),
     };
+}
+
+// 레이어는 지도 하나에만 넣을 수 있어서 미니맵용을 따로 만든다. 미니맵은 위치 파악용이라 배경 선택과 관계없이 일반 지도
+function createOverviewMap() {
+    const lightLayer = createVworldLayer("Base");
+    const darkLayer = createVworldLayer("midnight");
+    const control = new OverviewMap({
+        layers: [lightLayer, darkLayer],
+        collapsed: false,
+        label: "‹",
+        collapseLabel: "›",
+        tipLabel: "미니맵",
+    });
+
+    function showTheme(dark: boolean) {
+        lightLayer.setVisible(!dark);
+        darkLayer.setVisible(dark);
+    }
+
+    return { control, showTheme };
 }
 
 function readCssVariable(name: string): string {
@@ -219,6 +245,7 @@ export function ImageMap({
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<OlMap | null>(null);
     const dragBoxRef = useRef<DragBox | null>(null);
+    const statusRef = useRef<HTMLDivElement | null>(null);
     // OpenLayers 소스·레이어는 여러 effect가 함께 써서 컴포넌트와 함께 한 번 만든다
     const [footprintSource] = useState(() => new VectorSource());
     const [selectionSource] = useState(() => new VectorSource());
@@ -340,9 +367,26 @@ export function ImageMap({
         });
         mapRef.current = map;
 
+        const status = statusRef.current ?? undefined;
+        map.addControl(
+            new MousePosition({
+                target: status,
+                projection: "EPSG:4326",
+                coordinateFormat: formatLatLon,
+                placeholder: "",
+            }),
+        );
+        map.addControl(new ScaleLine({ target: status }));
+
+        const overviewMap = VWORLD_KEY ? createOverviewMap() : null;
+        if (overviewMap) {
+            map.addControl(overviewMap.control);
+        }
+
         const darkMode = window.matchMedia("(prefers-color-scheme: dark)");
 
         function applyTheme() {
+            overviewMap?.showTheme(darkMode.matches);
             showBaseMap();
             applyFootprintStyle();
             const areaStyle = createVectorStyle(AREA_STYLE_OPTIONS);
@@ -516,6 +560,10 @@ export function ImageMap({
                 ref={containerRef}
                 className={`absolute inset-0 ${hoveredImages.length > 0 ? "cursor-pointer" : ""}`}
                 onPointerLeave={() => onHover([])}
+            />
+            <div
+                ref={statusRef}
+                className="map-status absolute bottom-2 left-2 flex flex-col items-start gap-1"
             />
             <div className="absolute top-2 right-2 flex gap-2">
                 <AreaToolbar

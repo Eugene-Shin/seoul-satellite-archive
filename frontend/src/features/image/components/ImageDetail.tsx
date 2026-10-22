@@ -99,7 +99,7 @@ export function ImageDetail({ image, onClose }: ImageDetailProps) {
             ref={panelRef}
             hidden={!image}
             onPointerDownCapture={pinPosition}
-            className="absolute right-4 bottom-4 flex h-64 max-h-full min-h-40 w-card max-w-full min-w-64 resize flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg"
+            className="absolute top-4 left-4 flex h-64 max-h-full min-h-40 w-card max-w-full min-w-64 resize flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg"
         >
             <div className="flex shrink-0 items-center border-b py-0.5 pr-1">
                 <div
