@@ -84,6 +84,8 @@ const SELECTED_STYLE_OPTIONS: VectorStyleOptions = {
 };
 
 const AREA_LINE_DASH = [8, 6];
+const AREA_DASH_PERIOD = AREA_LINE_DASH[0] + AREA_LINE_DASH[1];
+const AREA_DASH_SPEED = 0.03; // px/ms
 
 const AREA_STYLE_OPTIONS: VectorStyleOptions = {
     colorVariable: "--map-area",
@@ -129,6 +131,16 @@ function createVectorStyle({
     });
 }
 
+function prefersReducedMotion(): boolean {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function areaDashOffset(): number {
+    return prefersReducedMotion()
+        ? 0
+        : -(performance.now() * AREA_DASH_SPEED) % AREA_DASH_PERIOD;
+}
+
 function isOutOfView(map: OlMap, geometry: MultiPolygon): boolean {
     const size = map.getSize();
     if (!size) {
@@ -140,14 +152,11 @@ function isOutOfView(map: OlMap, geometry: MultiPolygon): boolean {
     );
 }
 
-function fitView(map: OlMap, extent: Extent) {
-    const reduceMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-    ).matches;
+function fitView(map: OlMap, extent: Extent, maxZoom = FIT_MAX_ZOOM) {
     map.getView().fit(extent, {
         padding: [FIT_PADDING, FIT_PADDING, FIT_PADDING, FIT_PADDING],
-        maxZoom: FIT_MAX_ZOOM,
-        duration: reduceMotion ? 0 : FIT_DURATION,
+        maxZoom,
+        duration: prefersReducedMotion() ? 0 : FIT_DURATION,
     });
 }
 
@@ -252,9 +261,13 @@ export function ImageMap({
             const unappliedAreaStyle = createVectorStyle(
                 UNAPPLIED_AREA_STYLE_OPTIONS,
             );
-            areaLayer.setStyle((feature) =>
-                feature.get("applied") ? areaStyle : unappliedAreaStyle,
-            );
+            areaLayer.setStyle((feature) => {
+                const style = feature.get("applied")
+                    ? areaStyle
+                    : unappliedAreaStyle;
+                style.getStroke()?.setLineDashOffset(areaDashOffset());
+                return style;
+            });
             selectionLayer.setStyle(createVectorStyle(SELECTED_STYLE_OPTIONS));
         }
 
@@ -343,6 +356,18 @@ export function ImageMap({
         return () => areaSource.clear();
     }, [areaSource, area, areaApplied]);
 
+    // 영역이 있는 동안 매 프레임 영역을 다시 그려, 스타일 함수가 그 시점의 점선 위치를 계산하게 한다
+    useEffect(() => {
+        if (!area || prefersReducedMotion()) {
+            return;
+        }
+        let frame = requestAnimationFrame(function redraw() {
+            areaSource.changed();
+            frame = requestAnimationFrame(redraw);
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [areaSource, area]);
+
     useEffect(() => {
         const map = mapRef.current;
         if (map && selectedImage) {
@@ -356,9 +381,12 @@ export function ImageMap({
         if (!map || !size) {
             return;
         }
-        const bbox = extentToBbox(map.getView().calculateExtent(size));
+        const extent = map.getView().calculateExtent(size);
+        const bbox = extentToBbox(extent);
         if (bbox) {
             onAreaChange(bbox);
+            // 테두리가 지도 가장자리에 걸려 반만 보이지 않게, 여백만큼만 축소한다(지금 줌보다 확대하지 않음)
+            fitView(map, extent, map.getView().getZoom());
         }
     }
 
