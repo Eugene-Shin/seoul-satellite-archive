@@ -112,7 +112,9 @@
     --sidebar-ring: oklch(0.708 0 0);
     --map-footprint: oklch(0.546 0.245 262.881); /* blue-600 */
     --map-selected: oklch(0.705 0.213 47.604); /* orange-500 */
-    --map-area: oklch(0.372 0.044 257.287); /* slate-700 */
+    --map-area: oklch(0.591 0.293 322.896); /* fuchsia-600 */
+    --map-area-unapplied: oklch(0.372 0.044 257.287); /* slate-700 */
+    --map-measure: oklch(0.577 0.245 27.325); /* red-600 */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -151,11 +153,15 @@
         --sidebar-ring: oklch(0.556 0 0);
         --map-footprint: oklch(0.707 0.165 254.624); /* blue-400 */
         --map-selected: oklch(0.75 0.183 55.934); /* orange-400 */
-        --map-area: oklch(0.869 0.022 252.894); /* slate-300 */
+        --map-area: oklch(0.74 0.238 322.16); /* fuchsia-400 */
+        --map-area-unapplied: oklch(0.869 0.022 252.894); /* slate-300 */
+        --map-measure: oklch(0.704 0.191 22.216); /* red-400 */
     }
 }
 
-.ol-viewport {
+/* 축척·좌표는 지도 밖의 상태 줄(.map-status)에 그려서 같은 변수를 그쪽에도 */
+.ol-viewport,
+.map-status {
     --ol-background-color: var(--popover);
     --ol-accent-background-color: var(--accent);
     --ol-partial-background-color: color-mix(
@@ -168,8 +174,54 @@
 }
 
 .ol-viewport .ol-box {
-    border: 2px dashed var(--map-area);
+    border: 2px dashed var(--map-area-unapplied);
     background-color: transparent;
+}
+
+/* 확대·축소는 오른쪽 위 툴바(top 8px + 높이 28px) 아래 */
+.ol-viewport .ol-zoom {
+    top: 2.75rem;
+    right: 0.5rem;
+    left: auto;
+}
+
+/* 미니맵은 오른쪽 아래. 접기 버튼도 오른쪽으로 */
+.ol-viewport .ol-overviewmap {
+    right: 0.5rem;
+    bottom: 0.5rem;
+    left: auto;
+}
+
+.ol-viewport .ol-overviewmap:not(.ol-collapsed) button {
+    right: 0;
+    left: auto;
+}
+
+.ol-viewport .ol-overviewmap .ol-overviewmap-map {
+    width: 180px;
+    height: 180px;
+}
+
+.ol-viewport .ol-overviewmap-box {
+    border: 2px solid var(--foreground);
+}
+
+/* OL CSS는 지도 안 절대 위치로 두는데, 상태 줄 안에선 차례로 쌓는다 */
+.map-status .ol-scale-line,
+.map-status .ol-mouse-position {
+    position: static;
+}
+
+.map-status .ol-mouse-position {
+    border-radius: 4px;
+    padding: 0 4px;
+    background: var(--ol-partial-background-color);
+    color: var(--ol-foreground-color);
+    font-size: 10px;
+}
+
+.map-status .ol-mouse-position:empty {
+    display: none;
 }
 
 @layer base {

@@ -1,9 +1,8 @@
 "use client";
 
 import { ScanIcon, SquareDashedIcon, XIcon } from "lucide-react";
-import type { ComponentProps } from "react";
 
-import { IconButton } from "@/shared/components/IconButton";
+import { MapToolbarButton } from "@/features/image/components/MapToolbarButton";
 
 type AreaToolbarProps = {
     drawing: boolean;
@@ -12,17 +11,6 @@ type AreaToolbarProps = {
     onStartDrawing: () => void;
     onCancel: () => void;
 };
-
-function ToolbarButton(props: ComponentProps<typeof IconButton>) {
-    return (
-        <IconButton
-            variant="secondary"
-            className="shadow-sm"
-            title={props.label}
-            {...props}
-        />
-    );
-}
 
 export function AreaToolbar({
     drawing,
@@ -33,26 +21,29 @@ export function AreaToolbar({
 }: AreaToolbarProps) {
     if (drawing || hasArea) {
         return (
-            <ToolbarButton
+            <MapToolbarButton
                 label={drawing ? "그리기 취소" : "영역 지우기"}
-                onClick={onCancel}
+                onClick={() => onCancel()}
             >
                 <XIcon />
-            </ToolbarButton>
+            </MapToolbarButton>
         );
     }
 
     return (
         <>
-            <ToolbarButton
-                label="현재 화면 범위로 검색"
-                onClick={onUseCurrentView}
+            <MapToolbarButton
+                label="현재 화면을 영역으로"
+                onClick={() => onUseCurrentView()}
             >
                 <ScanIcon />
-            </ToolbarButton>
-            <ToolbarButton label="영역 그리기" onClick={onStartDrawing}>
+            </MapToolbarButton>
+            <MapToolbarButton
+                label="영역 그리기"
+                onClick={() => onStartDrawing()}
+            >
                 <SquareDashedIcon />
-            </ToolbarButton>
+            </MapToolbarButton>
         </>
     );
 }

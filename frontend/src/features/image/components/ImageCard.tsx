@@ -14,19 +14,33 @@ import type { ImageResponse } from "@/features/image/types";
 type ImageCardProps = {
     image: ImageResponse;
     selected: boolean;
+    hovered: boolean;
     onSelect: () => void;
+    onHoverStart: () => void;
+    onHoverEnd: () => void;
 };
 
-export function ImageCard({ image, selected, onSelect }: ImageCardProps) {
-    const stateClassName = selected
-        ? "border-foreground ring-1 ring-foreground"
-        : "border-border hover:border-ring hover:bg-muted";
+export function ImageCard({
+    image,
+    selected,
+    hovered,
+    onSelect,
+    onHoverStart,
+    onHoverEnd,
+}: ImageCardProps) {
+    const emphasisClassName = selected
+        ? "border-foreground ring-foreground"
+        : "border-ring ring-ring bg-muted";
+    const stateClassName =
+        selected || hovered ? `ring-1 ${emphasisClassName}` : "border-border";
 
     return (
         <button
             type="button"
             aria-pressed={selected}
             onClick={onSelect}
+            onPointerEnter={() => onHoverStart()}
+            onPointerLeave={() => onHoverEnd()}
             className={`flex w-full flex-col gap-2 rounded-lg border bg-card p-4 text-left text-card-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${stateClassName}`}
         >
             <h2 className="truncate font-semibold" title={image.title}>

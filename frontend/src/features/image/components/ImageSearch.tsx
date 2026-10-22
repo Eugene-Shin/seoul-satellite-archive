@@ -1,19 +1,28 @@
 "use client";
 
+import { Undo2Icon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
 import { ImageDetail } from "@/features/image/components/ImageDetail";
 import { ImageResults } from "@/features/image/components/ImageResults";
-import { ImageSearchForm } from "@/features/image/components/ImageSearchForm";
+import {
+    IMAGE_SEARCH_FORM_ID,
+    ImageSearchForm,
+} from "@/features/image/components/ImageSearchForm";
+import { pickImages } from "@/features/image/footprint";
 import { useFilterOptions, useImageSearch } from "@/features/image/queries";
-import { useAppliedConditions } from "@/features/image/searchParams";
+import { useCurrentSearch } from "@/features/image/searchParams";
 import type {
     Bbox,
     ImageResponse,
     ImageSearchParams,
+    MapTool,
 } from "@/features/image/types";
+import { useSearchScopedState } from "@/features/image/useSearchScopedState";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
+import { IconButton } from "@/shared/components/IconButton";
+import { Button } from "@/shared/components/ui/button";
 import {
     Tabs,
     TabsContent,
@@ -31,16 +40,33 @@ const ImageMap = dynamic(
 
 type PanelTab = "conditions" | "results";
 
+type Hover = {
+    imageIds: number[];
+    // 지도(footprint·겹침 목록)에서 온 hover만 결과 목록을 스크롤한다
+    fromMap: boolean;
+};
+
 export function ImageSearch() {
     const { data: options, error, refetch } = useFilterOptions();
-    const [appliedConditions, setAppliedConditions] = useAppliedConditions();
-    const [conditions, setConditions] =
-        useState<ImageSearchParams>(appliedConditions);
-    const [searchId, setSearchId] = useState(0);
+    const {
+        conditions: appliedConditions,
+        id: searchId,
+        key: currentSearchKey,
+        searchWith,
+    } = useCurrentSearch();
     const [activeTab, setActiveTab] = useState<PanelTab>("results");
     const [selectedImage, setSelectedImage] = useState<ImageResponse | null>(
         null,
     );
+    // 지도 도구와 적용 전 편집은 시작한 검색에서만 유효하다
+    const [activeTool, startTool, stopTool] =
+        useSearchScopedState<MapTool>(currentSearchKey);
+    const [editedConditions, setEditedConditions, discardEdit] =
+        useSearchScopedState<ImageSearchParams>(currentSearchKey);
+    const [hover, setHover] = useState<Hover>({
+        imageIds: [],
+        fromMap: false,
+    });
 
     const {
         data: searchData,
@@ -54,23 +80,42 @@ export function ImageSearch() {
         [searchData],
     );
 
+    // 선택한 영상이 지금 결과에 없으면(뒤로 가기 등으로 결과가 바뀐 경우) 카드 강조·지도 선택 표시·상세 패널에 넘기지 않는다.
+    // 렌더링마다 계산하되, 받는 중엔 아직 안 온 페이지에 있을 수 있어 결과에 있는 것으로 보고 다 받은 뒤에만 실제로 찾아본다
+    const selectionInResults =
+        selectedImage !== null &&
+        (!allLoaded ||
+            images.some((image) => image.imageId === selectedImage.imageId));
+    const shownSelectedImage = selectionInResults ? selectedImage : null;
+
+    // 도구를 쓰는 중엔 강조하지 않는다. 결과에 없는 id(검색이 바뀐 경우)는 pickImages가 걸러낸다
+    const hoveredImages = activeTool ? [] : pickImages(images, hover.imageIds);
+    // 지도에서 한 영상만 가리킬 때만 그 카드로 스크롤한다. 겹친 여러 개면 강조만
+    const scrollTargetImageId =
+        hover.fromMap && hoveredImages.length === 1
+            ? hoveredImages[0].imageId
+            : null;
+
+    // 입력값과 영역은 검색 버튼을 눌러야 적용된다
+    // 조건 탭과 지도에 보이는 조건
+    const inputConditions = editedConditions ?? appliedConditions;
+    // 지도의 영역이 결과에 적용된 영역인지. 적용된 영역만 색으로 표시한다
+    const areaApplied =
+        JSON.stringify(inputConditions.bbox) ===
+        JSON.stringify(appliedConditions.bbox);
+
     function updateConditions(changes: Partial<ImageSearchParams>) {
-        setConditions((prev) => ({ ...prev, ...changes }));
+        setEditedConditions({ ...inputConditions, ...changes });
     }
 
-    function applyConditions(next: ImageSearchParams) {
-        setAppliedConditions(next);
-        setSearchId((prev) => prev + 1);
+    function runSearch() {
+        searchWith(inputConditions);
         setActiveTab("results");
         setSelectedImage(null);
     }
 
-    function runSearch() {
-        applyConditions({ ...conditions, bbox: appliedConditions.bbox });
-    }
-
     function changeArea(area: Bbox | undefined) {
-        applyConditions({ ...appliedConditions, bbox: area });
+        updateConditions({ bbox: area });
     }
 
     function selectFromMap(image: ImageResponse) {
@@ -98,7 +143,7 @@ export function ImageSearch() {
 
     return (
         <div className="contents">
-            <aside className="area-panel flex min-h-0 flex-col border-r">
+            <aside className="area-panel relative flex min-h-0 flex-col border-r">
                 <Tabs
                     value={activeTab}
                     onValueChange={setActiveTab}
@@ -115,11 +160,11 @@ export function ImageSearch() {
                     <TabsContent
                         value="conditions"
                         keepMounted
-                        className="min-h-0 overflow-y-auto p-4"
+                        className="min-h-0 overflow-y-auto p-4 pb-16"
                     >
                         <ImageSearchForm
                             options={options}
-                            conditions={conditions}
+                            conditions={inputConditions}
                             onChange={updateConditions}
                             onSubmit={runSearch}
                         />
@@ -134,25 +179,65 @@ export function ImageSearch() {
                             searchId={searchId}
                             conditions={appliedConditions}
                             selectedImageId={
-                                selectedImage ? selectedImage.imageId : null
+                                shownSelectedImage
+                                    ? shownSelectedImage.imageId
+                                    : null
                             }
+                            hoveredImageIds={hoveredImages.map(
+                                (image) => image.imageId,
+                            )}
+                            scrollTargetImageId={scrollTargetImageId}
                             onSelect={setSelectedImage}
+                            onHover={(imageIds) =>
+                                setHover({ imageIds, fromMap: false })
+                            }
                         />
                     </TabsContent>
                 </Tabs>
+
+                {/* 두 탭 위에 떠 있는 버튼들. 탭 내용은 아래 여백(pb-16)을 둬서 끝까지 스크롤하면 버튼에 가리지 않는다 */}
+                <div className="absolute inset-x-4 bottom-4 flex gap-2">
+                    {editedConditions && (
+                        <IconButton
+                            label="되돌리기"
+                            title="되돌리기"
+                            variant="secondary"
+                            size="icon"
+                            className="shadow-md"
+                            onClick={() => discardEdit()}
+                        >
+                            <Undo2Icon />
+                        </IconButton>
+                    )}
+                    <Button
+                        type="submit"
+                        form={IMAGE_SEARCH_FORM_ID}
+                        className="flex-1 shadow-md"
+                    >
+                        검색
+                    </Button>
+                </div>
             </aside>
 
             <section className="area-map relative min-h-0 bg-muted/40">
                 <ImageMap
                     images={images}
-                    selectedImage={selectedImage}
-                    area={appliedConditions.bbox}
+                    selectedImage={shownSelectedImage}
+                    hoveredImages={hoveredImages}
+                    area={inputConditions.bbox}
+                    areaApplied={areaApplied}
                     allLoaded={allLoaded}
+                    tool={activeTool}
                     onSelect={selectFromMap}
+                    onHover={(imageIds) =>
+                        setHover({ imageIds, fromMap: true })
+                    }
                     onAreaChange={changeArea}
+                    onToolStart={startTool}
+                    onToolStop={stopTool}
                 />
                 <ImageDetail
-                    image={selectedImage}
+                    image={shownSelectedImage}
                     onClose={() => setSelectedImage(null)}
                 />
             </section>

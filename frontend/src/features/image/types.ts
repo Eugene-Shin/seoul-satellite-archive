@@ -30,6 +30,9 @@ export type AcquiredRange = ImageFilterOptionsResponse["acquiredRange"];
 
 export type ImageSort = z.infer<typeof imageSortSchema>;
 
+// 지도 도구는 한 번에 하나만: 영역 그리기 / 거리 측정 / 면적 측정
+export type MapTool = "area" | "distance" | "surface";
+
 export type Bbox = [
     minLon: number,
     minLat: number,

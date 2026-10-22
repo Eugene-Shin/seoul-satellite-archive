@@ -8,6 +8,7 @@ import {
     parseAsStringLiteral,
     useQueryStates,
 } from "nuqs";
+import { useState } from "react";
 
 import { toBbox } from "@/features/image/bbox";
 import {
@@ -79,7 +80,7 @@ function toSearchValues(conditions: ImageSearchParams): ImageSearchValues {
     };
 }
 
-export function useAppliedConditions() {
+function useAppliedConditions() {
     const [values, setValues] = useQueryStates(imageSearchParsers, {
         history: "push",
     });
@@ -89,4 +90,24 @@ export function useAppliedConditions() {
     }
 
     return [fromSearchValues(values), setConditions] as const;
+}
+
+// 같은 조건으로 다시 검색해도 새 요청이 되도록 검색한 조건과 검색 번호를 함께 바꾼다
+export function useCurrentSearch() {
+    const [appliedConditions, setAppliedConditions] = useAppliedConditions();
+    const [searchId, setSearchId] = useState(0);
+    // searchId는 우리 코드로 검색할 때, appliedConditions는 URL이 바뀔 때 달라져서 둘을 함께 쓴다
+    const searchKey = JSON.stringify([searchId, appliedConditions]);
+
+    function searchWith(conditions: ImageSearchParams) {
+        setAppliedConditions(conditions);
+        setSearchId((prev) => prev + 1);
+    }
+
+    return {
+        conditions: appliedConditions,
+        id: searchId,
+        key: searchKey,
+        searchWith,
+    };
 }

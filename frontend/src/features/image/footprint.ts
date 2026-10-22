@@ -25,3 +25,8 @@ export function pickImages<T extends Pick<ImageResponse, "imageId">>(
 ): T[] {
     return images.filter((image) => ids.includes(image.imageId));
 }
+
+// 순서는 보지 않는다. 지도에서 맞은 순서와 결과 목록 순서가 달라서
+export function sameIds(a: readonly number[], b: readonly number[]): boolean {
+    return a.every((id) => b.includes(id)) && b.every((id) => a.includes(id));
+}

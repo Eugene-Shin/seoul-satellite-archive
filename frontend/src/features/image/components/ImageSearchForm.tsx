@@ -15,7 +15,6 @@ import type {
 } from "@/features/image/types";
 import { MultiSelect } from "@/shared/components/MultiSelect";
 import { Select } from "@/shared/components/Select";
-import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 
 function emptyToUndefined<T>(values: T[]): T[] | undefined {
@@ -26,10 +25,13 @@ function isSarOnly(sensorTypes: SensorType[] | undefined): boolean {
     return sensorTypes ? sensorTypes.every((type) => type === "SAR") : false;
 }
 
+// 검색 버튼은 두 탭이 함께 쓰려고 폼 밖에 있어서, 이 id로 폼에 연결한다
+export const IMAGE_SEARCH_FORM_ID = "image-search-form";
+
 type ImageSearchFormProps = {
     options: ImageFilterOptionsResponse;
     conditions: ImageSearchParams;
-    onChange: (change: Partial<ImageSearchParams>) => void;
+    onChange: (changes: Partial<ImageSearchParams>) => void;
     onSubmit: () => void;
 };
 
@@ -41,6 +43,7 @@ export function ImageSearchForm({
 }: ImageSearchFormProps) {
     return (
         <form
+            id={IMAGE_SEARCH_FORM_ID}
             className="flex flex-col gap-4"
             onSubmit={(e) => {
                 e.preventDefault();
@@ -53,7 +56,9 @@ export function ImageSearchForm({
                     type="text"
                     value={conditions.keyword ?? ""}
                     onChange={(e) =>
-                        onChange({ keyword: e.target.value || undefined })
+                        onChange({
+                            keyword: e.target.value || undefined,
+                        })
                     }
                     placeholder="영상 제목을 입력하세요"
                 />
@@ -74,7 +79,9 @@ export function ImageSearchForm({
                     }))}
                     selected={conditions.satellites ?? []}
                     onChange={(satellites) =>
-                        onChange({ satellites: emptyToUndefined(satellites) })
+                        onChange({
+                            satellites: emptyToUndefined(satellites),
+                        })
                     }
                 />
                 <MultiSelect
@@ -85,7 +92,9 @@ export function ImageSearchForm({
                     }))}
                     selected={conditions.instruments ?? []}
                     onChange={(instruments) =>
-                        onChange({ instruments: emptyToUndefined(instruments) })
+                        onChange({
+                            instruments: emptyToUndefined(instruments),
+                        })
                     }
                 />
                 <Select
@@ -130,7 +139,9 @@ export function ImageSearchForm({
                     }))}
                     selected={conditions.providers ?? []}
                     onChange={(providers) =>
-                        onChange({ providers: emptyToUndefined(providers) })
+                        onChange({
+                            providers: emptyToUndefined(providers),
+                        })
                     }
                 />
                 <Select
@@ -165,10 +176,6 @@ export function ImageSearchForm({
                     onChange({ sorts: emptyToUndefined(sorts) })
                 }
             />
-
-            <Button type="submit" className="w-full">
-                검색
-            </Button>
         </form>
     );
 }
