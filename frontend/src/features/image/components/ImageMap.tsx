@@ -20,9 +20,16 @@ import { Fill, Stroke, Style } from "ol/style";
 import View from "ol/View";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
+import {
+    type BaseMap,
+    visibleVworldLayers,
+    VWORLD_LAYER_NAMES,
+    type VworldLayer,
+} from "@/features/image/baseMap";
 import { bboxToExtent, extentToBbox } from "@/features/image/bbox";
 import { AreaToolbar } from "@/features/image/components/AreaToolbar";
 import { FootprintChooser } from "@/features/image/components/FootprintChooser";
+import { MapLayerControl } from "@/features/image/components/MapLayerControl";
 import {
     largerFirst,
     pickImages,
@@ -52,8 +59,6 @@ type Chooser = {
     y: number;
 };
 
-type VworldLayer = "Base" | "midnight";
-
 type VectorStyleOptions = {
     colorVariable: string;
     width: number;
@@ -65,9 +70,15 @@ const SEOUL_LON_LAT = [126.978, 37.566];
 const INITIAL_ZOOM = 11;
 const VWORLD_KEY = process.env.NEXT_PUBLIC_VWORLD_KEY;
 const VWORLD_MIN_ZOOM = 6;
-const VWORLD_MAX_ZOOM: Record<VworldLayer, number> = {
-    Base: 19,
-    midnight: 18,
+// 최대 줌을 넘으면 VWorld가 이미지 대신 XML을 줘서 정확히 맞춘다(그 이상은 OpenLayers가 타일을 키워 보여줌)
+const VWORLD_LAYERS: Record<
+    VworldLayer,
+    { format: "png" | "jpeg"; maxZoom: number }
+> = {
+    Base: { format: "png", maxZoom: 19 },
+    midnight: { format: "png", maxZoom: 18 },
+    Satellite: { format: "jpeg", maxZoom: 19 },
+    Hybrid: { format: "png", maxZoom: 19 },
 };
 const VWORLD_EXTENT = transformExtent(
     [111.1, 25, 145, 47],
@@ -115,12 +126,23 @@ const UNAPPLIED_AREA_STYLE_OPTIONS: VectorStyleOptions = {
 };
 
 function createVworldLayer(layer: VworldLayer): TileLayer {
+    const { format, maxZoom } = VWORLD_LAYERS[layer];
     return new TileLayer({
+        visible: false,
         source: new XYZ({
-            url: `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.png`,
-            maxZoom: VWORLD_MAX_ZOOM[layer],
+            url: `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.${format}`,
+            maxZoom,
         }),
     });
+}
+
+function createVworldLayers(): Record<VworldLayer, TileLayer> {
+    return {
+        Base: createVworldLayer("Base"),
+        midnight: createVworldLayer("midnight"),
+        Satellite: createVworldLayer("Satellite"),
+        Hybrid: createVworldLayer("Hybrid"),
+    };
 }
 
 function readCssVariable(name: string): string {
@@ -197,10 +219,23 @@ export function ImageMap({
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<OlMap | null>(null);
     const dragBoxRef = useRef<DragBox | null>(null);
+    // OpenLayers 소스·레이어는 여러 effect가 함께 써서 컴포넌트와 함께 한 번 만든다
     const [footprintSource] = useState(() => new VectorSource());
     const [selectionSource] = useState(() => new VectorSource());
     const [hoverSource] = useState(() => new VectorSource());
     const [areaSource] = useState(() => new VectorSource());
+    const [vworldLayers] = useState(() =>
+        VWORLD_KEY ? createVworldLayers() : null,
+    );
+    const [footprintLayer] = useState(
+        () =>
+            new VectorLayer({
+                source: footprintSource,
+                renderOrder: largerFirst,
+            }),
+    );
+    const [baseMap, setBaseMap] = useState<BaseMap>("map");
+    const [footprintFillScale, setFootprintFillScale] = useState(1);
     const [chooser, setChooser] = useState<Chooser | null>(null);
     const [chooserOpen, setChooserOpen] = useState(false);
 
@@ -247,6 +282,27 @@ export function ImageMap({
         }
     });
 
+    const showBaseMap = useEffectEvent(() => {
+        if (!vworldLayers) {
+            return;
+        }
+        const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const visible = visibleVworldLayers(baseMap, dark);
+        for (const name of VWORLD_LAYER_NAMES) {
+            vworldLayers[name].setVisible(visible.includes(name));
+        }
+    });
+
+    const applyFootprintStyle = useEffectEvent(() => {
+        footprintLayer.setStyle(
+            createVectorStyle({
+                ...FOOTPRINT_STYLE_OPTIONS,
+                fillOpacity:
+                    FOOTPRINT_STYLE_OPTIONS.fillOpacity * footprintFillScale,
+            }),
+        );
+    });
+
     const cancelDrawing = useEffectEvent(() => onDrawingStop());
 
     const handleBoxEnd = useEffectEvent((extent: Extent) => {
@@ -258,16 +314,9 @@ export function ImageMap({
     });
 
     useEffect(() => {
-        const lightBaseLayer = VWORLD_KEY ? createVworldLayer("Base") : null;
-        const darkBaseLayer = VWORLD_KEY ? createVworldLayer("midnight") : null;
-        const baseLayers =
-            lightBaseLayer && darkBaseLayer
-                ? [lightBaseLayer, darkBaseLayer]
-                : [];
-        const footprintLayer = new VectorLayer({
-            source: footprintSource,
-            renderOrder: largerFirst,
-        });
+        const baseLayers = vworldLayers
+            ? VWORLD_LAYER_NAMES.map((name) => vworldLayers[name])
+            : [];
         const areaLayer = new VectorLayer({ source: areaSource });
         const hoverLayer = new VectorLayer({ source: hoverSource });
         const selectionLayer = new VectorLayer({ source: selectionSource });
@@ -294,9 +343,8 @@ export function ImageMap({
         const darkMode = window.matchMedia("(prefers-color-scheme: dark)");
 
         function applyTheme() {
-            lightBaseLayer?.setVisible(!darkMode.matches);
-            darkBaseLayer?.setVisible(darkMode.matches);
-            footprintLayer.setStyle(createVectorStyle(FOOTPRINT_STYLE_OPTIONS));
+            showBaseMap();
+            applyFootprintStyle();
             const areaStyle = createVectorStyle(AREA_STYLE_OPTIONS);
             const unappliedAreaStyle = createVectorStyle(
                 UNAPPLIED_AREA_STYLE_OPTIONS,
@@ -331,7 +379,22 @@ export function ImageMap({
             mapRef.current = null;
             dragBoxRef.current = null;
         };
-    }, [footprintSource, selectionSource, hoverSource, areaSource]);
+    }, [
+        footprintSource,
+        selectionSource,
+        hoverSource,
+        areaSource,
+        vworldLayers,
+        footprintLayer,
+    ]);
+
+    useEffect(() => {
+        showBaseMap();
+    }, [baseMap]);
+
+    useEffect(() => {
+        applyFootprintStyle();
+    }, [footprintFillScale]);
 
     useEffect(() => {
         dragBoxRef.current?.setActive(drawing);
@@ -461,6 +524,12 @@ export function ImageMap({
                     onUseCurrentView={selectCurrentView}
                     onStartDrawing={onDrawingStart}
                     onCancel={cancelArea}
+                />
+                <MapLayerControl
+                    baseMap={baseMap}
+                    footprintFillScale={footprintFillScale}
+                    onBaseMapChange={setBaseMap}
+                    onFootprintFillScaleChange={setFootprintFillScale}
                 />
             </div>
             {chooser && (
