@@ -46,12 +46,11 @@ function toSearchParams(params: QueryParams): URLSearchParams {
     return searchParams;
 }
 
-export async function apiGet<S extends z.ZodType>(
+async function request(
     path: string,
-    schema: S,
+    init: RequestInit,
     params: QueryParams = {},
-    signal?: AbortSignal,
-): Promise<z.infer<S>> {
+): Promise<unknown> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
     if (!baseUrl) {
@@ -63,9 +62,9 @@ export async function apiGet<S extends z.ZodType>(
 
     let response: Response;
     try {
-        response = await fetch(url, { signal });
+        response = await fetch(url, init);
     } catch (error) {
-        if (signal?.aborted) {
+        if (init.signal?.aborted) {
             throw error;
         }
         throw new ApiError(
@@ -92,11 +91,19 @@ export async function apiGet<S extends z.ZodType>(
         });
     }
 
-    const data = schema.safeParse(body.data);
+    return body.data;
+}
+
+export async function apiGet<S extends z.ZodType>(
+    path: string,
+    schema: S,
+    params: QueryParams = {},
+    signal?: AbortSignal,
+): Promise<z.infer<S>> {
+    const data = schema.safeParse(await request(path, { signal }, params));
 
     if (!data.success) {
         throw new ApiError("서버 응답 형식이 올바르지 않습니다.", {
-            status: response.status,
             details: data.error.issues.map(
                 (issue) => `${issue.path.join(".")}: ${issue.message}`,
             ),
@@ -104,6 +111,22 @@ export async function apiGet<S extends z.ZodType>(
     }
 
     return data.data;
+}
+
+// 쓰기 요청은 응답 data가 없어서 성공/실패(ApiError)만 알린다
+export async function apiSend(
+    method: "POST" | "PUT" | "DELETE",
+    path: string,
+    body?: unknown,
+): Promise<void> {
+    await request(path, {
+        method,
+        headers:
+            body === undefined
+                ? undefined
+                : { "Content-Type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+    });
 }
 
 async function readJson(response: Response): Promise<unknown> {
