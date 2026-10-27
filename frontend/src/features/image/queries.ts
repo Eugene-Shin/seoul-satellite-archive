@@ -30,3 +30,15 @@ export function useImageSearch(
         getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
 }
+
+const ADMIN_PAGE_SIZE = 100;
+
+export function useAdminImages() {
+    return useInfiniteQuery({
+        queryKey: ["image", "admin"],
+        queryFn: ({ pageParam, signal }) =>
+            searchImages({ cursor: pageParam, size: ADMIN_PAGE_SIZE }, signal),
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+    });
+}

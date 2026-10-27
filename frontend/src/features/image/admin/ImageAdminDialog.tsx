@@ -2,6 +2,7 @@
 
 import { SettingsIcon } from "lucide-react";
 
+import { ImageAdminTable } from "@/features/image/admin/ImageAdminTable";
 import { MapToolbarPillButton } from "@/features/image/map/MapToolbarPillButton";
 import {
     Dialog,
@@ -23,6 +24,7 @@ export function ImageAdminDialog() {
                 <DialogHeader>
                     <DialogTitle>{LABEL}</DialogTitle>
                 </DialogHeader>
+                <ImageAdminTable />
             </DialogContent>
         </Dialog>
     );
