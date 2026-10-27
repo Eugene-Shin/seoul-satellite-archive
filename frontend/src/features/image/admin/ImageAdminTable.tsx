@@ -9,6 +9,7 @@ import {
     SelectColumnFilter,
     toOptions,
 } from "@/features/image/admin/ColumnFilter";
+import { CreateImageDialog } from "@/features/image/admin/CreateImageDialog";
 import {
     AcquiredAtColumnFilter,
     CloudCoverColumnFilter,
@@ -151,16 +152,18 @@ export function ImageAdminTable({
                 >
                     {status}
                 </p>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!filtered}
-                    onClick={() => onConditionsChange({})}
-                    className="ml-auto"
-                >
-                    <FunnelXIcon />
-                    필터 초기화
-                </Button>
+                <div className="ml-auto flex gap-2">
+                    <CreateImageDialog />
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!filtered}
+                        onClick={() => onConditionsChange({})}
+                    >
+                        <FunnelXIcon />
+                        필터 초기화
+                    </Button>
+                </div>
             </div>
             <div
                 ref={scrollRef}

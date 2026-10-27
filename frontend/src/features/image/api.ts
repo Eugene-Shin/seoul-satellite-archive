@@ -2,8 +2,11 @@ import {
     imageFilterOptionsSchema,
     imageSearchResultSchema,
 } from "@/features/image/schemas";
-import type { ImageSearchParams } from "@/features/image/types";
-import { apiGet } from "@/shared/api/client";
+import type {
+    ImageSearchParams,
+    ImageWriteRequest,
+} from "@/features/image/types";
+import { apiGet, apiSend } from "@/shared/api/client";
 
 export function fetchFilterOptions(signal?: AbortSignal) {
     return apiGet(
@@ -16,4 +19,8 @@ export function fetchFilterOptions(signal?: AbortSignal) {
 
 export function searchImages(params: ImageSearchParams, signal?: AbortSignal) {
     return apiGet("/api/images", imageSearchResultSchema, params, signal);
+}
+
+export function createImage(request: ImageWriteRequest) {
+    return apiSend("POST", "/api/images", request);
 }
