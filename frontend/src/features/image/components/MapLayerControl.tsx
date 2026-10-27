@@ -3,6 +3,7 @@
 import { LayersIcon } from "lucide-react";
 
 import { BASE_MAPS, type BaseMap } from "@/features/image/baseMap";
+import { MapToolbarPillButton } from "@/features/image/components/MapToolbarPillButton";
 import { Button } from "@/shared/components/ui/button";
 import {
     Popover,
@@ -35,17 +36,7 @@ export function MapLayerControl({
 }: MapLayerControlProps) {
     return (
         <Popover>
-            <PopoverTrigger
-                render={
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        aria-label={LABEL}
-                        title={LABEL}
-                        className="rounded-full px-3 shadow-sm"
-                    />
-                }
-            >
+            <PopoverTrigger render={<MapToolbarPillButton label={LABEL} />}>
                 <LayersIcon />
             </PopoverTrigger>
             <PopoverContent align="end" className="w-auto gap-4">

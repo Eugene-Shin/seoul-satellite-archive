@@ -32,6 +32,7 @@ import {
 import { bboxToExtent, extentToBbox } from "@/features/image/bbox";
 import { AreaToolbar } from "@/features/image/components/AreaToolbar";
 import { FootprintChooser } from "@/features/image/components/FootprintChooser";
+import { ImageAdminDialog } from "@/features/image/components/ImageAdminDialog";
 import { MapLayerControl } from "@/features/image/components/MapLayerControl";
 import { MeasureToolbar } from "@/features/image/components/MeasureToolbar";
 import { formatLatLon } from "@/features/image/coordinate";
@@ -558,6 +559,7 @@ export function ImageMap({
                     onBaseMapChange={changeBaseMap}
                     onFootprintFillScaleChange={setFootprintFillScale}
                 />
+                <ImageAdminDialog />
             </div>
             {chooser && (
                 <FootprintChooser
