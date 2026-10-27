@@ -14,7 +14,7 @@ import {
     CloudCoverColumnFilter,
     GsdColumnFilter,
 } from "@/features/image/admin/RangeColumnFilters";
-import { isSarOnly } from "@/features/image/filters/CloudCoverField";
+import { sensorTypesChange } from "@/features/image/filters/sensorTypesChange";
 import {
     acquiredAtText,
     cloudCoverText,
@@ -25,7 +25,6 @@ import {
     sensorTypeText,
 } from "@/features/image/imageText";
 import { useAdminImages, useFilterOptions } from "@/features/image/queries";
-import { isSortedBy } from "@/features/image/sortOptions";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import { Button } from "@/shared/components/ui/button";
@@ -230,18 +229,9 @@ function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
                         label: SENSOR_TYPE_NAMES[type],
                     }))}
                     selected={conditions.sensorTypes}
-                    onChange={(sensorTypes) => {
-                        const sarOnly = isSarOnly(sensorTypes);
-                        onChange({
-                            sensorTypes,
-                            cloudMax: sarOnly ? undefined : conditions.cloudMax,
-                            sorts:
-                                sarOnly &&
-                                isSortedBy(conditions.sorts?.[0], "cloudCover")
-                                    ? undefined
-                                    : conditions.sorts,
-                        });
-                    }}
+                    onChange={(sensorTypes) =>
+                        onChange(sensorTypesChange(conditions, sensorTypes))
+                    }
                 />
             </th>
             <th className={headerClass("acquiredAt")}>

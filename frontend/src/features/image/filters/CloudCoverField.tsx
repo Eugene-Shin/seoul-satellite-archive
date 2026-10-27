@@ -2,14 +2,9 @@
 
 import { useState } from "react";
 
-import type { SensorType } from "@/features/image/types";
 import { Slider } from "@/shared/components/ui/slider";
 
 const MAX_CLOUD_COVER = 100;
-
-export function isSarOnly(sensorTypes: SensorType[] | undefined): boolean {
-    return sensorTypes ? sensorTypes.every((type) => type === "SAR") : false;
-}
 
 type CloudCoverFieldProps = {
     value: number | undefined;

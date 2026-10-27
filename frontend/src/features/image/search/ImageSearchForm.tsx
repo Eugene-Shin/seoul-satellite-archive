@@ -1,12 +1,13 @@
 "use client";
 
 import { AcquiredDateField } from "@/features/image/filters/AcquiredDateField";
-import {
-    CloudCoverField,
-    isSarOnly,
-} from "@/features/image/filters/CloudCoverField";
+import { CloudCoverField } from "@/features/image/filters/CloudCoverField";
 import { emptyToUndefined } from "@/features/image/filters/emptyToUndefined";
 import { GsdRangeField } from "@/features/image/filters/GsdRangeField";
+import {
+    isSarOnly,
+    sensorTypesChange,
+} from "@/features/image/filters/sensorTypesChange";
 import {
     ORBIT_DIRECTION_NAMES,
     SENSOR_TYPE_NAMES,
@@ -103,15 +104,14 @@ export function ImageSearchForm({
                             ? conditions.sensorTypes[0]
                             : null
                     }
-                    onChange={(type) => {
-                        const sensorTypes = type ? [type] : undefined;
-                        onChange({
-                            sensorTypes,
-                            cloudMax: isSarOnly(sensorTypes)
-                                ? undefined
-                                : conditions.cloudMax,
-                        });
-                    }}
+                    onChange={(type) =>
+                        onChange(
+                            sensorTypesChange(
+                                conditions,
+                                type ? [type] : undefined,
+                            ),
+                        )
+                    }
                 />
                 <Select
                     label="궤도 방향"
@@ -167,6 +167,7 @@ export function ImageSearchForm({
 
             <SortField
                 value={conditions.sorts ?? []}
+                cloudCoverDisabled={isSarOnly(conditions.sensorTypes)}
                 onChange={(sorts) =>
                     onChange({ sorts: emptyToUndefined(sorts) })
                 }

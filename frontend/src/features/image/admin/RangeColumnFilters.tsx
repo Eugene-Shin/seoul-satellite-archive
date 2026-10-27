@@ -5,11 +5,9 @@ import {
     SortToggle,
 } from "@/features/image/admin/ColumnFilter";
 import { AcquiredDateField } from "@/features/image/filters/AcquiredDateField";
-import {
-    CloudCoverField,
-    isSarOnly,
-} from "@/features/image/filters/CloudCoverField";
+import { CloudCoverField } from "@/features/image/filters/CloudCoverField";
 import { GsdRangeField } from "@/features/image/filters/GsdRangeField";
+import { isSarOnly } from "@/features/image/filters/sensorTypesChange";
 import { useFilterOptions } from "@/features/image/queries";
 import { isSortedBy, sortDirectionOf } from "@/features/image/sortOptions";
 import type { ImageSearchParams } from "@/features/image/types";
