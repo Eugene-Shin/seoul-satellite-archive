@@ -1,7 +1,7 @@
 import { fromLonLat } from "ol/proj";
 import { describe, expect, it } from "vitest";
 
-import { bboxToExtent, extentToBbox, toBbox } from "@/features/image/bbox";
+import { bboxToExtent, extentToBbox, toBbox } from "@/features/image/map/bbox";
 
 describe("toBbox", () => {
     it("올바른 값은 소수점 6자리로 반올림해 돌려준다", () => {

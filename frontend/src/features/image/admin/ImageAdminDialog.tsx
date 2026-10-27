@@ -2,7 +2,7 @@
 
 import { SettingsIcon } from "lucide-react";
 
-import { MapToolbarPillButton } from "@/features/image/components/MapToolbarPillButton";
+import { MapToolbarPillButton } from "@/features/image/map/MapToolbarPillButton";
 import {
     Dialog,
     DialogContent,

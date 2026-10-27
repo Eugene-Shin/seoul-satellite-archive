@@ -3,8 +3,8 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useEffectEvent, useRef } from "react";
 
-import { ImageCard } from "@/features/image/components/ImageCard";
 import { useImageSearch } from "@/features/image/queries";
+import { ImageCard } from "@/features/image/search/ImageCard";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 

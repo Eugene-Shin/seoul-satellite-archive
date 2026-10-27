@@ -1,13 +1,13 @@
 "use client";
 
-import { AcquiredDateField } from "@/features/image/components/AcquiredDateField";
-import { CloudCoverField } from "@/features/image/components/CloudCoverField";
-import { GsdRangeField } from "@/features/image/components/GsdRangeField";
-import { SortField } from "@/features/image/components/SortField";
+import { AcquiredDateField } from "@/features/image/filters/AcquiredDateField";
+import { CloudCoverField } from "@/features/image/filters/CloudCoverField";
+import { GsdRangeField } from "@/features/image/filters/GsdRangeField";
 import {
     ORBIT_DIRECTION_NAMES,
     SENSOR_TYPE_NAMES,
 } from "@/features/image/imageText";
+import { SortField } from "@/features/image/search/SortField";
 import type {
     ImageFilterOptionsResponse,
     ImageSearchParams,

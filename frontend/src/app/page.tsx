@@ -1,7 +1,7 @@
 import { SatelliteIcon } from "lucide-react";
 import { Suspense } from "react";
 
-import { ImageSearch } from "@/features/image/components/ImageSearch";
+import { ImageSearch } from "@/features/image/search/ImageSearch";
 
 export default function Home() {
     return (

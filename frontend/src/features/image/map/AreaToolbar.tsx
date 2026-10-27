@@ -2,7 +2,7 @@
 
 import { ScanIcon, SquareDashedIcon, XIcon } from "lucide-react";
 
-import { MapToolbarButton } from "@/features/image/components/MapToolbarButton";
+import { MapToolbarButton } from "@/features/image/map/MapToolbarButton";
 
 type AreaToolbarProps = {
     drawing: boolean;

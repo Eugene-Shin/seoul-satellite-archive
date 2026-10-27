@@ -2,7 +2,7 @@
 
 import { LandPlotIcon, RulerIcon, XIcon } from "lucide-react";
 
-import { MapToolbarButton } from "@/features/image/components/MapToolbarButton";
+import { MapToolbarButton } from "@/features/image/map/MapToolbarButton";
 
 type MeasureToolbarProps = {
     measuring: boolean;

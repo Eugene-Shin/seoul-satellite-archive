@@ -2,8 +2,8 @@
 
 import { LayersIcon } from "lucide-react";
 
-import { BASE_MAPS, type BaseMap } from "@/features/image/baseMap";
-import { MapToolbarPillButton } from "@/features/image/components/MapToolbarPillButton";
+import { BASE_MAPS, type BaseMap } from "@/features/image/map/baseMap";
+import { MapToolbarPillButton } from "@/features/image/map/MapToolbarPillButton";
 import { Button } from "@/shared/components/ui/button";
 import {
     Popover,

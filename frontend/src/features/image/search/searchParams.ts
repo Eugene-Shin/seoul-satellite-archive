@@ -10,7 +10,7 @@ import {
 } from "nuqs";
 import { useState } from "react";
 
-import { toBbox } from "@/features/image/bbox";
+import { toBbox } from "@/features/image/map/bbox";
 import {
     imageSortSchema,
     orbitDirectionSchema,

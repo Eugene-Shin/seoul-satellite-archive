@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatArea, formatLength } from "@/features/image/measure";
+import { formatArea, formatLength } from "@/features/image/map/measure";
 
 describe("formatLength", () => {
     it("1 km 미만은 m 정수로", () => {

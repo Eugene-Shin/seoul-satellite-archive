@@ -6,7 +6,7 @@ import {
     pickImages,
     sameIds,
     toFeature,
-} from "@/features/image/footprint";
+} from "@/features/image/map/footprint";
 
 function footprint(lon: number, lat: number, size: number) {
     return {

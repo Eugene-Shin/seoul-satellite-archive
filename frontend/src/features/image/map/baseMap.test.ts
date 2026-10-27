@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { visibleVworldLayers } from "@/features/image/baseMap";
+import { visibleVworldLayers } from "@/features/image/map/baseMap";
 
 describe("visibleVworldLayers", () => {
     it("일반 지도는 테마에 따라 Base 또는 midnight", () => {
