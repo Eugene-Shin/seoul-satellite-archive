@@ -12,6 +12,7 @@ import {
 } from "@/features/image/admin/imageFormValues";
 import {
     createImage,
+    deleteImage,
     fetchFilterOptions,
     fetchImageDetail,
     searchImages,
@@ -97,6 +98,15 @@ export function useUpdateImage(imageId: number) {
     return useMutation({
         mutationFn: (form: ImageFormValues) =>
             updateImage(imageId, toWriteRequest(form)),
+        onSuccess: invalidateImages,
+    });
+}
+
+export function useDeleteImage(imageId: number) {
+    const invalidateImages = useInvalidateImages();
+
+    return useMutation({
+        mutationFn: () => deleteImage(imageId),
         onSuccess: invalidateImages,
     });
 }

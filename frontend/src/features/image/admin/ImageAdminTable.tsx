@@ -1,7 +1,7 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { FunnelXIcon, PencilIcon } from "lucide-react";
+import { FunnelXIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -10,6 +10,7 @@ import {
     toOptions,
 } from "@/features/image/admin/ColumnFilter";
 import { CreateImageDialog } from "@/features/image/admin/CreateImageDialog";
+import { DeleteImageDialog } from "@/features/image/admin/DeleteImageDialog";
 import { EditImageDialog } from "@/features/image/admin/EditImageDialog";
 import {
     AcquiredAtColumnFilter,
@@ -97,6 +98,9 @@ export function ImageAdminTable({
     } = useAdminImages(conditions);
     const scrollRef = useRef<HTMLDivElement | null>(null);
     const [editingImageId, setEditingImageId] = useState<number | null>(null);
+    const [deletingImage, setDeletingImage] = useState<ImageResponse | null>(
+        null,
+    );
 
     const images = data ? data.pages.flatMap((page) => page.content) : [];
 
@@ -198,6 +202,9 @@ export function ImageAdminTable({
                                 onEdit={() =>
                                     setEditingImageId(images[row.index].imageId)
                                 }
+                                onDelete={() =>
+                                    setDeletingImage(images[row.index])
+                                }
                             />
                         ))}
                         <tr aria-hidden style={{ height: paddingBottom }} />
@@ -207,6 +214,10 @@ export function ImageAdminTable({
             <EditImageDialog
                 imageId={editingImageId}
                 onClose={() => setEditingImageId(null)}
+            />
+            <DeleteImageDialog
+                image={deletingImage}
+                onClose={() => setDeletingImage(null)}
             />
         </div>
     );
@@ -310,9 +321,10 @@ function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
 type ImageAdminRowProps = {
     image: ImageResponse;
     onEdit: () => void;
+    onDelete: () => void;
 };
 
-function ImageAdminRow({ image, onEdit }: ImageAdminRowProps) {
+function ImageAdminRow({ image, onEdit, onDelete }: ImageAdminRowProps) {
     return (
         <tr className="border-b">
             <td className={cellClass("title")}>
@@ -343,6 +355,14 @@ function ImageAdminRow({ image, onEdit }: ImageAdminRowProps) {
                     onClick={onEdit}
                 >
                     <PencilIcon />
+                </IconButton>
+                <IconButton
+                    label={`${image.title} 삭제`}
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onDelete}
+                >
+                    <Trash2Icon />
                 </IconButton>
             </td>
         </tr>

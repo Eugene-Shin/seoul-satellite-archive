@@ -33,3 +33,7 @@ export function createImage(request: ImageWriteRequest) {
 export function updateImage(imageId: number, request: ImageWriteRequest) {
     return apiSend("PUT", `/api/images/${imageId}`, request);
 }
+
+export function deleteImage(imageId: number) {
+    return apiSend("DELETE", `/api/images/${imageId}`);
+}
