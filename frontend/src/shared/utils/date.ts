@@ -6,6 +6,12 @@ export function toKstDate(isoDateTime: string): string {
         .slice(0, 10);
 }
 
+export function toKstDateTimeLocal(isoDateTime: string): string {
+    return new Date(Date.parse(isoDateTime) + KST_OFFSET_MS)
+        .toISOString()
+        .slice(0, 23);
+}
+
 const KST_DATE_TIME_FORMAT = new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
     dateStyle: "medium",

@@ -1,8 +1,8 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { FunnelXIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { FunnelXIcon, PencilIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import {
     MultiColumnFilter,
@@ -10,6 +10,7 @@ import {
     toOptions,
 } from "@/features/image/admin/ColumnFilter";
 import { CreateImageDialog } from "@/features/image/admin/CreateImageDialog";
+import { EditImageDialog } from "@/features/image/admin/EditImageDialog";
 import {
     AcquiredAtColumnFilter,
     CloudCoverColumnFilter,
@@ -28,6 +29,7 @@ import {
 import { useAdminImages, useFilterOptions } from "@/features/image/queries";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
+import { IconButton } from "@/shared/components/IconButton";
 import { Button } from "@/shared/components/ui/button";
 
 // 한 줄 고정: py-2(16px) + text-sm 줄 높이(20px) + 아래 테두리(1px)
@@ -64,6 +66,10 @@ function headerClass(column: Column): string {
     return `${cellClass(column)} font-medium`;
 }
 
+// 아이콘 버튼(24px)이 들어가도 행 높이(ROW_HEIGHT)가 같게 py-1.5
+const ACTIONS_CELL =
+    "sticky right-0 border-l px-3 py-1.5 text-center whitespace-nowrap";
+
 const PAID_OPTIONS = [
     { value: true, label: "유료" },
     { value: false, label: "무료" },
@@ -90,6 +96,7 @@ export function ImageAdminTable({
         refetch,
     } = useAdminImages(conditions);
     const scrollRef = useRef<HTMLDivElement | null>(null);
+    const [editingImageId, setEditingImageId] = useState<number | null>(null);
 
     const images = data ? data.pages.flatMap((page) => page.content) : [];
 
@@ -167,10 +174,11 @@ export function ImageAdminTable({
             </div>
             <div
                 ref={scrollRef}
-                className="min-h-0 flex-1 overflow-auto rounded-lg border"
+                className="isolate min-h-0 flex-1 overflow-auto rounded-lg border"
             >
                 <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-muted">
+                    {/* 고정된 관리 칸이 머리 위로 그려지지 않게. 스크롤 영역이 isolate라 이 표 안에서만 쓰는 순서 */}
+                    <thead className="sticky top-0 z-10 bg-muted">
                         <ImageAdminHeader
                             conditions={conditions}
                             onChange={(changes) =>
@@ -187,12 +195,19 @@ export function ImageAdminTable({
                             <ImageAdminRow
                                 key={images[row.index].imageId}
                                 image={images[row.index]}
+                                onEdit={() =>
+                                    setEditingImageId(images[row.index].imageId)
+                                }
                             />
                         ))}
                         <tr aria-hidden style={{ height: paddingBottom }} />
                     </tbody>
                 </table>
             </div>
+            <EditImageDialog
+                imageId={editingImageId}
+                onClose={() => setEditingImageId(null)}
+            />
         </div>
     );
 }
@@ -284,15 +299,20 @@ function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
                     onChange={(isPaid) => onChange({ isPaid })}
                 />
             </th>
+            {/* 자기도 sticky라 위쪽 고정을 따로 줘야 세로 스크롤에 안 밀린다 */}
+            <th className={`${ACTIONS_CELL} top-0 bg-muted font-medium`}>
+                관리
+            </th>
         </tr>
     );
 }
 
 type ImageAdminRowProps = {
     image: ImageResponse;
+    onEdit: () => void;
 };
 
-function ImageAdminRow({ image }: ImageAdminRowProps) {
+function ImageAdminRow({ image, onEdit }: ImageAdminRowProps) {
     return (
         <tr className="border-b">
             <td className={cellClass("title")}>
@@ -314,6 +334,16 @@ function ImageAdminRow({ image }: ImageAdminRowProps) {
             <td className={cellClass("provider")}>{image.provider.name}</td>
             <td className={cellClass("isPaid")}>
                 {image.provider.isPaid ? "유료" : "무료"}
+            </td>
+            <td className={`${ACTIONS_CELL} bg-popover`}>
+                <IconButton
+                    label={`${image.title} 수정`}
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onEdit}
+                >
+                    <PencilIcon />
+                </IconButton>
             </td>
         </tr>
     );

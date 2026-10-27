@@ -4,7 +4,11 @@ import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { ImageForm } from "@/features/image/admin/ImageForm";
+import {
+    IMAGE_FORM_DIALOG_CLASS,
+    ImageForm,
+} from "@/features/image/admin/ImageForm";
+import { EMPTY_IMAGE_FORM } from "@/features/image/admin/imageFormValues";
 import { useCreateImage } from "@/features/image/queries";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -33,11 +37,13 @@ export function CreateImageDialog() {
                 <PlusIcon />
                 추가
             </DialogTrigger>
-            <DialogContent className="flex max-h-[80vh] flex-col shadow-2xl sm:max-w-2xl">
+            <DialogContent className={IMAGE_FORM_DIALOG_CLASS}>
                 <DialogHeader>
                     <DialogTitle>영상 추가</DialogTitle>
                 </DialogHeader>
                 <ImageForm
+                    initialValues={EMPTY_IMAGE_FORM}
+                    submitLabel="등록"
                     pending={createImage.isPending}
                     error={createImage.error}
                     onSubmit={(form) =>

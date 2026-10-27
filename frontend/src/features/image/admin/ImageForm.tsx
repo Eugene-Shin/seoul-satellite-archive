@@ -3,8 +3,8 @@
 import { type ReactNode, useId, useState } from "react";
 
 import {
-    EMPTY_IMAGE_FORM,
     type ImageFormValues,
+    isSameForm,
     missingRequiredFields,
     type RequiredField,
 } from "@/features/image/admin/imageFormValues";
@@ -31,16 +31,31 @@ import { Textarea } from "@/shared/components/ui/textarea";
 const FOCUSABLE =
     '[data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"]';
 
+export const IMAGE_FORM_DIALOG_CLASS =
+    "flex max-h-[80vh] flex-col shadow-2xl sm:max-w-2xl";
+
+// 기존 데이터에 밀리초가 있어서, 수정 후 저장해도 그대로 남게
+const MILLISECOND_STEP = 0.001;
+
 type ImageFormProps = {
+    initialValues: ImageFormValues;
+    submitLabel: string;
     pending: boolean;
     error: unknown;
     onSubmit: (form: ImageFormValues) => void;
 };
 
-export function ImageForm({ pending, error, onSubmit }: ImageFormProps) {
+export function ImageForm({
+    initialValues,
+    submitLabel,
+    pending,
+    error,
+    onSubmit,
+}: ImageFormProps) {
     const { data: options } = useFilterOptions();
-    const [form, setForm] = useState(EMPTY_IMAGE_FORM);
-    // 한 번 [등록]을 누른 뒤부터 빈 필수 칸을 표시한다
+    const [form, setForm] = useState(initialValues);
+    const unchanged = isSameForm(form, initialValues);
+    // 한 번 제출을 누른 뒤부터 빈 필수 칸을 표시한다
     const [submitted, setSubmitted] = useState(false);
     const satelliteListId = useId();
 
@@ -175,6 +190,7 @@ export function ImageForm({ pending, error, onSubmit }: ImageFormProps) {
                     >
                         <Input
                             type="datetime-local"
+                            step={MILLISECOND_STEP}
                             required
                             aria-invalid={invalid("acquiredAt")}
                             value={form.acquiredAt}
@@ -244,6 +260,7 @@ export function ImageForm({ pending, error, onSubmit }: ImageFormProps) {
                     <Field label="원본 갱신 일시" hint="한국 시간(KST) 기준">
                         <Input
                             type="datetime-local"
+                            step={MILLISECOND_STEP}
                             value={form.sourceUpdatedAt}
                             onChange={(e) =>
                                 change({ sourceUpdatedAt: e.target.value })
@@ -297,8 +314,8 @@ export function ImageForm({ pending, error, onSubmit }: ImageFormProps) {
                 <DialogClose render={<Button variant="outline" />}>
                     취소
                 </DialogClose>
-                <Button type="submit" disabled={pending}>
-                    {pending ? "등록 중..." : "등록"}
+                <Button type="submit" disabled={pending || unchanged}>
+                    {pending ? `${submitLabel} 중...` : submitLabel}
                 </Button>
             </DialogFooter>
         </form>

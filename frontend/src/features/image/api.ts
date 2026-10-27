@@ -1,4 +1,5 @@
 import {
+    imageDetailSchema,
     imageFilterOptionsSchema,
     imageSearchResultSchema,
 } from "@/features/image/schemas";
@@ -21,6 +22,14 @@ export function searchImages(params: ImageSearchParams, signal?: AbortSignal) {
     return apiGet("/api/images", imageSearchResultSchema, params, signal);
 }
 
+export function fetchImageDetail(imageId: number, signal?: AbortSignal) {
+    return apiGet(`/api/images/${imageId}`, imageDetailSchema, {}, signal);
+}
+
 export function createImage(request: ImageWriteRequest) {
     return apiSend("POST", "/api/images", request);
+}
+
+export function updateImage(imageId: number, request: ImageWriteRequest) {
+    return apiSend("PUT", `/api/images/${imageId}`, request);
 }

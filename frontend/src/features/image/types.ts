@@ -1,6 +1,7 @@
 import type { z } from "zod";
 
 import type {
+    imageDetailSchema,
     imageFilterOptionsSchema,
     imageResponseSchema,
     imageSortSchema,
@@ -19,6 +20,8 @@ export type Provider = z.infer<typeof providerSchema>;
 export type MultiPolygon = z.infer<typeof multiPolygonSchema>;
 
 export type ImageResponse = z.infer<typeof imageResponseSchema>;
+
+export type ImageDetailResponse = z.infer<typeof imageDetailSchema>;
 
 export type ImageFilterOptionsResponse = z.infer<
     typeof imageFilterOptionsSchema
