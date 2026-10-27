@@ -2,6 +2,7 @@
 
 import { AcquiredDateField } from "@/features/image/filters/AcquiredDateField";
 import { CloudCoverField } from "@/features/image/filters/CloudCoverField";
+import { emptyToUndefined } from "@/features/image/filters/emptyToUndefined";
 import { GsdRangeField } from "@/features/image/filters/GsdRangeField";
 import {
     ORBIT_DIRECTION_NAMES,
@@ -16,10 +17,6 @@ import type {
 import { MultiSelect } from "@/shared/components/MultiSelect";
 import { Select } from "@/shared/components/Select";
 import { Input } from "@/shared/components/ui/input";
-
-function emptyToUndefined<T>(values: T[]): T[] | undefined {
-    return values.length > 0 ? values : undefined;
-}
 
 function isSarOnly(sensorTypes: SensorType[] | undefined): boolean {
     return sensorTypes ? sensorTypes.every((type) => type === "SAR") : false;

@@ -1,38 +1,76 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { FunnelXIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
+import {
+    MultiColumnFilter,
+    SelectColumnFilter,
+    toOptions,
+} from "@/features/image/admin/ColumnFilter";
 import {
     acquiredAtText,
     cloudCoverText,
     gsdText,
+    ORBIT_DIRECTION_NAMES,
     orbitDirectionText,
+    SENSOR_TYPE_NAMES,
     sensorTypeText,
 } from "@/features/image/imageText";
-import { useAdminImages } from "@/features/image/queries";
-import type { ImageResponse } from "@/features/image/types";
+import { useAdminImages, useFilterOptions } from "@/features/image/queries";
+import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
-
-const COLUMNS = [
-    "제목",
-    "위성",
-    "센서",
-    "유형",
-    "촬영일시",
-    "해상도",
-    "구름량",
-    "궤도",
-    "제공 기관",
-    "유료",
-];
+import { Button } from "@/shared/components/ui/button";
 
 // 한 줄 고정: py-2(16px) + text-sm 줄 높이(20px) + 아래 테두리(1px)
 const ROW_HEIGHT = 37;
 const CELL = "px-3 py-2 whitespace-nowrap";
-const NUMBER_CELL = `${CELL} text-right tabular-nums`;
 
-export function ImageAdminTable() {
+// 글자는 왼쪽, 숫자는 오른쪽, 짧은 구분값은 가운데. 머리 칸과 값 칸이 같은 정렬을 쓴다
+const ALIGN = {
+    text: "text-left",
+    number: "text-right tabular-nums",
+    short: "text-center",
+};
+
+const COLUMN_ALIGN = {
+    title: ALIGN.text,
+    satellite: ALIGN.text,
+    instruments: ALIGN.text,
+    sensorType: ALIGN.short,
+    acquiredAt: ALIGN.text,
+    gsd: ALIGN.number,
+    cloudCover: ALIGN.number,
+    orbitDirection: ALIGN.short,
+    provider: ALIGN.text,
+    isPaid: ALIGN.short,
+};
+
+type Column = keyof typeof COLUMN_ALIGN;
+
+function cellClass(column: Column): string {
+    return `${CELL} ${COLUMN_ALIGN[column]}`;
+}
+
+function headerClass(column: Column): string {
+    return `${cellClass(column)} font-medium`;
+}
+
+const PAID_OPTIONS = [
+    { value: true, label: "유료" },
+    { value: false, label: "무료" },
+];
+
+type ImageAdminTableProps = {
+    conditions: ImageSearchParams;
+    onConditionsChange: (conditions: ImageSearchParams) => void;
+};
+
+export function ImageAdminTable({
+    conditions,
+    onConditionsChange,
+}: ImageAdminTableProps) {
     const {
         data,
         error,
@@ -42,7 +80,7 @@ export function ImageAdminTable() {
         isFetching,
         isFetchNextPageError,
         refetch,
-    } = useAdminImages();
+    } = useAdminImages(conditions);
     const scrollRef = useRef<HTMLDivElement | null>(null);
 
     const images = data ? data.pages.flatMap((page) => page.content) : [];
@@ -91,32 +129,46 @@ export function ImageAdminTable() {
     }
 
     const status = statusMessage();
+    const filtered = Object.values(conditions).some(
+        (value) => value !== undefined,
+    );
 
     return (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
             <ErrorMessage error={error} onRetry={retry} />
-            <p
-                hidden={status === null}
-                className="text-sm text-muted-foreground"
-            >
-                {status}
-            </p>
+            <div className="flex items-center justify-between gap-3">
+                <p
+                    hidden={status === null}
+                    className="text-sm text-muted-foreground"
+                >
+                    {status}
+                </p>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!filtered}
+                    onClick={() => onConditionsChange({})}
+                    className="ml-auto"
+                >
+                    <FunnelXIcon />
+                    필터 초기화
+                </Button>
+            </div>
             <div
                 ref={scrollRef}
                 className="min-h-0 flex-1 overflow-auto rounded-lg border"
             >
                 <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-muted">
-                        <tr>
-                            {COLUMNS.map((column) => (
-                                <th
-                                    key={column}
-                                    className={`${CELL} text-left font-medium`}
-                                >
-                                    {column}
-                                </th>
-                            ))}
-                        </tr>
+                        <ImageAdminHeader
+                            conditions={conditions}
+                            onChange={(changes) =>
+                                onConditionsChange({
+                                    ...conditions,
+                                    ...changes,
+                                })
+                            }
+                        />
                     </thead>
                     <tbody>
                         <tr aria-hidden style={{ height: paddingTop }} />
@@ -134,6 +186,83 @@ export function ImageAdminTable() {
     );
 }
 
+type ImageAdminHeaderProps = {
+    conditions: ImageSearchParams;
+    onChange: (changes: Partial<ImageSearchParams>) => void;
+};
+
+function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
+    const { data: options } = useFilterOptions();
+
+    return (
+        <tr>
+            <th className={headerClass("title")}>제목</th>
+            <th className={headerClass("satellite")}>
+                <MultiColumnFilter
+                    label="위성"
+                    options={toOptions(options?.satellites)}
+                    selected={conditions.satellites}
+                    onChange={(satellites) => onChange({ satellites })}
+                />
+            </th>
+            <th className={headerClass("instruments")}>
+                <MultiColumnFilter
+                    label="센서"
+                    options={toOptions(options?.instruments)}
+                    selected={conditions.instruments}
+                    onChange={(instruments) => onChange({ instruments })}
+                />
+            </th>
+            <th className={headerClass("sensorType")}>
+                <MultiColumnFilter
+                    label="유형"
+                    options={(options?.sensorTypes ?? []).map((type) => ({
+                        value: type,
+                        label: SENSOR_TYPE_NAMES[type],
+                    }))}
+                    selected={conditions.sensorTypes}
+                    onChange={(sensorTypes) => onChange({ sensorTypes })}
+                />
+            </th>
+            <th className={headerClass("acquiredAt")}>촬영일시</th>
+            <th className={headerClass("gsd")}>해상도</th>
+            <th className={headerClass("cloudCover")}>구름량</th>
+            <th className={headerClass("orbitDirection")}>
+                <SelectColumnFilter
+                    label="궤도"
+                    options={(options?.orbitDirections ?? []).map(
+                        (direction) => ({
+                            value: direction,
+                            label: ORBIT_DIRECTION_NAMES[direction],
+                        }),
+                    )}
+                    value={conditions.orbitDirection}
+                    onChange={(orbitDirection) => onChange({ orbitDirection })}
+                />
+            </th>
+            <th className={headerClass("provider")}>
+                <MultiColumnFilter
+                    label="제공 기관"
+                    options={(options?.providers ?? []).map((provider) => ({
+                        value: provider.code,
+                        label: provider.name,
+                    }))}
+                    selected={conditions.providers}
+                    onChange={(providers) => onChange({ providers })}
+                />
+            </th>
+            <th className={headerClass("isPaid")}>
+                <SelectColumnFilter
+                    label="유료 여부"
+                    options={PAID_OPTIONS}
+                    value={conditions.isPaid}
+                    onChange={(isPaid) => onChange({ isPaid })}
+                />
+            </th>
+        </tr>
+    );
+}
+
 type ImageAdminRowProps = {
     image: ImageResponse;
 };
@@ -141,22 +270,26 @@ type ImageAdminRowProps = {
 function ImageAdminRow({ image }: ImageAdminRowProps) {
     return (
         <tr className="border-b">
-            <td className={CELL}>
+            <td className={cellClass("title")}>
                 <span className="block max-w-60 truncate" title={image.title}>
                     {image.title}
                 </span>
             </td>
-            <td className={CELL}>{image.satellite}</td>
-            <td className={CELL}>
+            <td className={cellClass("satellite")}>{image.satellite}</td>
+            <td className={cellClass("instruments")}>
                 {image.instruments ? image.instruments.join(", ") : "-"}
             </td>
-            <td className={CELL}>{sensorTypeText(image)}</td>
-            <td className={CELL}>{acquiredAtText(image)}</td>
-            <td className={NUMBER_CELL}>{gsdText(image)}</td>
-            <td className={NUMBER_CELL}>{cloudCoverText(image)}</td>
-            <td className={CELL}>{orbitDirectionText(image)}</td>
-            <td className={CELL}>{image.provider.name}</td>
-            <td className={CELL}>{image.provider.isPaid ? "유료" : "무료"}</td>
+            <td className={cellClass("sensorType")}>{sensorTypeText(image)}</td>
+            <td className={cellClass("acquiredAt")}>{acquiredAtText(image)}</td>
+            <td className={cellClass("gsd")}>{gsdText(image)}</td>
+            <td className={cellClass("cloudCover")}>{cloudCoverText(image)}</td>
+            <td className={cellClass("orbitDirection")}>
+                {orbitDirectionText(image)}
+            </td>
+            <td className={cellClass("provider")}>{image.provider.name}</td>
+            <td className={cellClass("isPaid")}>
+                {image.provider.isPaid ? "유료" : "무료"}
+            </td>
         </tr>
     );
 }

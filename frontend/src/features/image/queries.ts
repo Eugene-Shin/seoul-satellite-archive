@@ -33,11 +33,14 @@ export function useImageSearch(
 
 const ADMIN_PAGE_SIZE = 100;
 
-export function useAdminImages() {
+export function useAdminImages(conditions: ImageSearchParams) {
     return useInfiniteQuery({
-        queryKey: ["image", "admin"],
+        queryKey: ["image", "admin", conditions],
         queryFn: ({ pageParam, signal }) =>
-            searchImages({ cursor: pageParam, size: ADMIN_PAGE_SIZE }, signal),
+            searchImages(
+                { ...conditions, cursor: pageParam, size: ADMIN_PAGE_SIZE },
+                signal,
+            ),
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
