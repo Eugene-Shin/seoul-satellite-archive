@@ -23,24 +23,24 @@ import XYZ from "ol/source/XYZ";
 import View from "ol/View";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
+import { ImageAdminDialog } from "@/features/image/admin/ImageAdminDialog";
+import { AreaToolbar } from "@/features/image/map/AreaToolbar";
 import {
     useStoredBaseMap,
     visibleVworldLayers,
     VWORLD_LAYER_NAMES,
     type VworldLayer,
-} from "@/features/image/baseMap";
-import { bboxToExtent, extentToBbox } from "@/features/image/bbox";
-import { AreaToolbar } from "@/features/image/components/AreaToolbar";
-import { FootprintChooser } from "@/features/image/components/FootprintChooser";
-import { MapLayerControl } from "@/features/image/components/MapLayerControl";
-import { MeasureToolbar } from "@/features/image/components/MeasureToolbar";
-import { formatLatLon } from "@/features/image/coordinate";
+} from "@/features/image/map/baseMap";
+import { bboxToExtent, extentToBbox } from "@/features/image/map/bbox";
+import { formatLatLon } from "@/features/image/map/coordinate";
 import {
     largerFirst,
     pickImages,
     sameIds,
     toFeature,
-} from "@/features/image/footprint";
+} from "@/features/image/map/footprint";
+import { FootprintChooser } from "@/features/image/map/FootprintChooser";
+import { MapLayerControl } from "@/features/image/map/MapLayerControl";
 import {
     createAreaStyle,
     createFootprintStyle,
@@ -48,7 +48,8 @@ import {
     createMeasureStyle,
     createSelectedStyle,
     prefersReducedMotion,
-} from "@/features/image/mapStyles";
+} from "@/features/image/map/mapStyles";
+import { MeasureToolbar } from "@/features/image/map/MeasureToolbar";
 import type { Bbox, ImageResponse, MapTool } from "@/features/image/types";
 
 type ImageMapProps = {
@@ -558,6 +559,7 @@ export function ImageMap({
                     onBaseMapChange={changeBaseMap}
                     onFootprintFillScaleChange={setFootprintFillScale}
                 />
+                <ImageAdminDialog />
             </div>
             {chooser && (
                 <FootprintChooser

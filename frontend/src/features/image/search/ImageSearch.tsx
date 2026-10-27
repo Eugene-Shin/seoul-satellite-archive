@@ -4,22 +4,22 @@ import { Undo2Icon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
-import { ImageDetail } from "@/features/image/components/ImageDetail";
-import { ImageResults } from "@/features/image/components/ImageResults";
+import { pickImages } from "@/features/image/map/footprint";
+import { useFilterOptions, useImageSearch } from "@/features/image/queries";
+import { ImageDetail } from "@/features/image/search/ImageDetail";
+import { ImageResults } from "@/features/image/search/ImageResults";
 import {
     IMAGE_SEARCH_FORM_ID,
     ImageSearchForm,
-} from "@/features/image/components/ImageSearchForm";
-import { pickImages } from "@/features/image/footprint";
-import { useFilterOptions, useImageSearch } from "@/features/image/queries";
-import { useCurrentSearch } from "@/features/image/searchParams";
+} from "@/features/image/search/ImageSearchForm";
+import { useCurrentSearch } from "@/features/image/search/searchParams";
+import { useSearchScopedState } from "@/features/image/search/useSearchScopedState";
 import type {
     Bbox,
     ImageResponse,
     ImageSearchParams,
     MapTool,
 } from "@/features/image/types";
-import { useSearchScopedState } from "@/features/image/useSearchScopedState";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import { IconButton } from "@/shared/components/IconButton";
 import { Button } from "@/shared/components/ui/button";
@@ -32,7 +32,7 @@ import {
 
 const ImageMap = dynamic(
     () =>
-        import("@/features/image/components/ImageMap").then(
+        import("@/features/image/map/ImageMap").then(
             (module) => module.ImageMap,
         ),
     { ssr: false },

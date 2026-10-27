@@ -1,6 +1,7 @@
 import type { z } from "zod";
 
 import type {
+    imageDetailSchema,
     imageFilterOptionsSchema,
     imageResponseSchema,
     imageSortSchema,
@@ -20,6 +21,8 @@ export type MultiPolygon = z.infer<typeof multiPolygonSchema>;
 
 export type ImageResponse = z.infer<typeof imageResponseSchema>;
 
+export type ImageDetailResponse = z.infer<typeof imageDetailSchema>;
+
 export type ImageFilterOptionsResponse = z.infer<
     typeof imageFilterOptionsSchema
 >;
@@ -29,6 +32,25 @@ export type GsdRange = ImageFilterOptionsResponse["gsdRange"];
 export type AcquiredRange = ImageFilterOptionsResponse["acquiredRange"];
 
 export type ImageSort = z.infer<typeof imageSortSchema>;
+
+// 등록·수정 요청 본문. 보내기만 해서 zod 스키마 없이 타입만 둔다
+export type ImageWriteRequest = {
+    providerCode: string;
+    sourceId: string;
+    title: string;
+    satellite: string;
+    instruments: string[] | null;
+    sensorType: SensorType;
+    acquiredAt: string;
+    gsdMeters: number | null;
+    cloudCover: number | null;
+    orbitDirection: OrbitDirection | null;
+    footprint: unknown;
+    url: string;
+    downloadUrls: string[];
+    sourceUpdatedAt: string | null;
+    rawMetadata: unknown;
+};
 
 // 지도 도구는 한 번에 하나만: 영역 그리기 / 거리 측정 / 면적 측정
 export type MapTool = "area" | "distance" | "surface";

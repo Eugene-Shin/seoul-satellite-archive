@@ -1,29 +1,25 @@
 "use client";
 
-import { AcquiredDateField } from "@/features/image/components/AcquiredDateField";
-import { CloudCoverField } from "@/features/image/components/CloudCoverField";
-import { GsdRangeField } from "@/features/image/components/GsdRangeField";
-import { SortField } from "@/features/image/components/SortField";
+import { AcquiredDateField } from "@/features/image/filters/AcquiredDateField";
+import { CloudCoverField } from "@/features/image/filters/CloudCoverField";
+import { emptyToUndefined } from "@/features/image/filters/emptyToUndefined";
+import { GsdRangeField } from "@/features/image/filters/GsdRangeField";
+import {
+    isSarOnly,
+    sensorTypesChange,
+} from "@/features/image/filters/sensorTypesChange";
 import {
     ORBIT_DIRECTION_NAMES,
     SENSOR_TYPE_NAMES,
 } from "@/features/image/imageText";
+import { SortField } from "@/features/image/search/SortField";
 import type {
     ImageFilterOptionsResponse,
     ImageSearchParams,
-    SensorType,
 } from "@/features/image/types";
 import { MultiSelect } from "@/shared/components/MultiSelect";
 import { Select } from "@/shared/components/Select";
 import { Input } from "@/shared/components/ui/input";
-
-function emptyToUndefined<T>(values: T[]): T[] | undefined {
-    return values.length > 0 ? values : undefined;
-}
-
-function isSarOnly(sensorTypes: SensorType[] | undefined): boolean {
-    return sensorTypes ? sensorTypes.every((type) => type === "SAR") : false;
-}
 
 // 검색 버튼은 두 탭이 함께 쓰려고 폼 밖에 있어서, 이 id로 폼에 연결한다
 export const IMAGE_SEARCH_FORM_ID = "image-search-form";
@@ -108,15 +104,14 @@ export function ImageSearchForm({
                             ? conditions.sensorTypes[0]
                             : null
                     }
-                    onChange={(type) => {
-                        const sensorTypes = type ? [type] : undefined;
-                        onChange({
-                            sensorTypes,
-                            cloudMax: isSarOnly(sensorTypes)
-                                ? undefined
-                                : conditions.cloudMax,
-                        });
-                    }}
+                    onChange={(type) =>
+                        onChange(
+                            sensorTypesChange(
+                                conditions,
+                                type ? [type] : undefined,
+                            ),
+                        )
+                    }
                 />
                 <Select
                     label="궤도 방향"
@@ -172,6 +167,7 @@ export function ImageSearchForm({
 
             <SortField
                 value={conditions.sorts ?? []}
+                cloudCoverDisabled={isSarOnly(conditions.sensorTypes)}
                 onChange={(sorts) =>
                     onChange({ sorts: emptyToUndefined(sorts) })
                 }

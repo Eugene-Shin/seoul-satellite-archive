@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatLatLon } from "@/features/image/coordinate";
+import { formatLatLon } from "@/features/image/map/coordinate";
 
 describe("formatLatLon", () => {
     it("[경도, 위도]를 위도 먼저, 소수 5자리로", () => {

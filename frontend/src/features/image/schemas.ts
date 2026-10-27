@@ -40,6 +40,25 @@ export const imageResponseSchema = z.object({
     sourceUpdatedAt: z.iso.datetime().nullable(),
 });
 
+export const imageDetailSchema = z.object({
+    imageId: z.number(),
+    providerCode: z.string(),
+    sourceId: z.string(),
+    title: z.string(),
+    satellite: z.string(),
+    instruments: z.array(z.string()).nullable(),
+    sensorType: sensorTypeSchema,
+    acquiredAt: z.iso.datetime(),
+    gsdMeters: z.number().nullable(),
+    cloudCover: z.number().nullable(),
+    orbitDirection: orbitDirectionSchema.nullable(),
+    footprint: multiPolygonSchema,
+    url: z.string(),
+    downloadUrls: z.array(z.string()),
+    sourceUpdatedAt: z.iso.datetime().nullable(),
+    rawMetadata: z.record(z.string(), z.unknown()),
+});
+
 function rangeSchema<T extends z.ZodType>(valueSchema: T) {
     return z.object({
         min: valueSchema.nullable(),

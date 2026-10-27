@@ -6,7 +6,7 @@ import { getArea, getLength } from "ol/sphere";
 import { Circle as CircleStyle, Fill, Stroke, Style, Text } from "ol/style";
 import type { StyleFunction } from "ol/style/Style";
 
-import { formatArea, formatLength } from "@/features/image/measure";
+import { formatArea, formatLength } from "@/features/image/map/measure";
 
 type VectorStyleOptions = {
     colorVariable: string;

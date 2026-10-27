@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { ApiError, apiGet } from "@/shared/api/client";
+import { ApiError, apiGet, apiSend } from "@/shared/api/client";
 
 const itemSchema = z.object({ id: z.number() });
 
@@ -149,5 +149,66 @@ describe("apiGet", () => {
         await expect(
             apiGet("/x", itemSchema, {}, controller.signal),
         ).rejects.toBe(abortError);
+    });
+});
+
+describe("apiSend", () => {
+    it("본문을 JSON으로 보낸다", async () => {
+        const fetchMock = mockFetch(
+            jsonResponse(
+                { success: true, code: "OK", message: "", data: null },
+                201,
+            ),
+        );
+
+        await apiSend("POST", "/api/images", { title: "서울" });
+
+        const [url, init] = fetchMock.mock.calls[0];
+        expect(url.toString()).toBe("http://api.test/api/images");
+        expect(init).toEqual({
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: '{"title":"서울"}',
+        });
+    });
+
+    it("본문이 없으면 헤더와 본문도 없다", async () => {
+        const fetchMock = mockFetch(
+            jsonResponse({
+                success: true,
+                code: "OK",
+                message: "",
+                data: null,
+            }),
+        );
+
+        await apiSend("DELETE", "/api/images/1");
+
+        expect(fetchMock.mock.calls[0][1]).toEqual({
+            method: "DELETE",
+            headers: undefined,
+            body: undefined,
+        });
+    });
+
+    it("서버 검증 실패면 항목별 사유를 담은 ApiError", async () => {
+        mockFetch(
+            jsonResponse(
+                {
+                    success: false,
+                    code: "INVALID_PARAM",
+                    message: "입력값이 올바르지 않습니다.",
+                    data: null,
+                    errorDetail: ["title: 30자 이하"],
+                },
+                400,
+            ),
+        );
+
+        const error = await catchError(
+            apiSend("PUT", "/api/images/1", { title: "" }),
+        );
+        expect(error.status).toBe(400);
+        expect(error.details).toEqual(["title: 30자 이하"]);
     });
 });

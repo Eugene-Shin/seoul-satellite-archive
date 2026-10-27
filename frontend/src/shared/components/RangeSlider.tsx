@@ -1,6 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 import { Slider } from "@/shared/components/ui/slider";
+
+type Range = [low: number, high: number];
 
 type RangeSliderProps = {
     label: string;
@@ -8,8 +12,8 @@ type RangeSliderProps = {
     max: number;
     unit: string;
     step: number;
-    value: [number, number];
-    onChange: (value: [number, number]) => void;
+    value: Range;
+    onChange: (value: Range) => void;
 };
 
 export function RangeSlider({
@@ -21,7 +25,10 @@ export function RangeSlider({
     value,
     onChange,
 }: RangeSliderProps) {
-    const [low, high] = value;
+    // 끄는 동안의 값. 놓을 때만 onChange로 알려 조회가 한 번만 일어나게 한다
+    const [dragging, setDragging] = useState<Range | null>(null);
+    const current = dragging ?? value;
+    const [low, high] = current;
 
     function thumbLabel(index: number): string {
         return `${label} ${index === 0 ? "최소값" : "최대값"}`;
@@ -36,8 +43,12 @@ export function RangeSlider({
                 min={min}
                 max={max}
                 step={step}
-                value={value}
-                onValueChange={onChange}
+                value={current}
+                onValueChange={(next) => setDragging(next)}
+                onValueCommitted={(next) => {
+                    onChange(next);
+                    setDragging(null);
+                }}
                 getAriaLabel={thumbLabel}
             />
         </fieldset>

@@ -6,6 +6,7 @@ import { useSortable } from "@dnd-kit/react/sortable";
 import { ArrowUpIcon, GripVerticalIcon, XIcon } from "lucide-react";
 
 import { imageSortSchema } from "@/features/image/schemas";
+import { isSortedBy, SORT_OPTIONS } from "@/features/image/sortOptions";
 import type { ImageSort } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
 import { Button } from "@/shared/components/ui/button";
@@ -17,13 +18,6 @@ import {
     SelectValue,
 } from "@/shared/components/ui/select";
 
-const SORT_OPTIONS: Record<ImageSort, { label: string; field: string }> = {
-    ACQUIRED_AT_DESC: { label: "촬영일 최신순", field: "acquiredAt" },
-    ACQUIRED_AT_ASC: { label: "촬영일 오래된순", field: "acquiredAt" },
-    CLOUD_COVER_ASC: { label: "구름량 적은순", field: "cloudCover" },
-    CLOUD_COVER_DESC: { label: "구름량 많은순", field: "cloudCover" },
-};
-
 const SORTS = imageSortSchema.options;
 
 const SORT_ITEMS = SORTS.map((sort) => ({
@@ -33,12 +27,20 @@ const SORT_ITEMS = SORTS.map((sort) => ({
 
 type SortFieldProps = {
     value: ImageSort[];
+    cloudCoverDisabled: boolean;
     onChange: (sorts: ImageSort[]) => void;
 };
 
-export function SortField({ value, onChange }: SortFieldProps) {
+export function SortField({
+    value,
+    cloudCoverDisabled,
+    onChange,
+}: SortFieldProps) {
+    const allowedSorts = cloudCoverDisabled
+        ? SORTS.filter((sort) => !isSortedBy(sort, "cloudCover"))
+        : SORTS;
     const usedFields = value.map((sort) => SORT_OPTIONS[sort].field);
-    const nextSort = SORTS.find(
+    const nextSort = allowedSorts.find(
         (sort) => !usedFields.includes(SORT_OPTIONS[sort].field),
     );
 
@@ -64,7 +66,7 @@ export function SortField({ value, onChange }: SortFieldProps) {
 
     function availableSorts(current: ImageSort): ImageSort[] {
         const currentField = SORT_OPTIONS[current].field;
-        return SORTS.filter((option) => {
+        return allowedSorts.filter((option) => {
             const field = SORT_OPTIONS[option].field;
             return field === currentField || !usedFields.includes(field);
         });

@@ -13,7 +13,7 @@ import { Button } from "@/shared/components/ui/button";
 
 type ErrorMessageProps = {
     error: unknown;
-    onRetry: () => void;
+    onRetry?: () => void;
 };
 
 export function ErrorMessage({ error, onRetry }: ErrorMessageProps) {
@@ -41,11 +41,13 @@ export function ErrorMessage({ error, onRetry }: ErrorMessageProps) {
                     ))}
                 </ul>
             </AlertDescription>
-            <AlertAction>
-                <Button variant="outline" size="sm" onClick={onRetry}>
-                    다시 시도
-                </Button>
-            </AlertAction>
+            {onRetry && (
+                <AlertAction>
+                    <Button variant="outline" size="sm" onClick={onRetry}>
+                        다시 시도
+                    </Button>
+                </AlertAction>
+            )}
         </Alert>
     );
 }

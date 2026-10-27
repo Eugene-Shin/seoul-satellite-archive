@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { toKstDate } from "@/shared/utils/date";
+import { toKstDate, toKstDateTimeLocal } from "@/shared/utils/date";
+
+describe("toKstDateTimeLocal", () => {
+    it("UTC를 KST 입력칸 값으로, 밀리초까지 남긴다", () => {
+        expect(toKstDateTimeLocal("2024-09-03T20:27:12.560Z")).toBe(
+            "2024-09-04T05:27:12.560",
+        );
+    });
+});
 
 describe("toKstDate", () => {
     it("UTC 15:00은 KST로 다음 날이다", () => {
