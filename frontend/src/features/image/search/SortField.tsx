@@ -6,6 +6,7 @@ import { useSortable } from "@dnd-kit/react/sortable";
 import { ArrowUpIcon, GripVerticalIcon, XIcon } from "lucide-react";
 
 import { imageSortSchema } from "@/features/image/schemas";
+import { SORT_OPTIONS } from "@/features/image/sortOptions";
 import type { ImageSort } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
 import { Button } from "@/shared/components/ui/button";
@@ -16,13 +17,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/shared/components/ui/select";
-
-const SORT_OPTIONS: Record<ImageSort, { label: string; field: string }> = {
-    ACQUIRED_AT_DESC: { label: "촬영일 최신순", field: "acquiredAt" },
-    ACQUIRED_AT_ASC: { label: "촬영일 오래된순", field: "acquiredAt" },
-    CLOUD_COVER_ASC: { label: "구름량 적은순", field: "cloudCover" },
-    CLOUD_COVER_DESC: { label: "구름량 많은순", field: "cloudCover" },
-};
 
 const SORTS = imageSortSchema.options;
 

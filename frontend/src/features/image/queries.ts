@@ -1,4 +1,8 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+    keepPreviousData,
+    useInfiniteQuery,
+    useQuery,
+} from "@tanstack/react-query";
 
 import { fetchFilterOptions, searchImages } from "@/features/image/api";
 import type { ImageSearchParams } from "@/features/image/types";
@@ -43,5 +47,6 @@ export function useAdminImages(conditions: ImageSearchParams) {
             ),
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor,
+        placeholderData: keepPreviousData,
     });
 }

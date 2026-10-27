@@ -1,7 +1,10 @@
 "use client";
 
 import { AcquiredDateField } from "@/features/image/filters/AcquiredDateField";
-import { CloudCoverField } from "@/features/image/filters/CloudCoverField";
+import {
+    CloudCoverField,
+    isSarOnly,
+} from "@/features/image/filters/CloudCoverField";
 import { emptyToUndefined } from "@/features/image/filters/emptyToUndefined";
 import { GsdRangeField } from "@/features/image/filters/GsdRangeField";
 import {
@@ -12,15 +15,10 @@ import { SortField } from "@/features/image/search/SortField";
 import type {
     ImageFilterOptionsResponse,
     ImageSearchParams,
-    SensorType,
 } from "@/features/image/types";
 import { MultiSelect } from "@/shared/components/MultiSelect";
 import { Select } from "@/shared/components/Select";
 import { Input } from "@/shared/components/ui/input";
-
-function isSarOnly(sensorTypes: SensorType[] | undefined): boolean {
-    return sensorTypes ? sensorTypes.every((type) => type === "SAR") : false;
-}
 
 // 검색 버튼은 두 탭이 함께 쓰려고 폼 밖에 있어서, 이 id로 폼에 연결한다
 export const IMAGE_SEARCH_FORM_ID = "image-search-form";

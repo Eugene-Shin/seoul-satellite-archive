@@ -10,6 +10,12 @@ import {
     toOptions,
 } from "@/features/image/admin/ColumnFilter";
 import {
+    AcquiredAtColumnFilter,
+    CloudCoverColumnFilter,
+    GsdColumnFilter,
+} from "@/features/image/admin/RangeColumnFilters";
+import { isSarOnly } from "@/features/image/filters/CloudCoverField";
+import {
     acquiredAtText,
     cloudCoverText,
     gsdText,
@@ -19,6 +25,7 @@ import {
     sensorTypeText,
 } from "@/features/image/imageText";
 import { useAdminImages, useFilterOptions } from "@/features/image/queries";
+import { isSortedBy } from "@/features/image/sortOptions";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import { Button } from "@/shared/components/ui/button";
@@ -77,6 +84,7 @@ export function ImageAdminTable({
         fetchNextPage,
         hasNextPage,
         isPending,
+        isPlaceholderData,
         isFetching,
         isFetchNextPageError,
         refetch,
@@ -107,7 +115,8 @@ export function ImageAdminTable({
             return null;
         }
 
-        if (isPending) {
+        // 조건을 바꾸면 새 결과가 올 때까지 이전 목록을 보여준다
+        if (isPending || isPlaceholderData) {
             return "불러오는 중입니다...";
         }
 
@@ -221,12 +230,35 @@ function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
                         label: SENSOR_TYPE_NAMES[type],
                     }))}
                     selected={conditions.sensorTypes}
-                    onChange={(sensorTypes) => onChange({ sensorTypes })}
+                    onChange={(sensorTypes) => {
+                        const sarOnly = isSarOnly(sensorTypes);
+                        onChange({
+                            sensorTypes,
+                            cloudMax: sarOnly ? undefined : conditions.cloudMax,
+                            sorts:
+                                sarOnly &&
+                                isSortedBy(conditions.sorts?.[0], "cloudCover")
+                                    ? undefined
+                                    : conditions.sorts,
+                        });
+                    }}
                 />
             </th>
-            <th className={headerClass("acquiredAt")}>촬영일시</th>
-            <th className={headerClass("gsd")}>해상도</th>
-            <th className={headerClass("cloudCover")}>구름량</th>
+            <th className={headerClass("acquiredAt")}>
+                <AcquiredAtColumnFilter
+                    conditions={conditions}
+                    onChange={onChange}
+                />
+            </th>
+            <th className={headerClass("gsd")}>
+                <GsdColumnFilter conditions={conditions} onChange={onChange} />
+            </th>
+            <th className={headerClass("cloudCover")}>
+                <CloudCoverColumnFilter
+                    conditions={conditions}
+                    onChange={onChange}
+                />
+            </th>
             <th className={headerClass("orbitDirection")}>
                 <SelectColumnFilter
                     label="궤도"
