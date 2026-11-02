@@ -25,7 +25,7 @@ const FOOTPRINT = {
 
 const FILLED_FORM = {
     ...EMPTY_IMAGE_FORM,
-    providerCode: "dx",
+    providerCode: "all4land",
     sourceId: "admin-image-001",
     title: "서울 위성 영상",
     satellite: " sentinel-2a ",
@@ -44,7 +44,7 @@ const FILLED_FORM = {
 describe("toWriteRequest", () => {
     it("입력칸 글자를 요청 형식으로 바꾼다", () => {
         expect(toWriteRequest(FILLED_FORM)).toEqual({
-            providerCode: "dx",
+            providerCode: "all4land",
             sourceId: "admin-image-001",
             title: "서울 위성 영상",
             satellite: "sentinel-2a",
@@ -106,7 +106,7 @@ describe("toWriteRequest", () => {
 describe("toFormValues", () => {
     const DETAIL = {
         imageId: 1,
-        providerCode: "dx",
+        providerCode: "all4land",
         sourceId: "admin-image-001",
         title: "서울 위성 영상",
         satellite: "SENTINEL-2A",

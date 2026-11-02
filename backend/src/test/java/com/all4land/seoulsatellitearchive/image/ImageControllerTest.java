@@ -37,7 +37,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
-// 로컬 전용 DX 시드(provider=dx)가 있어도 없어도 같은 결과가 나오는 조건으로만 검증한다
+// 로컬 전용 ALL4LAND 시드(provider=all4land)가 있어도 없어도 같은 결과가 나오는 조건으로만 검증한다
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
