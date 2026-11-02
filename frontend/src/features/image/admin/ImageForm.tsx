@@ -423,8 +423,12 @@ function FormSelect<T extends string | number>({
                 </SelectTrigger>
                 <SelectContent>
                     {items.map((item) => (
-                        <SelectItem key={String(item.value)} value={item.value}>
-                            {item.label}
+                        <SelectItem
+                            key={String(item.value)}
+                            value={item.value}
+                            title={item.label}
+                        >
+                            <span className="truncate">{item.label}</span>
                         </SelectItem>
                     ))}
                 </SelectContent>
