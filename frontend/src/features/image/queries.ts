@@ -13,6 +13,7 @@ import {
 import {
     createImage,
     deleteImage,
+    fetchCollections,
     fetchFilterOptions,
     fetchImageDetail,
     searchImages,
@@ -27,6 +28,16 @@ export function useFilterOptions() {
         queryKey: ["image", "filter-options"],
         queryFn: ({ signal }) => fetchFilterOptions(signal),
         staleTime: FILTER_OPTIONS_STALE_TIME,
+    });
+}
+
+const COLLECTIONS_STALE_TIME = 5 * 60 * 1000;
+
+export function useCollections() {
+    return useQuery({
+        queryKey: ["collections"],
+        queryFn: ({ signal }) => fetchCollections(signal),
+        staleTime: COLLECTIONS_STALE_TIME,
     });
 }
 

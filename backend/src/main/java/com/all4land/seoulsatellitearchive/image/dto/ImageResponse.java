@@ -1,5 +1,6 @@
 package com.all4land.seoulsatellitearchive.image.dto;
 
+import com.all4land.seoulsatellitearchive.collection.dto.CollectionResponse;
 import com.all4land.seoulsatellitearchive.image.OrbitDirection;
 import com.all4land.seoulsatellitearchive.image.SatelliteImage;
 import com.all4land.seoulsatellitearchive.image.SensorType;
@@ -13,6 +14,7 @@ import java.util.List;
 public record ImageResponse(
         Long imageId,
         ProviderResponse provider,
+        CollectionResponse collection,
         String title,
         String satellite,
         List<String> instruments,
@@ -32,6 +34,7 @@ public record ImageResponse(
         return new ImageResponse(
                 image.getId(),
                 ProviderResponse.from(image.getProvider()),
+                CollectionResponse.from(image.getCollection()),
                 image.getTitle(),
                 image.getSatellite(),
                 image.getInstruments() == null ? null : List.of(image.getInstruments()),

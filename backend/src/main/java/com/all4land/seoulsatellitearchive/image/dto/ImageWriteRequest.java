@@ -35,6 +35,9 @@ public class ImageWriteRequest {
 
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
 
+    @NotNull @Schema(description = "image_collection.collection_id. 올포랜드 영상만 다른 제공 기관의 컬렉션을 고를 수 있다", example = "1")
+    private Long collectionId;
+
     @NotBlank @Size(max = 200) @Schema(example = "admin-image-001")
     private String sourceId;
 

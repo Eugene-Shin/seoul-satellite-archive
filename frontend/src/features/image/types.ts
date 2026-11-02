@@ -1,6 +1,7 @@
 import type { z } from "zod";
 
 import type {
+    collectionSchema,
     imageDetailSchema,
     imageFilterOptionsSchema,
     imageResponseSchema,
@@ -16,6 +17,8 @@ export type SensorType = z.infer<typeof sensorTypeSchema>;
 export type OrbitDirection = z.infer<typeof orbitDirectionSchema>;
 
 export type Provider = z.infer<typeof providerSchema>;
+
+export type Collection = z.infer<typeof collectionSchema>;
 
 export type MultiPolygon = z.infer<typeof multiPolygonSchema>;
 
@@ -35,6 +38,7 @@ export type ImageSort = z.infer<typeof imageSortSchema>;
 
 // 등록·수정 요청 본문. 보내기만 해서 zod 스키마 없이 타입만 둔다
 export type ImageWriteRequest = {
+    collectionId: number | null;
     sourceId: string;
     title: string;
     satellite: string;

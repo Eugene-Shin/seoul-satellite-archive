@@ -1,5 +1,7 @@
 package com.all4land.seoulsatellitearchive.image;
 
+import com.all4land.seoulsatellitearchive.collection.ImageCollection;
+import com.all4land.seoulsatellitearchive.collection.ImageCollectionRepository;
 import com.all4land.seoulsatellitearchive.global.exception.BusinessException;
 import com.all4land.seoulsatellitearchive.global.paging.SliceResponse;
 import com.all4land.seoulsatellitearchive.global.response.CommonErrorCode;
@@ -27,6 +29,7 @@ public class ImageService {
 
     private final SatelliteImageRepository satelliteImageRepository;
     private final ProviderRepository providerRepository;
+    private final ImageCollectionRepository imageCollectionRepository;
     private final EntityManager entityManager;
 
     // 직접 등록하는 영상은 우리 기관이 보유한 것이다. API 출처의 영상은 수집기만 만든다
@@ -61,6 +64,13 @@ public class ImageService {
     }
 
     private void replaceMetadata(SatelliteImage image, Provider provider, ImageWriteRequest request) {
+        ImageCollection collection = imageCollectionRepository
+                .findById(request.getCollectionId())
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.BAD_REQUEST, "collectionId: 존재하지 않는 컬렉션입니다."));
+        // 올포랜드는 보유한 어느 출처의 제품이든 올린다. 다른 출처의 영상은 그 출처의 컬렉션만 가진다
+        if (!provider.isOwnOrganization() && !collection.getProvider().getCode().equals(provider.getCode())) {
+            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "collectionId: 이 제공 기관의 컬렉션이 아닙니다.");
+        }
         boolean duplicate = image.getId() == null
                 ? satelliteImageRepository.existsByProvider_CodeAndSourceId(provider.getCode(), request.getSourceId())
                 : satelliteImageRepository.existsByProvider_CodeAndSourceIdAndIdNot(
@@ -68,7 +78,7 @@ public class ImageService {
         if (duplicate) {
             throw new BusinessException(CommonErrorCode.CONFLICT, "해당 제공 기관에 같은 sourceId의 영상이 존재합니다.");
         }
-        image.replaceMetadata(request, provider, request.toFootprint());
+        image.replaceMetadata(request, provider, collection, request.toFootprint());
         satelliteImageRepository.saveAndFlush(image);
         // @Formula는 쓰기 후 자동 갱신되지 않으므로 같은 영속성 컨텍스트에서 검색해도 최신 도형을 반환하게 한다.
         entityManager.refresh(image);

@@ -143,6 +143,8 @@ function ImageDetailContent({ image }: { image: ImageResponse }) {
                 <dd>{orbitDirectionText(image)}</dd>
                 <dt className="text-muted-foreground">제공 기관</dt>
                 <dd>{providerText(image)}</dd>
+                <dt className="text-muted-foreground">컬렉션</dt>
+                <dd className="break-all">{image.collection.title}</dd>
                 <dt className="text-muted-foreground">원본 갱신(KST)</dt>
                 <dd>{sourceUpdatedAtText(image)}</dd>
             </dl>

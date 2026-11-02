@@ -1,5 +1,6 @@
 package com.all4land.seoulsatellitearchive.image.dto;
 
+import com.all4land.seoulsatellitearchive.collection.dto.CollectionResponse;
 import com.all4land.seoulsatellitearchive.image.OrbitDirection;
 import com.all4land.seoulsatellitearchive.image.SatelliteImage;
 import com.all4land.seoulsatellitearchive.image.SensorType;
@@ -18,6 +19,7 @@ public class ImageDetailResponse {
 
     private final Long imageId;
     private final String providerCode;
+    private final CollectionResponse collection;
     private final String sourceId;
     private final String title;
     private final String satellite;
@@ -43,6 +45,7 @@ public class ImageDetailResponse {
         return new ImageDetailResponse(
                 image.getId(),
                 image.getProvider().getCode(),
+                CollectionResponse.from(image.getCollection()),
                 image.getSourceId(),
                 image.getTitle(),
                 image.getSatellite(),

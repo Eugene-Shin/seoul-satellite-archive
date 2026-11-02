@@ -20,6 +20,14 @@ export const providerSchema = z.object({
     ownOrganization: z.boolean(),
 });
 
+// providerCode는 이 컬렉션을 정의한 출처. 영상의 제공 기관과 다를 수 있다(올포랜드 영상)
+export const collectionSchema = z.object({
+    collectionId: z.number(),
+    providerCode: z.string(),
+    code: z.string(),
+    title: z.string(),
+});
+
 export const multiPolygonSchema = z.object({
     type: z.literal("MultiPolygon"),
     coordinates: z.array(z.array(z.array(z.array(z.number())))),
@@ -28,6 +36,7 @@ export const multiPolygonSchema = z.object({
 export const imageResponseSchema = z.object({
     imageId: z.number(),
     provider: providerSchema,
+    collection: collectionSchema,
     title: z.string(),
     satellite: z.string(),
     instruments: z.array(z.string()).nullable(),
@@ -44,6 +53,7 @@ export const imageResponseSchema = z.object({
 export const imageDetailSchema = z.object({
     imageId: z.number(),
     providerCode: z.string(),
+    collection: collectionSchema,
     sourceId: z.string(),
     title: z.string(),
     satellite: z.string(),

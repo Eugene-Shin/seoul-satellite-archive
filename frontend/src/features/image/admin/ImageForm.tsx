@@ -13,7 +13,7 @@ import {
     ORBIT_DIRECTION_NAMES,
     SENSOR_TYPE_NAMES,
 } from "@/features/image/imageText";
-import { useFilterOptions } from "@/features/image/queries";
+import { useCollections, useFilterOptions } from "@/features/image/queries";
 import type { Provider } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import { Button } from "@/shared/components/ui/button";
@@ -56,6 +56,7 @@ export function ImageForm({
     onSubmit,
 }: ImageFormProps) {
     const { data: options } = useFilterOptions();
+    const { data: collections } = useCollections();
     const [form, setForm] = useState(initialValues);
     const unchanged = isSameForm(form, initialValues);
     // 한 번 제출을 누른 뒤부터 빈 필수 칸을 표시한다
@@ -63,6 +64,25 @@ export function ImageForm({
     const satelliteListId = useId();
 
     const missing = submitted ? missingRequiredFields(form) : [];
+
+    // 올포랜드는 보유한 어느 출처의 제품이든 올린다. 다른 출처의 영상은 그 출처의 컬렉션만 고른다
+    const collectionOptions = (collections ?? [])
+        .filter(
+            (collection) =>
+                provider?.ownOrganization ||
+                collection.providerCode === provider?.code,
+        )
+        .map((collection) => ({
+            value: collection.collectionId,
+            label: `${providerName(collection.providerCode)} · ${collection.title}`,
+        }));
+
+    function providerName(code: string): string {
+        return (
+            options?.providers.find((candidate) => candidate.code === code)
+                ?.name ?? code
+        );
+    }
 
     function invalid(field: RequiredField): boolean {
         return missing.includes(field);
@@ -96,6 +116,15 @@ export function ImageForm({
                     <Field label="제공 기관">
                         <Input readOnly value={provider?.name ?? ""} />
                     </Field>
+                    <FormSelect
+                        field="collectionId"
+                        label="컬렉션"
+                        required
+                        invalid={invalid("collectionId")}
+                        options={collectionOptions}
+                        value={form.collectionId}
+                        onChange={(collectionId) => change({ collectionId })}
+                    />
                     <Field
                         field="sourceId"
                         label="원본 ID"
@@ -356,7 +385,7 @@ function Field({
     );
 }
 
-type FormSelectProps<T extends string> = {
+type FormSelectProps<T extends string | number> = {
     field?: RequiredField;
     label: string;
     required?: boolean;
@@ -368,7 +397,7 @@ type FormSelectProps<T extends string> = {
 };
 
 // 공용 Select는 [전체]가 붙어 있어서 폼에선 쓰지 않는다
-function FormSelect<T extends string>({
+function FormSelect<T extends string | number>({
     field,
     label,
     required,
