@@ -49,7 +49,7 @@ class ImageControllerTest {
     private static final String REQUEST = """
             {
               "providerCode": "earth-search", "sourceId": "admin-crud-test", "title": "관리자 CRUD 테스트",
-              "satellite": " sentinel-2a ", "instruments": ["msi"], "sensorType": "OPTICAL",
+              "satellite": " sentinel-2a ", "instruments": [" msi "], "sensorType": "OPTICAL",
               "acquiredAt": "2026-10-19T10:00:00+09:00", "gsdMeters": 10.25, "cloudCover": 5.25,
               "orbitDirection": "ASCENDING",
               "footprint": {"type":"MultiPolygon","coordinates":[[[[126.9,37.5],[127,37.5],[127,37.6],[126.9,37.5]]]]},
@@ -72,7 +72,7 @@ class ImageControllerTest {
         mockMvc.perform(get("/api/images/filter-options"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.satellites", hasItems("LANDSAT-8", "SENTINEL-1A", "SENTINEL-2A")))
-                .andExpect(jsonPath("$.data.instruments", hasItems("C-SAR", "OLI", "msi")))
+                .andExpect(jsonPath("$.data.instruments", hasItems("C-SAR", "OLI", "MSI")))
                 .andExpect(jsonPath("$.data.providers", hasSize(3)))
                 .andExpect(jsonPath("$.data.sensorTypes", contains("OPTICAL", "SAR")));
     }
@@ -264,7 +264,7 @@ class ImageControllerTest {
                 .andExpect(jsonPath("$.data.providerCode").value("earth-search"))
                 .andExpect(jsonPath("$.data.sourceId").value("admin-crud-test"))
                 .andExpect(jsonPath("$.data.satellite").value("SENTINEL-2A"))
-                .andExpect(jsonPath("$.data.instruments[0]").value("msi"))
+                .andExpect(jsonPath("$.data.instruments[0]").value("MSI"))
                 .andExpect(jsonPath("$.data.sensorType").value("OPTICAL"))
                 .andExpect(jsonPath("$.data.acquiredAt").value("2026-10-19T01:00:00Z"))
                 .andExpect(jsonPath("$.data.gsdMeters").value(10.25))

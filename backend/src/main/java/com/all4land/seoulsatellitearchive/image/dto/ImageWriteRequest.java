@@ -47,7 +47,7 @@ public class ImageWriteRequest {
     @NotBlank @Size(max = 50) @Schema(description = "앞뒤 공백 제거 후 대문자로 저장", example = "sentinel-2a")
     private String satellite;
 
-    @Size(min = 1) @Schema(description = "선택. 값이 있으면 비어 있지 않은 배열", example = "[\"msi\"]")
+    @Size(min = 1) @Schema(description = "선택. 값이 있으면 비어 있지 않은 배열. 원소는 앞뒤 공백 제거 후 대문자로 저장", example = "[\"msi\"]")
     private List<@NotBlank String> instruments;
 
     @NotBlank @Pattern(regexp = "OPTICAL|SAR") @Schema(
@@ -88,6 +88,16 @@ public class ImageWriteRequest {
 
     public void setSatellite(String satellite) {
         this.satellite = satellite == null ? null : satellite.strip().toUpperCase(Locale.ROOT);
+    }
+
+    // null 원소는 그대로 둬서 @NotBlank가 거부하게 한다
+    public void setInstruments(List<String> instruments) {
+        this.instruments = instruments == null
+                ? null
+                : instruments.stream()
+                        .map(instrument ->
+                                instrument == null ? null : instrument.strip().toUpperCase(Locale.ROOT))
+                        .toList();
     }
 
     @AssertTrue(message = "SAR 영상의 cloudCover는 null이어야 합니다.") @Schema(hidden = true)
