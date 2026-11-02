@@ -156,6 +156,123 @@ class ImageControllerTest {
                         """, Long.class)).isEqualTo(4);
     }
 
+    // ASF CMR은 umm.AdditionalAttributes에 SAR 정보를 준다. 입사각·해상도는 주지 않아서 NULL
+    @Test
+    void seedSarIsBackfilledFromCmrAttributes() throws Exception {
+        assertThat(jdbc.queryForList("""
+                        select s.relative_orbit || '/' || s.frame || '/' || s.instrument_mode || '/'
+                               || array_to_string(s.polarizations, '+') || '/' || s.look_direction
+                               || '/' || coalesce(s.incidence_angle::text, '-')
+                        from image_sar s join satellite_image i on i.image_id = s.image_id
+                        where i.provider <> 'all4land'
+                        """, String.class))
+                .containsExactly("127/120/IW/VV+VH/RIGHT/-", "127/120/IW/VV+VH/RIGHT/-");
+        mockMvc.perform(get("/api/images").param("productTypes", "SLC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[*].sar.relativeOrbit", everyItem(is(127))))
+                .andExpect(jsonPath("$.data.content[*].sar.polarizations[0]", everyItem(is("VV"))));
+        mockMvc.perform(get("/api/images").param("productTypes", "L2A"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].sar", nullValue()));
+    }
+
+    @Test
+    void sarIsCreatedReplacedAndDeletedWithRequest() throws Exception {
+        long id = create(sarRequest());
+        mockMvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sar.relativeOrbit").value(127))
+                .andExpect(jsonPath("$.data.sar.frame").value(120))
+                .andExpect(jsonPath("$.data.sar.instrumentMode").value("IW"))
+                .andExpect(jsonPath("$.data.sar.polarizations", contains("VV", "VH")))
+                .andExpect(jsonPath("$.data.sar.lookDirection").value("RIGHT"))
+                .andExpect(jsonPath("$.data.sar.incidenceAngle").value(38.5))
+                .andExpect(jsonPath("$.data.sar.resolutionRangeMeters").value(2.64))
+                .andExpect(jsonPath("$.data.sar.resolutionAzimuthMeters").value(3.3));
+
+        String replaced = JsonPath.parse(sarRequest())
+                .set("$.sar.relativeOrbit", 50)
+                .delete("$.sar.frame")
+                .jsonString();
+        mockMvc.perform(json(put(BASE + "/" + id), replaced)).andExpect(status().isOk());
+        mockMvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sar.relativeOrbit").value(50))
+                .andExpect(jsonPath("$.data.sar.frame", nullValue()));
+
+        String withoutSar = JsonPath.parse(sarRequest()).delete("$.sar").jsonString();
+        mockMvc.perform(json(put(BASE + "/" + id), withoutSar)).andExpect(status().isOk());
+        mockMvc.perform(get(BASE + "/" + id)).andExpect(status().isOk()).andExpect(jsonPath("$.data.sar", nullValue()));
+        assertThat(jdbc.queryForObject("select count(*) from image_sar where image_id = ?", Long.class, id))
+                .isZero();
+    }
+
+    @Test
+    void opticalImagesCannotHaveSar() throws Exception {
+        String optical =
+                JsonPath.parse(sarRequest()).set("$.sensorType", "OPTICAL").jsonString();
+        mockMvc.perform(json(post(BASE), optical))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorDetail[0]").value("sarValid: SAR 영상만 sar를 가질 수 있습니다."));
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidSarFields")
+    void invalidSarReturns400WithoutWriting(String field, Object value) throws Exception {
+        long count = jdbc.queryForObject("select count(*) from image_sar", Long.class);
+        mockMvc.perform(json(
+                        post(BASE),
+                        JsonPath.parse(sarRequest())
+                                .set("$.sar." + field, value)
+                                .jsonString()))
+                .andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("select count(*) from image_sar", Long.class))
+                .isEqualTo(count);
+    }
+
+    static Stream<Arguments> invalidSarFields() {
+        return Stream.of(
+                Arguments.of("relativeOrbit", 0),
+                Arguments.of("frame", -1),
+                Arguments.of("instrumentMode", "M".repeat(11)),
+                Arguments.of("polarizations", List.of()),
+                Arguments.of("polarizations", List.of("XX")),
+                Arguments.of("polarizations", java.util.Arrays.asList("VV", null)),
+                Arguments.of("lookDirection", "UP"),
+                Arguments.of("incidenceAngle", 90.01),
+                Arguments.of("incidenceAngle", -1),
+                Arguments.of("resolutionRangeMeters", 0),
+                Arguments.of("resolutionAzimuthMeters", 0.001));
+    }
+
+    private String sarRequest() {
+        return JsonPath.parse(request)
+                .set("$.sensorType", "SAR")
+                .set("$.cloudCover", null)
+                // set은 없는 키를 만들지 못한다
+                .put(
+                        "$",
+                        "sar",
+                        Map.of(
+                                "relativeOrbit",
+                                127,
+                                "frame",
+                                120,
+                                "instrumentMode",
+                                " iw ",
+                                "polarizations",
+                                List.of("VV", "VH"),
+                                "lookDirection",
+                                "RIGHT",
+                                "incidenceAngle",
+                                38.5,
+                                "resolutionRangeMeters",
+                                2.64,
+                                "resolutionAzimuthMeters",
+                                3.3))
+                .jsonString();
+    }
+
     @Test
     void instrumentsMatchAnySelected() throws Exception {
         mockMvc.perform(get("/api/images").param("instruments", "OLI", "C-SAR"))

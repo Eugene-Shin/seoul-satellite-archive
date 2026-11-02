@@ -11,11 +11,15 @@ import com.all4land.seoulsatellitearchive.image.dto.ImageFilterOptionsResponse.R
 import com.all4land.seoulsatellitearchive.image.dto.ImageResponse;
 import com.all4land.seoulsatellitearchive.image.dto.ImageSearchRequest;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
+import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest.SarRequest;
 import com.all4land.seoulsatellitearchive.provider.Provider;
 import com.all4land.seoulsatellitearchive.provider.ProviderRepository;
 import com.all4land.seoulsatellitearchive.provider.dto.ProviderResponse;
 import jakarta.persistence.EntityManager;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -30,6 +34,7 @@ public class ImageService {
     private final SatelliteImageRepository satelliteImageRepository;
     private final ProviderRepository providerRepository;
     private final ImageCollectionRepository imageCollectionRepository;
+    private final ImageSarRepository imageSarRepository;
     private final EntityManager entityManager;
 
     // 직접 등록하는 영상은 우리 기관이 보유한 것이다. API 출처의 영상은 수집기만 만든다
@@ -42,7 +47,9 @@ public class ImageService {
     }
 
     public ImageDetailResponse getDetail(Long imageId) {
-        return ImageDetailResponse.from(findImage(imageId));
+        SatelliteImage image = findImage(imageId);
+        return ImageDetailResponse.from(
+                image, imageSarRepository.findById(imageId).orElse(null));
     }
 
     @Transactional
@@ -80,8 +87,26 @@ public class ImageService {
         }
         image.replaceMetadata(request, provider, collection, request.toFootprint());
         satelliteImageRepository.saveAndFlush(image);
+        replaceSar(image, request.getSar());
         // @Formula는 쓰기 후 자동 갱신되지 않으므로 같은 영속성 컨텍스트에서 검색해도 최신 도형을 반환하게 한다.
         entityManager.refresh(image);
+    }
+
+    // 수정은 전체 교체라서 sar가 없으면 기존 행을 지운다
+    private void replaceSar(SatelliteImage image, SarRequest request) {
+        ImageSar sar = imageSarRepository.findById(image.getId()).orElse(null);
+        if (request == null) {
+            if (sar != null) {
+                imageSarRepository.delete(sar);
+                imageSarRepository.flush();
+            }
+            return;
+        }
+        if (sar == null) {
+            sar = new ImageSar(image);
+        }
+        sar.replace(request);
+        imageSarRepository.saveAndFlush(sar);
     }
 
     public SliceResponse<ImageResponse> search(ImageSearchRequest request) {
@@ -97,7 +122,17 @@ public class ImageService {
         String nextCursor = rows.size() > size
                 ? ImageCursor.of(page.getLast(), request.getSorts()).encode()
                 : null;
-        return new SliceResponse<>(page.stream().map(ImageResponse::from).toList(), nextCursor);
+        // 이 페이지 영상들의 SAR 정보를 IN 쿼리 한 번으로 가져온다 (영상마다 조회하면 N+1)
+        Map<Long, ImageSar> sars =
+                imageSarRepository
+                        .findAllById(page.stream().map(SatelliteImage::getId).toList())
+                        .stream()
+                        .collect(Collectors.toMap(ImageSar::getImageId, Function.identity()));
+        return new SliceResponse<>(
+                page.stream()
+                        .map(image -> ImageResponse.from(image, sars.get(image.getId())))
+                        .toList(),
+                nextCursor);
     }
 
     public ImageFilterOptionsResponse getFilterOptions() {

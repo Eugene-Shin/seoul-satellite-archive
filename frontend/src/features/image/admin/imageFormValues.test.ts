@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     EMPTY_IMAGE_FORM,
+    EMPTY_SAR_FORM,
     isSameForm,
     missingRequiredFields,
     toFormValues,
@@ -56,6 +57,7 @@ describe("toWriteRequest", () => {
             gsdMeters: 10.5,
             cloudCover: 5.25,
             orbitDirection: "ASCENDING",
+            sar: null,
             footprint: FOOTPRINT,
             url: "archive/metadata.json",
             downloadUrls: ["s3://archive/a.tif", "s3://archive/b.tif"],
@@ -100,6 +102,47 @@ describe("toWriteRequest", () => {
         ).toBe("2026-10-19T10:00:12.560+09:00");
     });
 
+    it("SAR 영상만 채운 SAR 정보를 보내고, 빈 칸은 null", () => {
+        const sar = {
+            ...EMPTY_SAR_FORM,
+            relativeOrbit: "127",
+            instrumentMode: " IW ",
+            polarizations: ["VV" as const, "VH" as const],
+        };
+
+        expect(
+            toWriteRequest({
+                ...FILLED_FORM,
+                sensorType: "SAR",
+                cloudCover: "",
+                sar,
+            }).sar,
+        ).toEqual({
+            relativeOrbit: 127,
+            frame: null,
+            instrumentMode: "IW",
+            polarizations: ["VV", "VH"],
+            lookDirection: null,
+            incidenceAngle: null,
+            resolutionRangeMeters: null,
+            resolutionAzimuthMeters: null,
+        });
+        expect(toWriteRequest({ ...FILLED_FORM, sar }).sar).toBeNull();
+        expect(
+            toWriteRequest({
+                ...FILLED_FORM,
+                sensorType: "SAR",
+                cloudCover: "",
+            }).sar,
+        ).toBeNull();
+    });
+
+    it("SAR 영상은 남아 있는 구름량을 보내지 않는다", () => {
+        expect(
+            toWriteRequest({ ...FILLED_FORM, sensorType: "SAR" }).cloudCover,
+        ).toBeNull();
+    });
+
     it("JSON 문법이 틀리면 칸 이름과 함께 알린다", () => {
         expect(() =>
             toWriteRequest({ ...FILLED_FORM, footprint: "{type:" }),
@@ -128,6 +171,7 @@ describe("toFormValues", () => {
         gsdMeters: 10.5,
         cloudCover: null,
         orbitDirection: null,
+        sar: null,
         footprint: FOOTPRINT as ImageDetailResponse["footprint"],
         url: "archive/metadata.json",
         downloadUrls: ["s3://archive/a.tif", "s3://archive/b.tif"],
@@ -164,6 +208,31 @@ describe("toFormValues", () => {
         );
     });
 
+    it("SAR 정보를 불러와서 그대로 저장하면 같은 값이 된다", () => {
+        const sar = {
+            relativeOrbit: 127,
+            frame: null,
+            instrumentMode: "IW",
+            polarizations: ["VV" as const, "VH" as const],
+            lookDirection: "RIGHT" as const,
+            incidenceAngle: 38.5,
+            resolutionRangeMeters: 2.64,
+            resolutionAzimuthMeters: null,
+        };
+        const detail = {
+            ...DETAIL,
+            sensorType: "SAR" as const,
+            sar,
+        };
+
+        expect(toFormValues(detail).sar).toMatchObject({
+            relativeOrbit: "127",
+            frame: "",
+            resolutionAzimuthMeters: "",
+        });
+        expect(toWriteRequest(toFormValues(detail)).sar).toEqual(sar);
+    });
+
     it("비어 있는 원본 메타데이터는 빈 칸", () => {
         expect(toFormValues({ ...DETAIL, rawMetadata: {} }).rawMetadata).toBe(
             "",
@@ -180,6 +249,21 @@ describe("isSameForm", () => {
         expect(isSameForm(FILLED_FORM, { ...FILLED_FORM, title: "x" })).toBe(
             false,
         );
+    });
+
+    it("SAR 정보는 안쪽 칸까지 비교한다", () => {
+        expect(
+            isSameForm(FILLED_FORM, {
+                ...FILLED_FORM,
+                sar: { ...EMPTY_SAR_FORM },
+            }),
+        ).toBe(true);
+        expect(
+            isSameForm(FILLED_FORM, {
+                ...FILLED_FORM,
+                sar: { ...EMPTY_SAR_FORM, polarizations: ["HH"] },
+            }),
+        ).toBe(false);
     });
 
     it("센서의 개수나 순서가 다르면 다르다", () => {

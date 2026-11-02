@@ -1,20 +1,21 @@
 "use client";
 
 import { GripHorizontalIcon, XIcon } from "lucide-react";
-import { type PointerEvent, useEffect, useRef } from "react";
+import { Fragment, type PointerEvent, useEffect, useRef } from "react";
 
 import {
     acquiredAtText,
     acquiredEndAtText,
     cloudCoverText,
     gsdText,
+    LOOK_DIRECTION_NAMES,
     orbitDirectionText,
     providerText,
     satelliteText,
     sensorTypeText,
     sourceUpdatedAtText,
 } from "@/features/image/imageText";
-import type { ImageResponse } from "@/features/image/types";
+import type { ImageResponse, Sar } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
 
 type ImageDetailProps = {
@@ -144,6 +145,7 @@ function ImageDetailContent({ image }: { image: ImageResponse }) {
                 <dd>{cloudCoverText(image)}</dd>
                 <dt className="text-muted-foreground">궤도 방향</dt>
                 <dd>{orbitDirectionText(image)}</dd>
+                {image.sar && <SarRows sar={image.sar} />}
                 <dt className="text-muted-foreground">제공 기관</dt>
                 <dd>{providerText(image)}</dd>
                 <dt className="text-muted-foreground">컬렉션</dt>
@@ -168,6 +170,41 @@ function ImageDetailContent({ image }: { image: ImageResponse }) {
             </section>
         </div>
     );
+}
+
+function SarRows({ sar }: { sar: Sar }) {
+    const rows: [label: string, value: string | null][] = [
+        ["상대 궤도", sar.relativeOrbit?.toString() ?? null],
+        ["프레임", sar.frame?.toString() ?? null],
+        ["촬영 모드", sar.instrumentMode],
+        ["편파", sar.polarizations?.join(", ") ?? null],
+        [
+            "관측 방향",
+            sar.lookDirection && LOOK_DIRECTION_NAMES[sar.lookDirection],
+        ],
+        [
+            "입사각",
+            sar.incidenceAngle === null ? null : `${sar.incidenceAngle}°`,
+        ],
+        [
+            "거리 방향 해상도",
+            sar.resolutionRangeMeters === null
+                ? null
+                : `${sar.resolutionRangeMeters} m`,
+        ],
+        [
+            "방위 방향 해상도",
+            sar.resolutionAzimuthMeters === null
+                ? null
+                : `${sar.resolutionAzimuthMeters} m`,
+        ],
+    ];
+    return rows.map(([label, value]) => (
+        <Fragment key={label}>
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd>{value ?? "-"}</dd>
+        </Fragment>
+    ));
 }
 
 function DownloadLink({ url }: { url: string }) {

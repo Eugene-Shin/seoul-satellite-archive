@@ -29,6 +29,21 @@ export const collectionSchema = z.object({
     productType: z.string(),
 });
 
+export const polarizationSchema = z.enum(["HH", "HV", "VH", "VV"]);
+
+export const lookDirectionSchema = z.enum(["LEFT", "RIGHT"]);
+
+export const sarSchema = z.object({
+    relativeOrbit: z.number().nullable(),
+    frame: z.number().nullable(),
+    instrumentMode: z.string().nullable(),
+    polarizations: z.array(polarizationSchema).nullable(),
+    lookDirection: lookDirectionSchema.nullable(),
+    incidenceAngle: z.number().nullable(),
+    resolutionRangeMeters: z.number().nullable(),
+    resolutionAzimuthMeters: z.number().nullable(),
+});
+
 export const multiPolygonSchema = z.object({
     type: z.literal("MultiPolygon"),
     coordinates: z.array(z.array(z.array(z.array(z.number())))),
@@ -47,6 +62,7 @@ export const imageResponseSchema = z.object({
     gsdMeters: z.number().nullable(),
     cloudCover: z.number().nullable(),
     orbitDirection: orbitDirectionSchema.nullable(),
+    sar: sarSchema.nullable(),
     footprint: multiPolygonSchema,
     downloadUrls: z.array(z.string()),
     sourceUpdatedAt: z.iso.datetime().nullable(),
@@ -66,6 +82,7 @@ export const imageDetailSchema = z.object({
     gsdMeters: z.number().nullable(),
     cloudCover: z.number().nullable(),
     orbitDirection: orbitDirectionSchema.nullable(),
+    sar: sarSchema.nullable(),
     footprint: multiPolygonSchema,
     url: z.string(),
     downloadUrls: z.array(z.string()),

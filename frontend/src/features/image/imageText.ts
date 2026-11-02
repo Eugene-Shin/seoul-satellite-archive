@@ -1,6 +1,7 @@
 import type {
     Collection,
     ImageResponse,
+    LookDirection,
     OrbitDirection,
     Provider,
     SensorType,
@@ -15,6 +16,11 @@ export const SENSOR_TYPE_NAMES: Record<SensorType, string> = {
 export const ORBIT_DIRECTION_NAMES: Record<OrbitDirection, string> = {
     ASCENDING: "상향",
     DESCENDING: "하향",
+};
+
+export const LOOK_DIRECTION_NAMES: Record<LookDirection, string> = {
+    LEFT: "좌측",
+    RIGHT: "우측",
 };
 
 export function satelliteText({

@@ -6,9 +6,12 @@ import type {
     imageFilterOptionsSchema,
     imageResponseSchema,
     imageSortSchema,
+    lookDirectionSchema,
     multiPolygonSchema,
     orbitDirectionSchema,
+    polarizationSchema,
     providerSchema,
+    sarSchema,
     sensorTypeSchema,
 } from "@/features/image/schemas";
 
@@ -19,6 +22,12 @@ export type OrbitDirection = z.infer<typeof orbitDirectionSchema>;
 export type Provider = z.infer<typeof providerSchema>;
 
 export type Collection = z.infer<typeof collectionSchema>;
+
+export type Polarization = z.infer<typeof polarizationSchema>;
+
+export type LookDirection = z.infer<typeof lookDirectionSchema>;
+
+export type Sar = z.infer<typeof sarSchema>;
 
 export type MultiPolygon = z.infer<typeof multiPolygonSchema>;
 
@@ -49,6 +58,7 @@ export type ImageWriteRequest = {
     gsdMeters: number | null;
     cloudCover: number | null;
     orbitDirection: OrbitDirection | null;
+    sar: Sar | null;
     footprint: unknown;
     url: string;
     downloadUrls: string[];

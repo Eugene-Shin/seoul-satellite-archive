@@ -1,6 +1,7 @@
 package com.all4land.seoulsatellitearchive.image.dto;
 
 import com.all4land.seoulsatellitearchive.collection.dto.CollectionResponse;
+import com.all4land.seoulsatellitearchive.image.ImageSar;
 import com.all4land.seoulsatellitearchive.image.OrbitDirection;
 import com.all4land.seoulsatellitearchive.image.SatelliteImage;
 import com.all4land.seoulsatellitearchive.image.SensorType;
@@ -24,6 +25,7 @@ public record ImageResponse(
         BigDecimal gsdMeters,
         BigDecimal cloudCover,
         OrbitDirection orbitDirection,
+        @Schema(description = "SAR 정보가 없으면 null") SarResponse sar,
 
         @Schema(type = "object", description = "GeoJSON MultiPolygon") @JsonRawValue
         String footprint,
@@ -31,7 +33,7 @@ public record ImageResponse(
         List<String> downloadUrls,
         Instant sourceUpdatedAt) {
 
-    public static ImageResponse from(SatelliteImage image) {
+    public static ImageResponse from(SatelliteImage image, ImageSar sar) {
         return new ImageResponse(
                 image.getId(),
                 ProviderResponse.from(image.getProvider()),
@@ -45,6 +47,7 @@ public record ImageResponse(
                 image.getGsdMeters(),
                 image.getCloudCover(),
                 image.getOrbitDirection(),
+                sar == null ? null : SarResponse.from(sar),
                 image.getFootprintGeoJson(),
                 List.of(image.getDownloadUrls()),
                 image.getSourceUpdatedAt());

@@ -7,16 +7,23 @@ import {
     isSameForm,
     missingRequiredFields,
     type RequiredField,
+    type SarFormValues,
 } from "@/features/image/admin/imageFormValues";
 import { InstrumentsField } from "@/features/image/admin/InstrumentsField";
 import {
     collectionOptionLabel,
+    LOOK_DIRECTION_NAMES,
     ORBIT_DIRECTION_NAMES,
     SENSOR_TYPE_NAMES,
 } from "@/features/image/imageText";
 import { useCollections, useFilterOptions } from "@/features/image/queries";
-import type { Provider } from "@/features/image/types";
+import {
+    lookDirectionSchema,
+    polarizationSchema,
+} from "@/features/image/schemas";
+import type { Polarization, Provider } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
+import { MultiSelectMenu } from "@/shared/components/MultiSelect";
 import { Button } from "@/shared/components/ui/button";
 import { DialogClose, DialogFooter } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
@@ -186,15 +193,10 @@ export function ImageForm({
                             label: SENSOR_TYPE_NAMES[type],
                         }))}
                         value={form.sensorType}
+                        // 유형별 칸(구름량, SAR 정보)은 값을 남겨 두고 요청을 만들 때 뺀다
                         onChange={(sensorType) => {
                             if (sensorType) {
-                                change({
-                                    sensorType,
-                                    cloudCover:
-                                        sensorType === "SAR"
-                                            ? ""
-                                            : form.cloudCover,
-                                });
+                                change({ sensorType });
                             }
                         }}
                     />
@@ -252,7 +254,9 @@ export function ImageForm({
                             max={100}
                             step={0.01}
                             disabled={form.sensorType === "SAR"}
-                            value={form.cloudCover}
+                            value={
+                                form.sensorType === "SAR" ? "" : form.cloudCover
+                            }
                             onChange={(e) =>
                                 change({ cloudCover: e.target.value })
                             }
@@ -296,6 +300,12 @@ export function ImageForm({
                         />
                     </Field>
                 </div>
+                {form.sensorType === "SAR" && (
+                    <SarFields
+                        value={form.sar}
+                        onChange={(sar) => change({ sar })}
+                    />
+                )}
                 <Field
                     field="downloadUrls"
                     label="다운로드 URL"
@@ -347,6 +357,128 @@ export function ImageForm({
                 </Button>
             </DialogFooter>
         </form>
+    );
+}
+
+type SarFieldsProps = {
+    value: SarFormValues;
+    onChange: (value: SarFormValues) => void;
+};
+
+function SarFields({ value, onChange }: SarFieldsProps) {
+    function change(changes: Partial<SarFormValues>) {
+        onChange({ ...value, ...changes });
+    }
+
+    return (
+        <section className="flex flex-col gap-4">
+            <h3 className="font-semibold">SAR 정보</h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="상대 궤도">
+                    <Input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={value.relativeOrbit}
+                        onChange={(e) =>
+                            change({ relativeOrbit: e.target.value })
+                        }
+                    />
+                </Field>
+                <Field label="프레임">
+                    <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={value.frame}
+                        onChange={(e) => change({ frame: e.target.value })}
+                    />
+                </Field>
+                <Field label="촬영 모드" hint="예: IW, SM">
+                    <Input
+                        maxLength={10}
+                        value={value.instrumentMode}
+                        onChange={(e) =>
+                            change({ instrumentMode: e.target.value })
+                        }
+                    />
+                </Field>
+                <FormSelect
+                    label="관측 방향"
+                    emptyLabel="없음"
+                    options={lookDirectionSchema.options.map((direction) => ({
+                        value: direction,
+                        label: LOOK_DIRECTION_NAMES[direction],
+                    }))}
+                    value={value.lookDirection}
+                    onChange={(lookDirection) => change({ lookDirection })}
+                />
+                <Field label="편파">
+                    <MultiSelectMenu
+                        options={polarizationSchema.options.map(
+                            (polarization) => ({
+                                value: polarization,
+                                label: polarization,
+                            }),
+                        )}
+                        selected={value.polarizations}
+                        // 고른 순서와 상관없이 HH, HV, VH, VV 순서로 둬서 같은 조합이면 같은 값이 되게
+                        onChange={(selected: Polarization[]) =>
+                            change({
+                                polarizations:
+                                    polarizationSchema.options.filter(
+                                        (option) => selected.includes(option),
+                                    ),
+                            })
+                        }
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue>
+                                {(selected: Polarization[]) =>
+                                    selected.length > 0
+                                        ? selected.join(", ")
+                                        : "없음"
+                                }
+                            </SelectValue>
+                        </SelectTrigger>
+                    </MultiSelectMenu>
+                </Field>
+                <Field label="입사각 (°)" hint="장면 중심">
+                    <Input
+                        type="number"
+                        min={0}
+                        max={90}
+                        step={0.01}
+                        value={value.incidenceAngle}
+                        onChange={(e) =>
+                            change({ incidenceAngle: e.target.value })
+                        }
+                    />
+                </Field>
+                <Field label="거리 방향 해상도 (m)" hint="진행 방향에 수직">
+                    <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={value.resolutionRangeMeters}
+                        onChange={(e) =>
+                            change({ resolutionRangeMeters: e.target.value })
+                        }
+                    />
+                </Field>
+                <Field label="방위 방향 해상도 (m)" hint="진행 방향">
+                    <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={value.resolutionAzimuthMeters}
+                        onChange={(e) =>
+                            change({ resolutionAzimuthMeters: e.target.value })
+                        }
+                    />
+                </Field>
+            </div>
+        </section>
     );
 }
 
