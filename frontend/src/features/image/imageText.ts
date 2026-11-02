@@ -36,6 +36,12 @@ export function acquiredAtText({
     return formatKstDateTime(acquiredAt);
 }
 
+export function acquiredEndAtText({
+    acquiredEndAt,
+}: Pick<ImageResponse, "acquiredEndAt">): string {
+    return acquiredEndAt ? formatKstDateTime(acquiredEndAt) : "-";
+}
+
 export function gsdText({
     gsdMeters,
 }: Pick<ImageResponse, "gsdMeters">): string {

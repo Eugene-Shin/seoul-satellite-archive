@@ -26,6 +26,7 @@ export const collectionSchema = z.object({
     providerCode: z.string(),
     code: z.string(),
     title: z.string(),
+    productType: z.string(),
 });
 
 export const multiPolygonSchema = z.object({
@@ -42,6 +43,7 @@ export const imageResponseSchema = z.object({
     instruments: z.array(z.string()).nullable(),
     sensorType: sensorTypeSchema,
     acquiredAt: z.iso.datetime(),
+    acquiredEndAt: z.iso.datetime().nullable(),
     gsdMeters: z.number().nullable(),
     cloudCover: z.number().nullable(),
     orbitDirection: orbitDirectionSchema.nullable(),
@@ -60,6 +62,7 @@ export const imageDetailSchema = z.object({
     instruments: z.array(z.string()).nullable(),
     sensorType: sensorTypeSchema,
     acquiredAt: z.iso.datetime(),
+    acquiredEndAt: z.iso.datetime().nullable(),
     gsdMeters: z.number().nullable(),
     cloudCover: z.number().nullable(),
     orbitDirection: orbitDirectionSchema.nullable(),

@@ -31,6 +31,7 @@ const FILLED_FORM = {
     satellite: " sentinel-2a ",
     instruments: ["msi", "OLI"],
     acquiredAt: "2026-10-19T10:00",
+    acquiredEndAt: "2026-10-19T10:00:27",
     gsdMeters: "10.5",
     cloudCover: "5.25",
     orbitDirection: "ASCENDING" as const,
@@ -51,6 +52,7 @@ describe("toWriteRequest", () => {
             instruments: ["msi", "OLI"],
             sensorType: "OPTICAL",
             acquiredAt: "2026-10-19T10:00:00+09:00",
+            acquiredEndAt: "2026-10-19T10:00:27+09:00",
             gsdMeters: 10.5,
             cloudCover: 5.25,
             orbitDirection: "ASCENDING",
@@ -66,6 +68,7 @@ describe("toWriteRequest", () => {
         const request = toWriteRequest({
             ...FILLED_FORM,
             instruments: [],
+            acquiredEndAt: "",
             gsdMeters: "",
             cloudCover: "",
             orbitDirection: null,
@@ -75,6 +78,7 @@ describe("toWriteRequest", () => {
 
         expect(request).toMatchObject({
             instruments: null,
+            acquiredEndAt: null,
             gsdMeters: null,
             cloudCover: null,
             orbitDirection: null,
@@ -112,6 +116,7 @@ describe("toFormValues", () => {
             providerCode: "earth-search",
             code: "sentinel-2-l2a",
             title: "Sentinel-2 Level-2A",
+            productType: "L2A",
         },
         sourceId: "admin-image-001",
         title: "서울 위성 영상",
@@ -119,6 +124,7 @@ describe("toFormValues", () => {
         instruments: ["msi"],
         sensorType: "OPTICAL" as const,
         acquiredAt: "2024-09-03T20:27:12.560Z",
+        acquiredEndAt: null,
         gsdMeters: 10.5,
         cloudCover: null,
         orbitDirection: null,
@@ -132,6 +138,7 @@ describe("toFormValues", () => {
     it("상세 응답을 KST 입력칸 값과 글자로 바꾼다", () => {
         expect(toFormValues(DETAIL)).toMatchObject({
             acquiredAt: "2024-09-04T05:27:12.560",
+            acquiredEndAt: "",
             gsdMeters: "10.5",
             cloudCover: "",
             downloadUrls: "s3://archive/a.tif\ns3://archive/b.tif",

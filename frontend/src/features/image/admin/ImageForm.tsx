@@ -216,6 +216,17 @@ export function ImageForm({
                             }
                         />
                     </Field>
+                    <Field label="촬영 종료 일시" hint="한국 시간(KST) 기준">
+                        <Input
+                            type="datetime-local"
+                            step={MILLISECOND_STEP}
+                            min={form.acquiredAt || undefined}
+                            value={form.acquiredEndAt}
+                            onChange={(e) =>
+                                change({ acquiredEndAt: e.target.value })
+                            }
+                        />
+                    </Field>
                     <Field label="해상도 (m)">
                         <Input
                             type="number"

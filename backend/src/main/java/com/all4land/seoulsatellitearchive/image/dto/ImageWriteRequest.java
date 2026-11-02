@@ -58,6 +58,9 @@ public class ImageWriteRequest {
     @NotNull @Schema(description = "시간대가 포함된 ISO 8601", example = "2026-10-19T10:00:00+09:00")
     private OffsetDateTime acquiredAt;
 
+    @Schema(description = "선택. 시간대가 포함된 ISO 8601. acquiredAt과 같거나 이후", example = "2026-10-19T10:00:27+09:00")
+    private OffsetDateTime acquiredEndAt;
+
     @Digits(integer = 6, fraction = 2) @Schema(example = "10.00")
     private BigDecimal gsdMeters;
 
@@ -103,6 +106,11 @@ public class ImageWriteRequest {
     @AssertTrue(message = "SAR 영상의 cloudCover는 null이어야 합니다.") @Schema(hidden = true)
     public boolean isCloudCoverValid() {
         return !"SAR".equals(sensorType) || cloudCover == null;
+    }
+
+    @AssertTrue(message = "acquiredEndAt은 acquiredAt과 같거나 이후여야 합니다.") @Schema(hidden = true)
+    public boolean isAcquiredRangeValid() {
+        return acquiredAt == null || acquiredEndAt == null || !acquiredEndAt.isBefore(acquiredAt);
     }
 
     public MultiPolygon toFootprint() {

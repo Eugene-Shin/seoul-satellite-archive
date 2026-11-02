@@ -5,6 +5,7 @@ import { type PointerEvent, useEffect, useRef } from "react";
 
 import {
     acquiredAtText,
+    acquiredEndAtText,
     cloudCoverText,
     gsdText,
     orbitDirectionText,
@@ -135,6 +136,8 @@ function ImageDetailContent({ image }: { image: ImageResponse }) {
                 <dd>{sensorTypeText(image)}</dd>
                 <dt className="text-muted-foreground">촬영일시(KST)</dt>
                 <dd>{acquiredAtText(image)}</dd>
+                <dt className="text-muted-foreground">촬영 종료(KST)</dt>
+                <dd>{acquiredEndAtText(image)}</dd>
                 <dt className="text-muted-foreground">해상도</dt>
                 <dd>{gsdText(image)}</dd>
                 <dt className="text-muted-foreground">구름량</dt>
@@ -145,6 +148,8 @@ function ImageDetailContent({ image }: { image: ImageResponse }) {
                 <dd>{providerText(image)}</dd>
                 <dt className="text-muted-foreground">컬렉션</dt>
                 <dd className="break-all">{image.collection.title}</dd>
+                <dt className="text-muted-foreground">제품 유형</dt>
+                <dd>{image.collection.productType}</dd>
                 <dt className="text-muted-foreground">원본 갱신(KST)</dt>
                 <dd>{sourceUpdatedAtText(image)}</dd>
             </dl>

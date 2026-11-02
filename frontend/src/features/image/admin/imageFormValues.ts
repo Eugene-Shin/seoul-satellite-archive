@@ -14,6 +14,7 @@ export type ImageFormValues = {
     instruments: string[];
     sensorType: SensorType;
     acquiredAt: string; // datetime-local, KST
+    acquiredEndAt: string; // datetime-local, KST
     gsdMeters: string;
     cloudCover: string;
     orbitDirection: OrbitDirection | null;
@@ -32,6 +33,7 @@ export const EMPTY_IMAGE_FORM: ImageFormValues = {
     instruments: [],
     sensorType: "OPTICAL",
     acquiredAt: "",
+    acquiredEndAt: "",
     gsdMeters: "",
     cloudCover: "",
     orbitDirection: null,
@@ -85,6 +87,9 @@ export function toFormValues(detail: ImageDetailResponse): ImageFormValues {
         instruments: detail.instruments ?? [],
         sensorType: detail.sensorType,
         acquiredAt: toKstDateTimeLocal(detail.acquiredAt),
+        acquiredEndAt: detail.acquiredEndAt
+            ? toKstDateTimeLocal(detail.acquiredEndAt)
+            : "",
         gsdMeters: detail.gsdMeters?.toString() ?? "",
         cloudCover: detail.cloudCover?.toString() ?? "",
         orbitDirection: detail.orbitDirection,
@@ -111,6 +116,9 @@ export function toWriteRequest(form: ImageFormValues): ImageWriteRequest {
         instruments: form.instruments.length > 0 ? form.instruments : null,
         sensorType: form.sensorType,
         acquiredAt: toKstOffsetDateTime(form.acquiredAt),
+        acquiredEndAt: form.acquiredEndAt
+            ? toKstOffsetDateTime(form.acquiredEndAt)
+            : null,
         gsdMeters: toNumber(form.gsdMeters),
         cloudCover: toNumber(form.cloudCover),
         orbitDirection: form.orbitDirection,

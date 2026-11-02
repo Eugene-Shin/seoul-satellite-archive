@@ -45,6 +45,7 @@ export type ImageWriteRequest = {
     instruments: string[] | null;
     sensorType: SensorType;
     acquiredAt: string;
+    acquiredEndAt: string | null;
     gsdMeters: number | null;
     cloudCover: number | null;
     orbitDirection: OrbitDirection | null;
@@ -75,6 +76,7 @@ export type ImageSearchParams = {
     orbitDirection?: OrbitDirection;
     providers?: string[];
     collectionIds?: number[];
+    productTypes?: string[];
     isPaid?: boolean;
     gsdMin?: number;
     gsdMax?: number;

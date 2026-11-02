@@ -53,7 +53,8 @@ class ImageControllerTest {
             {
               "collectionId": null, "sourceId": "admin-crud-test", "title": "관리자 CRUD 테스트",
               "satellite": " sentinel-2a ", "instruments": [" msi "], "sensorType": "OPTICAL",
-              "acquiredAt": "2026-10-19T10:00:00+09:00", "gsdMeters": 10.25, "cloudCover": 5.25,
+              "acquiredAt": "2026-10-19T10:00:00+09:00", "acquiredEndAt": "2026-10-19T10:00:27+09:00",
+              "gsdMeters": 10.25, "cloudCover": 5.25,
               "orbitDirection": "ASCENDING",
               "footprint": {"type":"MultiPolygon","coordinates":[[[[126.9,37.5],[127,37.5],[127,37.6],[126.9,37.5]]]]},
               "url": "archive/metadata.json", "downloadUrls": ["s3://archive/image.tif", "https://example.test/image.tif"],
@@ -125,10 +126,34 @@ class ImageControllerTest {
         mockMvc.perform(get("/api/images").param("collectionIds", s1Slc))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content", hasSize(2)))
-                .andExpect(jsonPath("$.data.content[*].collection.code", everyItem(is("C1214470488-ASF"))));
+                .andExpect(jsonPath("$.data.content[*].collection.code", everyItem(is("C1214470488-ASF"))))
+                .andExpect(jsonPath("$.data.content[*].collection.productType", everyItem(is("SLC"))));
         mockMvc.perform(get("/api/images").param("collectionIds", s1Slc, hls))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content", hasSize(4)));
+    }
+
+    @Test
+    void productTypesMatchAnySelected() throws Exception {
+        mockMvc.perform(get("/api/images").param("productTypes", "SLC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(2)));
+        mockMvc.perform(get("/api/images").param("productTypes", "SLC", "L30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(4)));
+    }
+
+    // 촬영 종료 일시도 출처 값 그대로: STAC은 end_datetime이 없으면 NULL, CMR은 RangeDateTime.EndingDateTime
+    @Test
+    void seedAcquiredEndAtIsBackfilledFromSource() {
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from satellite_image where provider = 'earth-search' and acquired_end_at is not null",
+                        Long.class))
+                .isZero();
+        assertThat(jdbc.queryForObject("""
+                        select count(*) from satellite_image
+                        where provider = 'nasa-cmr' and acquired_end_at = (raw_metadata #>> '{umm,TemporalExtent,RangeDateTime,EndingDateTime}')::timestamptz
+                        """, Long.class)).isEqualTo(4);
     }
 
     @Test
@@ -323,6 +348,7 @@ class ImageControllerTest {
                 .andExpect(jsonPath("$.data.instruments[0]").value("MSI"))
                 .andExpect(jsonPath("$.data.sensorType").value("OPTICAL"))
                 .andExpect(jsonPath("$.data.acquiredAt").value("2026-10-19T01:00:00Z"))
+                .andExpect(jsonPath("$.data.acquiredEndAt").value("2026-10-19T01:00:27Z"))
                 .andExpect(jsonPath("$.data.gsdMeters").value(10.25))
                 .andExpect(jsonPath("$.data.cloudCover").value(5.25))
                 .andExpect(jsonPath("$.data.orbitDirection").value("ASCENDING"))
@@ -344,8 +370,14 @@ class ImageControllerTest {
                         "$.footprint.coordinates",
                         List.of(List.of(
                                 List.of(List.of(128, 35), List.of(129, 35), List.of(129, 36), List.of(128, 35)))));
-        for (String field :
-                List.of("instruments", "gsdMeters", "cloudCover", "orbitDirection", "sourceUpdatedAt", "rawMetadata")) {
+        for (String field : List.of(
+                "instruments",
+                "acquiredEndAt",
+                "gsdMeters",
+                "cloudCover",
+                "orbitDirection",
+                "sourceUpdatedAt",
+                "rawMetadata")) {
             document.delete("$." + field);
         }
         mockMvc.perform(json(put(BASE + "/" + id), document.jsonString()))
@@ -359,6 +391,7 @@ class ImageControllerTest {
                 .andExpect(jsonPath("$.data.cloudCover", nullValue()))
                 .andExpect(jsonPath("$.data.orbitDirection", nullValue()))
                 .andExpect(jsonPath("$.data.sourceUpdatedAt", nullValue()))
+                .andExpect(jsonPath("$.data.acquiredEndAt", nullValue()))
                 .andExpect(jsonPath("$.data.rawMetadata").isEmpty())
                 .andReturn()
                 .getResponse()
@@ -384,8 +417,14 @@ class ImageControllerTest {
     void nullOptionalsAndRawMetadataAreCleared() throws Exception {
         long id = create(request);
         var document = JsonPath.parse(request);
-        for (String field :
-                List.of("instruments", "gsdMeters", "cloudCover", "orbitDirection", "sourceUpdatedAt", "rawMetadata")) {
+        for (String field : List.of(
+                "instruments",
+                "acquiredEndAt",
+                "gsdMeters",
+                "cloudCover",
+                "orbitDirection",
+                "sourceUpdatedAt",
+                "rawMetadata")) {
             document.set("$." + field, null);
         }
         mockMvc.perform(json(put(BASE + "/" + id), document.jsonString())).andExpect(status().isOk());
@@ -396,7 +435,8 @@ class ImageControllerTest {
                 .andExpect(jsonPath("$.data.gsdMeters", nullValue()))
                 .andExpect(jsonPath("$.data.cloudCover", nullValue()))
                 .andExpect(jsonPath("$.data.orbitDirection", nullValue()))
-                .andExpect(jsonPath("$.data.sourceUpdatedAt", nullValue()));
+                .andExpect(jsonPath("$.data.sourceUpdatedAt", nullValue()))
+                .andExpect(jsonPath("$.data.acquiredEndAt", nullValue()));
     }
 
     @Test
@@ -478,6 +518,8 @@ class ImageControllerTest {
                 Arguments.of("instruments", java.util.Arrays.asList("ok", null)),
                 Arguments.of("url", " "),
                 Arguments.of("acquiredAt", "2026-10-19T10:00:00"),
+                Arguments.of("acquiredEndAt", "2026-10-19T09:59:59+09:00"),
+                Arguments.of("acquiredEndAt", "bad-date"),
                 Arguments.of("sourceUpdatedAt", "bad-date"),
                 Arguments.of("rawMetadata", List.of("not-an-object")),
                 Arguments.of("footprint", "not-an-object"),

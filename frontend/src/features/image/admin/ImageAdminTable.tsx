@@ -60,6 +60,7 @@ const COLUMN_ALIGN = {
     orbitDirection: ALIGN.short,
     provider: ALIGN.text,
     collection: ALIGN.text,
+    productType: ALIGN.short,
     isPaid: ALIGN.short,
 };
 
@@ -323,6 +324,20 @@ function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
                     onChange={(collectionIds) => onChange({ collectionIds })}
                 />
             </th>
+            <th className={headerClass("productType")}>
+                <MultiColumnFilter
+                    label="제품 유형"
+                    options={toOptions([
+                        ...new Set(
+                            (collections ?? []).map(
+                                (collection) => collection.productType,
+                            ),
+                        ),
+                    ])}
+                    selected={conditions.productTypes}
+                    onChange={(productTypes) => onChange({ productTypes })}
+                />
+            </th>
             <th className={headerClass("isPaid")}>
                 <SelectColumnFilter
                     label="유료 여부"
@@ -372,6 +387,9 @@ function ImageAdminRow({ image, onEdit, onDelete }: ImageAdminRowProps) {
                 >
                     {image.collection.title}
                 </span>
+            </td>
+            <td className={cellClass("productType")}>
+                {image.collection.productType}
             </td>
             <td className={cellClass("isPaid")}>
                 {image.provider.isPaid ? "유료" : "무료"}

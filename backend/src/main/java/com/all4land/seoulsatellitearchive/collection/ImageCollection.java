@@ -34,6 +34,8 @@ public class ImageCollection extends BaseEntity {
 
     private String constellation;
 
+    private String productType;
+
     private String licenseName;
 
     private String licenseUrl;

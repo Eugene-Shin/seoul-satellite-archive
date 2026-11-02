@@ -26,6 +26,7 @@ public class ImageDetailResponse {
     private final List<String> instruments;
     private final SensorType sensorType;
     private final Instant acquiredAt;
+    private final Instant acquiredEndAt;
     private final BigDecimal gsdMeters;
     private final BigDecimal cloudCover;
     private final OrbitDirection orbitDirection;
@@ -52,6 +53,7 @@ public class ImageDetailResponse {
                 image.getInstruments() == null ? null : List.of(image.getInstruments()),
                 image.getSensorType(),
                 image.getAcquiredAt(),
+                image.getAcquiredEndAt(),
                 image.getGsdMeters(),
                 image.getCloudCover(),
                 image.getOrbitDirection(),

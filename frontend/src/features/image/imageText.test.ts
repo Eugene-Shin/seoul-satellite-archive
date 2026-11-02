@@ -96,6 +96,7 @@ describe("collectionOptionLabel", () => {
         providerCode: "earth-search",
         code: "sentinel-2-l2a",
         title: "Sentinel-2 Level-2A",
+        productType: "L2A",
     };
 
     it("컬렉션을 정의한 출처 이름을 앞에 붙인다", () => {

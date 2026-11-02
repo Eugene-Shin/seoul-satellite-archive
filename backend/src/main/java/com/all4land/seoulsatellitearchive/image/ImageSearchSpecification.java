@@ -38,6 +38,7 @@ public final class ImageSearchSpecification {
                 orbitDirectionEquals(request.getOrbitDirection()),
                 providerIn(request.getProviders()),
                 collectionIn(request.getCollectionIds()),
+                productTypeIn(request.getProductTypes()),
                 providerIsPaid(request.getIsPaid()),
                 gsdAtLeast(request.getGsdMin()),
                 gsdAtMost(request.getGsdMax()),
@@ -99,6 +100,12 @@ public final class ImageSearchSpecification {
         return CollectionUtils.isEmpty(collectionIds)
                 ? Specification.unrestricted()
                 : (root, query, cb) -> root.get("collection").get("id").in(collectionIds);
+    }
+
+    private static Specification<SatelliteImage> productTypeIn(List<String> productTypes) {
+        return CollectionUtils.isEmpty(productTypes)
+                ? Specification.unrestricted()
+                : (root, query, cb) -> root.get("collection").get("productType").in(productTypes);
     }
 
     private static Specification<SatelliteImage> providerIsPaid(Boolean isPaid) {

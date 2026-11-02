@@ -42,6 +42,8 @@ public class ImageSearchRequest extends SliceRequest {
 
     private List<Long> collectionIds;
 
+    private List<String> productTypes;
+
     private Boolean isPaid;
 
     @DecimalMin("0") private BigDecimal gsdMin;

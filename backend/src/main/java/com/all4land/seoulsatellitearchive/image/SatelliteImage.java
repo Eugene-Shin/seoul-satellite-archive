@@ -56,6 +56,8 @@ public class SatelliteImage extends BaseEntity {
 
     private Instant acquiredAt;
 
+    private Instant acquiredEndAt;
+
     private BigDecimal gsdMeters;
 
     private BigDecimal cloudCover;
@@ -90,6 +92,9 @@ public class SatelliteImage extends BaseEntity {
                 : request.getInstruments().toArray(String[]::new);
         this.sensorType = SensorType.valueOf(request.getSensorType());
         this.acquiredAt = request.getAcquiredAt().toInstant();
+        this.acquiredEndAt = request.getAcquiredEndAt() == null
+                ? null
+                : request.getAcquiredEndAt().toInstant();
         this.gsdMeters = request.getGsdMeters();
         this.cloudCover = request.getCloudCover();
         this.orbitDirection =
