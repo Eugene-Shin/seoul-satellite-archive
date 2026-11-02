@@ -71,9 +71,9 @@ class ImageControllerTest {
     void filterOptions() throws Exception {
         mockMvc.perform(get("/api/images/filter-options"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.satellites", hasItems("LANDSAT-8", "SENTINEL-1A", "WV02")))
+                .andExpect(jsonPath("$.data.satellites", hasItems("LANDSAT-8", "SENTINEL-1A", "SENTINEL-2A")))
                 .andExpect(jsonPath("$.data.instruments", hasItems("C-SAR", "OLI", "msi")))
-                .andExpect(jsonPath("$.data.providers", hasSize(4)))
+                .andExpect(jsonPath("$.data.providers", hasSize(3)))
                 .andExpect(jsonPath("$.data.sensorTypes", contains("OPTICAL", "SAR")));
     }
 
@@ -86,7 +86,7 @@ class ImageControllerTest {
 
     @Test
     void keywordTreatsUnderscoreLiterally() throws Exception {
-        mockMvc.perform(get("/api/images").param("keyword", "_").param("providers", "maxar", "nasa-cmr"))
+        mockMvc.perform(get("/api/images").param("keyword", "_").param("providers", "nasa-cmr"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[*].satellite", everyItem(is("SENTINEL-1A"))))
                 .andExpect(jsonPath("$.data.content", hasSize(2)));
