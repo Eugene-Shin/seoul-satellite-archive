@@ -29,10 +29,13 @@ public class ImageService {
     private final ProviderRepository providerRepository;
     private final EntityManager entityManager;
 
+    // 직접 등록하는 영상은 우리 기관이 보유한 것이다. API 출처의 영상은 수집기만 만든다
     @Transactional
     public void create(ImageWriteRequest request) {
-        SatelliteImage image = new SatelliteImage();
-        replaceMetadata(image, request);
+        Provider ownOrganization = providerRepository
+                .findById(Provider.OWN_ORGANIZATION_CODE)
+                .orElseThrow(() -> new IllegalStateException("우리 기관 제공 기관 행이 없습니다."));
+        replaceMetadata(new SatelliteImage(), ownOrganization, request);
     }
 
     public ImageDetailResponse getDetail(Long imageId) {
@@ -41,7 +44,8 @@ public class ImageService {
 
     @Transactional
     public void update(Long imageId, ImageWriteRequest request) {
-        replaceMetadata(findImage(imageId), request);
+        SatelliteImage image = findImage(imageId);
+        replaceMetadata(image, image.getProvider(), request);
     }
 
     @Transactional
@@ -56,16 +60,11 @@ public class ImageService {
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }
 
-    private void replaceMetadata(SatelliteImage image, ImageWriteRequest request) {
-        Provider provider = providerRepository
-                .findById(request.getProviderCode())
-                .orElseThrow(
-                        () -> new BusinessException(CommonErrorCode.BAD_REQUEST, "providerCode: 존재하지 않는 제공 기관입니다."));
+    private void replaceMetadata(SatelliteImage image, Provider provider, ImageWriteRequest request) {
         boolean duplicate = image.getId() == null
-                ? satelliteImageRepository.existsByProvider_CodeAndSourceId(
-                        request.getProviderCode(), request.getSourceId())
+                ? satelliteImageRepository.existsByProvider_CodeAndSourceId(provider.getCode(), request.getSourceId())
                 : satelliteImageRepository.existsByProvider_CodeAndSourceIdAndIdNot(
-                        request.getProviderCode(), request.getSourceId(), image.getId());
+                        provider.getCode(), request.getSourceId(), image.getId());
         if (duplicate) {
             throw new BusinessException(CommonErrorCode.CONFLICT, "해당 제공 기관에 같은 sourceId의 영상이 존재합니다.");
         }

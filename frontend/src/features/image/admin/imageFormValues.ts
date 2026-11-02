@@ -7,7 +7,6 @@ import type {
 import { toKstDateTimeLocal } from "@/shared/utils/date";
 
 export type ImageFormValues = {
-    providerCode: string | null;
     sourceId: string;
     title: string;
     satellite: string;
@@ -25,7 +24,6 @@ export type ImageFormValues = {
 };
 
 export const EMPTY_IMAGE_FORM: ImageFormValues = {
-    providerCode: null,
     sourceId: "",
     title: "",
     satellite: "",
@@ -43,7 +41,6 @@ export const EMPTY_IMAGE_FORM: ImageFormValues = {
 };
 
 export const REQUIRED_FIELDS = [
-    "providerCode",
     "sourceId",
     "title",
     "satellite",
@@ -57,10 +54,7 @@ export const REQUIRED_FIELDS = [
 export type RequiredField = (typeof REQUIRED_FIELDS)[number];
 
 export function missingRequiredFields(form: ImageFormValues): RequiredField[] {
-    return REQUIRED_FIELDS.filter((field) => {
-        const value = form[field];
-        return value === null || value.trim() === "";
-    });
+    return REQUIRED_FIELDS.filter((field) => form[field].trim() === "");
 }
 
 export function isSameForm(a: ImageFormValues, b: ImageFormValues): boolean {
@@ -76,7 +70,6 @@ export function isSameForm(a: ImageFormValues, b: ImageFormValues): boolean {
 
 export function toFormValues(detail: ImageDetailResponse): ImageFormValues {
     return {
-        providerCode: detail.providerCode,
         sourceId: detail.sourceId,
         title: detail.title,
         satellite: detail.satellite,
@@ -102,7 +95,6 @@ export function toFormValues(detail: ImageDetailResponse): ImageFormValues {
 // 내용은 서버가 검증하고, 여기선 요청 형식으로 바꾸기만 한다 (JSON 문법 오류만 미리 알림)
 export function toWriteRequest(form: ImageFormValues): ImageWriteRequest {
     return {
-        providerCode: form.providerCode ?? "",
         sourceId: form.sourceId,
         title: form.title,
         satellite: form.satellite.trim(),

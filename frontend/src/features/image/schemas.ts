@@ -17,6 +17,7 @@ export const providerSchema = z.object({
     code: z.string(),
     name: z.string(),
     isPaid: z.boolean(),
+    ownOrganization: z.boolean(),
 });
 
 export const multiPolygonSchema = z.object({

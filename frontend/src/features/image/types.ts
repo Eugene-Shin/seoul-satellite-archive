@@ -35,7 +35,6 @@ export type ImageSort = z.infer<typeof imageSortSchema>;
 
 // 등록·수정 요청 본문. 보내기만 해서 zod 스키마 없이 타입만 둔다
 export type ImageWriteRequest = {
-    providerCode: string;
     sourceId: string;
     title: string;
     satellite: string;

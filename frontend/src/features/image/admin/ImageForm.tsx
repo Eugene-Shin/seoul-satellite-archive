@@ -14,6 +14,7 @@ import {
     SENSOR_TYPE_NAMES,
 } from "@/features/image/imageText";
 import { useFilterOptions } from "@/features/image/queries";
+import type { Provider } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import { Button } from "@/shared/components/ui/button";
 import { DialogClose, DialogFooter } from "@/shared/components/ui/dialog";
@@ -39,6 +40,7 @@ const MILLISECOND_STEP = 0.001;
 
 type ImageFormProps = {
     initialValues: ImageFormValues;
+    provider: Provider | undefined;
     submitLabel: string;
     pending: boolean;
     error: unknown;
@@ -47,6 +49,7 @@ type ImageFormProps = {
 
 export function ImageForm({
     initialValues,
+    provider,
     submitLabel,
     pending,
     error,
@@ -90,18 +93,9 @@ export function ImageForm({
             {/* 입력칸만 스크롤해서 제목·닫기·버튼은 항상 보이게. 음수 여백은 초점 테두리가 잘리지 않게 */}
             <div className="-mx-4 flex min-h-0 flex-col gap-4 overflow-y-auto px-4 py-1">
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <FormSelect
-                        field="providerCode"
-                        label="제공 기관"
-                        required
-                        invalid={invalid("providerCode")}
-                        options={(options?.providers ?? []).map((provider) => ({
-                            value: provider.code,
-                            label: provider.name,
-                        }))}
-                        value={form.providerCode}
-                        onChange={(providerCode) => change({ providerCode })}
-                    />
+                    <Field label="제공 기관">
+                        <Input readOnly value={provider?.name ?? ""} />
+                    </Field>
                     <Field
                         field="sourceId"
                         label="원본 ID"

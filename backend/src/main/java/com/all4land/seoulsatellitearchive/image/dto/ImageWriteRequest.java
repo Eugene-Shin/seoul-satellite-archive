@@ -35,9 +35,6 @@ public class ImageWriteRequest {
 
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
 
-    @NotBlank @Size(max = 30) @Schema(description = "provider.code", example = "earth-search")
-    private String providerCode;
-
     @NotBlank @Size(max = 200) @Schema(example = "admin-image-001")
     private String sourceId;
 

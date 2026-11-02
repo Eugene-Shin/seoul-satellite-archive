@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.all4land.seoulsatellitearchive.global.config.TestcontainersConfiguration;
+import com.all4land.seoulsatellitearchive.provider.Provider;
 import com.jayway.jsonpath.JsonPath;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ class ImageControllerTest {
     private static final String BASE = "/api/images";
     private static final String REQUEST = """
             {
-              "providerCode": "earth-search", "sourceId": "admin-crud-test", "title": "관리자 CRUD 테스트",
+              "sourceId": "admin-crud-test", "title": "관리자 CRUD 테스트",
               "satellite": " sentinel-2a ", "instruments": [" msi "], "sensorType": "OPTICAL",
               "acquiredAt": "2026-10-19T10:00:00+09:00", "gsdMeters": 10.25, "cloudCover": 5.25,
               "orbitDirection": "ASCENDING",
@@ -74,6 +75,7 @@ class ImageControllerTest {
                 .andExpect(jsonPath("$.data.satellites", hasItems("LANDSAT-8", "SENTINEL-1A", "SENTINEL-2A")))
                 .andExpect(jsonPath("$.data.instruments", hasItems("C-SAR", "OLI", "MSI")))
                 .andExpect(jsonPath("$.data.providers", hasSize(5)))
+                .andExpect(jsonPath("$.data.providers[?(@.ownOrganization == true)].code", contains("all4land")))
                 .andExpect(jsonPath("$.data.sensorTypes", contains("OPTICAL", "SAR")));
     }
 
@@ -261,7 +263,7 @@ class ImageControllerTest {
         String initial = mockMvc.perform(get(BASE + "/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.imageId").value(id))
-                .andExpect(jsonPath("$.data.providerCode").value("earth-search"))
+                .andExpect(jsonPath("$.data.providerCode").value("all4land"))
                 .andExpect(jsonPath("$.data.sourceId").value("admin-crud-test"))
                 .andExpect(jsonPath("$.data.satellite").value("SENTINEL-2A"))
                 .andExpect(jsonPath("$.data.instruments[0]").value("MSI"))
@@ -350,7 +352,19 @@ class ImageControllerTest {
         mockMvc.perform(json(put(BASE + "/" + id), REQUEST)).andExpect(status().isOk());
         long second = create(changed("sourceId", "other-source"));
         mockMvc.perform(json(put(BASE + "/" + second), REQUEST)).andExpect(status().isConflict());
-        create(changed("providerCode", "nasa-cmr"));
+        create(changed("sourceId", "S2B_52SCG_20241227_0_L2A"));
+    }
+
+    @Test
+    void updateKeepsProvider() throws Exception {
+        long seedId = jdbc.queryForObject(
+                "select image_id from satellite_image where provider = 'earth-search' and source_id = ?",
+                Long.class,
+                "S2B_52SCG_20241227_0_L2A");
+        mockMvc.perform(json(put(BASE + "/" + seedId), REQUEST)).andExpect(status().isOk());
+        mockMvc.perform(get(BASE + "/" + seedId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.providerCode").value("earth-search"));
     }
 
     @Test
@@ -375,8 +389,6 @@ class ImageControllerTest {
 
     static Stream<Arguments> invalidFields() {
         return Stream.of(
-                Arguments.of("providerCode", "unknown-provider"),
-                Arguments.of("providerCode", "p".repeat(31)),
                 Arguments.of("sourceId", "s".repeat(201)),
                 Arguments.of("title", "t".repeat(301)),
                 Arguments.of("title", "  "),
@@ -425,15 +437,7 @@ class ImageControllerTest {
 
     static Stream<String> requiredFields() {
         return Stream.of(
-                "providerCode",
-                "sourceId",
-                "title",
-                "satellite",
-                "sensorType",
-                "acquiredAt",
-                "footprint",
-                "url",
-                "downloadUrls");
+                "sourceId", "title", "satellite", "sensorType", "acquiredAt", "footprint", "url", "downloadUrls");
     }
 
     private long create(String body) throws Exception {
@@ -441,12 +445,11 @@ class ImageControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data", nullValue()));
-        String providerCode = JsonPath.read(body, "$.providerCode");
         String sourceId = JsonPath.read(body, "$.sourceId");
         return jdbc.queryForObject(
                 "select image_id from satellite_image where provider = ? and source_id = ?",
                 Long.class,
-                providerCode,
+                Provider.OWN_ORGANIZATION_CODE,
                 sourceId);
     }
 

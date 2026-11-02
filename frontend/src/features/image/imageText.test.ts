@@ -68,12 +68,22 @@ describe("providerText", () => {
     it("유료 여부를 붙인다", () => {
         expect(
             providerText({
-                provider: { code: "KARI", name: "항우연", isPaid: true },
+                provider: {
+                    code: "KARI",
+                    name: "항우연",
+                    isPaid: true,
+                    ownOrganization: false,
+                },
             }),
         ).toBe("항우연 (유료)");
         expect(
             providerText({
-                provider: { code: "ESA", name: "ESA", isPaid: false },
+                provider: {
+                    code: "ESA",
+                    name: "ESA",
+                    isPaid: false,
+                    ownOrganization: false,
+                },
             }),
         ).toBe("ESA (무료)");
     });
