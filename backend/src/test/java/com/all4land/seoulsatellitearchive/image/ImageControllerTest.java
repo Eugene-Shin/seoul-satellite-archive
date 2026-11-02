@@ -119,6 +119,19 @@ class ImageControllerTest {
     }
 
     @Test
+    void collectionsMatchAnySelected() throws Exception {
+        String s1Slc = String.valueOf(collectionId("nasa-cmr", "C1214470488-ASF"));
+        String hls = String.valueOf(collectionId("nasa-cmr", "C2021957657-LPCLOUD"));
+        mockMvc.perform(get("/api/images").param("collectionIds", s1Slc))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(2)))
+                .andExpect(jsonPath("$.data.content[*].collection.code", everyItem(is("C1214470488-ASF"))));
+        mockMvc.perform(get("/api/images").param("collectionIds", s1Slc, hls))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(4)));
+    }
+
+    @Test
     void instrumentsMatchAnySelected() throws Exception {
         mockMvc.perform(get("/api/images").param("instruments", "OLI", "C-SAR"))
                 .andExpect(status().isOk())

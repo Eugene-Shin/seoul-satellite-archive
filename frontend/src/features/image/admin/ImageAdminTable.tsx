@@ -21,13 +21,18 @@ import { sensorTypesChange } from "@/features/image/filters/sensorTypesChange";
 import {
     acquiredAtText,
     cloudCoverText,
+    collectionOptionLabel,
     gsdText,
     ORBIT_DIRECTION_NAMES,
     orbitDirectionText,
     SENSOR_TYPE_NAMES,
     sensorTypeText,
 } from "@/features/image/imageText";
-import { useAdminImages, useFilterOptions } from "@/features/image/queries";
+import {
+    useAdminImages,
+    useCollections,
+    useFilterOptions,
+} from "@/features/image/queries";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import { IconButton } from "@/shared/components/IconButton";
@@ -54,6 +59,7 @@ const COLUMN_ALIGN = {
     cloudCover: ALIGN.number,
     orbitDirection: ALIGN.short,
     provider: ALIGN.text,
+    collection: ALIGN.text,
     isPaid: ALIGN.short,
 };
 
@@ -230,6 +236,7 @@ type ImageAdminHeaderProps = {
 
 function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
     const { data: options } = useFilterOptions();
+    const { data: collections } = useCollections();
 
     return (
         <tr>
@@ -302,6 +309,20 @@ function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
                     onChange={(providers) => onChange({ providers })}
                 />
             </th>
+            <th className={headerClass("collection")}>
+                <MultiColumnFilter
+                    label="컬렉션"
+                    options={(collections ?? []).map((collection) => ({
+                        value: collection.collectionId,
+                        label: collectionOptionLabel(
+                            collection,
+                            options?.providers ?? [],
+                        ),
+                    }))}
+                    selected={conditions.collectionIds}
+                    onChange={(collectionIds) => onChange({ collectionIds })}
+                />
+            </th>
             <th className={headerClass("isPaid")}>
                 <SelectColumnFilter
                     label="유료 여부"
@@ -344,6 +365,14 @@ function ImageAdminRow({ image, onEdit, onDelete }: ImageAdminRowProps) {
                 {orbitDirectionText(image)}
             </td>
             <td className={cellClass("provider")}>{image.provider.name}</td>
+            <td className={cellClass("collection")}>
+                <span
+                    className="block max-w-60 truncate"
+                    title={image.collection.title}
+                >
+                    {image.collection.title}
+                </span>
+            </td>
             <td className={cellClass("isPaid")}>
                 {image.provider.isPaid ? "유료" : "무료"}
             </td>

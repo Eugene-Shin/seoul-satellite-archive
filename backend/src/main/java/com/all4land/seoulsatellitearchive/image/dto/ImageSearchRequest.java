@@ -40,6 +40,8 @@ public class ImageSearchRequest extends SliceRequest {
 
     private List<String> providers;
 
+    private List<Long> collectionIds;
+
     private Boolean isPaid;
 
     @DecimalMin("0") private BigDecimal gsdMin;

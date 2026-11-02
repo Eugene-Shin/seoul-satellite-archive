@@ -10,6 +10,7 @@ import {
 } from "@/features/image/admin/imageFormValues";
 import { InstrumentsField } from "@/features/image/admin/InstrumentsField";
 import {
+    collectionOptionLabel,
     ORBIT_DIRECTION_NAMES,
     SENSOR_TYPE_NAMES,
 } from "@/features/image/imageText";
@@ -74,15 +75,8 @@ export function ImageForm({
         )
         .map((collection) => ({
             value: collection.collectionId,
-            label: `${providerName(collection.providerCode)} · ${collection.title}`,
+            label: collectionOptionLabel(collection, options?.providers ?? []),
         }));
-
-    function providerName(code: string): string {
-        return (
-            options?.providers.find((candidate) => candidate.code === code)
-                ?.name ?? code
-        );
-    }
 
     function invalid(field: RequiredField): boolean {
         return missing.includes(field);

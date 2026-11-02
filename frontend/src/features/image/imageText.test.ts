@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     cloudCoverText,
+    collectionOptionLabel,
     gsdText,
     orbitDirectionText,
     providerText,
@@ -86,5 +87,33 @@ describe("providerText", () => {
                 },
             }),
         ).toBe("ESA (무료)");
+    });
+});
+
+describe("collectionOptionLabel", () => {
+    const COLLECTION = {
+        collectionId: 1,
+        providerCode: "earth-search",
+        code: "sentinel-2-l2a",
+        title: "Sentinel-2 Level-2A",
+    };
+
+    it("컬렉션을 정의한 출처 이름을 앞에 붙인다", () => {
+        expect(
+            collectionOptionLabel(COLLECTION, [
+                {
+                    code: "earth-search",
+                    name: "Earth Search",
+                    isPaid: false,
+                    ownOrganization: false,
+                },
+            ]),
+        ).toBe("Earth Search · Sentinel-2 Level-2A");
+    });
+
+    it("출처 이름을 모르면 코드를 쓴다", () => {
+        expect(collectionOptionLabel(COLLECTION, [])).toBe(
+            "earth-search · Sentinel-2 Level-2A",
+        );
     });
 });

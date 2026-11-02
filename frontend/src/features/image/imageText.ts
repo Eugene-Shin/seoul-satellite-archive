@@ -1,6 +1,8 @@
 import type {
+    Collection,
     ImageResponse,
     OrbitDirection,
+    Provider,
     SensorType,
 } from "@/features/image/types";
 import { formatKstDateTime } from "@/shared/utils/date";
@@ -62,4 +64,15 @@ export function providerText({
     provider,
 }: Pick<ImageResponse, "provider">): string {
     return `${provider.name} (${provider.isPaid ? "유료" : "무료"})`;
+}
+
+// 컬렉션은 정의한 출처가 영상의 제공 기관과 다를 수 있어서(올포랜드 영상) 출처를 함께 보여준다
+export function collectionOptionLabel(
+    collection: Collection,
+    providers: Provider[],
+): string {
+    const providerName =
+        providers.find((provider) => provider.code === collection.providerCode)
+            ?.name ?? collection.providerCode;
+    return `${providerName} · ${collection.title}`;
 }

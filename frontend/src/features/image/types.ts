@@ -74,6 +74,7 @@ export type ImageSearchParams = {
     sensorTypes?: SensorType[];
     orbitDirection?: OrbitDirection;
     providers?: string[];
+    collectionIds?: number[];
     isPaid?: boolean;
     gsdMin?: number;
     gsdMax?: number;
