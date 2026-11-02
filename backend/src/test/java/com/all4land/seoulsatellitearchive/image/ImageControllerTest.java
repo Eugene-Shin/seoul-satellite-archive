@@ -73,7 +73,7 @@ class ImageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.satellites", hasItems("LANDSAT-8", "SENTINEL-1A", "SENTINEL-2A")))
                 .andExpect(jsonPath("$.data.instruments", hasItems("C-SAR", "OLI", "MSI")))
-                .andExpect(jsonPath("$.data.providers", hasSize(3)))
+                .andExpect(jsonPath("$.data.providers", hasSize(5)))
                 .andExpect(jsonPath("$.data.sensorTypes", contains("OPTICAL", "SAR")));
     }
 
