@@ -311,10 +311,15 @@ export function ImageForm({
                     label="다운로드 URL"
                     required
                     invalid={invalid("downloadUrls")}
-                    hint="Enter로 링크를 구분하여 입력"
+                    hint={
+                        provider?.ownOrganization
+                            ? "Enter로 링크를 구분하여 입력"
+                            : "자동으로 수집한 영상의 파일 정보는 수집기가 관리합니다"
+                    }
                 >
                     <Textarea
                         required
+                        readOnly={!provider?.ownOrganization}
                         aria-invalid={invalid("downloadUrls")}
                         value={form.downloadUrls}
                         onChange={(e) =>

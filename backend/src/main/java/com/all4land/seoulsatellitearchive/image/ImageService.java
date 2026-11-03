@@ -16,8 +16,11 @@ import com.all4land.seoulsatellitearchive.provider.Provider;
 import com.all4land.seoulsatellitearchive.provider.ProviderRepository;
 import com.all4land.seoulsatellitearchive.provider.dto.ProviderResponse;
 import jakarta.persistence.EntityManager;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +38,7 @@ public class ImageService {
     private final ProviderRepository providerRepository;
     private final ImageCollectionRepository imageCollectionRepository;
     private final ImageSarRepository imageSarRepository;
+    private final ImageFileRepository imageFileRepository;
     private final EntityManager entityManager;
 
     // 직접 등록하는 영상은 우리 기관이 보유한 것이다. API 출처의 영상은 수집기만 만든다
@@ -88,6 +92,9 @@ public class ImageService {
         image.replaceMetadata(request, provider, collection, request.toFootprint());
         satelliteImageRepository.saveAndFlush(image);
         replaceSar(image, request.getSar());
+        if (provider.isOwnOrganization()) {
+            syncFiles(image, request.getDownloadUrls());
+        }
         // @Formula는 쓰기 후 자동 갱신되지 않으므로 같은 영속성 컨텍스트에서 검색해도 최신 도형을 반환하게 한다.
         entityManager.refresh(image);
     }
@@ -107,6 +114,21 @@ public class ImageService {
         }
         sar.replace(request);
         imageSarRepository.saveAndFlush(sar);
+    }
+
+    // 그대로인 URL의 행은 남기고(나중에 채울 아카이빙 정보 보존), 빠진 URL은 지우고, 새 URL은 추가한다
+    private void syncFiles(SatelliteImage image, List<String> downloadUrls) {
+        Set<String> added = new LinkedHashSet<>(downloadUrls);
+        List<ImageFile> removed = new ArrayList<>();
+        for (ImageFile file : imageFileRepository.findAllByImage_Id(image.getId())) {
+            if (!added.remove(file.getHref())) {
+                removed.add(file);
+            }
+        }
+        imageFileRepository.deleteAll(removed);
+        imageFileRepository.saveAll(
+                added.stream().map(href -> new ImageFile(image, href)).toList());
+        imageFileRepository.flush();
     }
 
     public SliceResponse<ImageResponse> search(ImageSearchRequest request) {

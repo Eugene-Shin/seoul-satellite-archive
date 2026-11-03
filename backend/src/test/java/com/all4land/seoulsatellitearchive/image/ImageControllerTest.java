@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.all4land.seoulsatellitearchive.global.config.TestcontainersConfiguration;
 import com.all4land.seoulsatellitearchive.provider.Provider;
 import com.jayway.jsonpath.JsonPath;
+import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,6 +71,9 @@ class ImageControllerTest {
 
     @Autowired
     SatelliteImageRepository repository;
+
+    @Autowired
+    EntityManager entityManager;
 
     private String request;
 
@@ -577,10 +581,14 @@ class ImageControllerTest {
                 insert into image_upload (image_id, status, original_file_name)
                 values (?, 'UPLOADED', 'admin-crud-test.tar')
                 """, id);
+        // 테스트는 요청들이 트랜잭션 하나를 같이 쓴다. 실제 삭제 요청처럼 빈 영속성 컨텍스트에서 시작한다
+        entityManager.clear();
         mockMvc.perform(delete(BASE + "/" + id)).andExpect(status().isOk());
         mockMvc.perform(get(BASE + "/" + id)).andExpect(status().isNotFound());
         assertThat(repository.existsById(id)).isFalse();
         assertThat(jdbc.queryForObject("select count(*) from image_upload where image_id = ?", Long.class, id))
+                .isZero();
+        assertThat(jdbc.queryForObject("select count(*) from image_file where image_id = ?", Long.class, id))
                 .isZero();
     }
 
@@ -620,16 +628,56 @@ class ImageControllerTest {
         create(changed("sourceId", "S2B_52SCG_20241227_0_L2A"));
     }
 
+    // 자동으로 수집한 영상의 파일 정보는 수집기가 관리하므로 요청의 다운로드 URL을 무시한다
     @Test
-    void updateKeepsProvider() throws Exception {
+    void updateKeepsProviderAndCollectedFiles() throws Exception {
         long seedId = jdbc.queryForObject(
                 "select image_id from satellite_image where provider = 'earth-search' and source_id = ?",
                 Long.class,
                 "S2B_52SCG_20241227_0_L2A");
+        String filesQuery = "select string_agg(href, ',' order by file_id) from image_file where image_id = ?";
+        String downloadUrlsQuery = "select array_to_string(download_urls, ',') from satellite_image where image_id = ?";
+        String files = jdbc.queryForObject(filesQuery, String.class, seedId);
+        String downloadUrls = jdbc.queryForObject(downloadUrlsQuery, String.class, seedId);
+
         mockMvc.perform(json(put(BASE + "/" + seedId), request)).andExpect(status().isOk());
         mockMvc.perform(get(BASE + "/" + seedId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.providerCode").value("earth-search"));
+        assertThat(jdbc.queryForObject(filesQuery, String.class, seedId)).isEqualTo(files);
+        assertThat(jdbc.queryForObject(downloadUrlsQuery, String.class, seedId)).isEqualTo(downloadUrls);
+    }
+
+    // 그대로인 URL의 행은 남기고, 빠진 URL은 지우고, 새 URL은 확장자로 역할을 정해 한 번만 추가한다
+    @Test
+    void ownOrganizationFilesFollowDownloadUrls() throws Exception {
+        long id = create(request);
+        String filesQuery = """
+                select file_id || '/' || asset_key || '/' || role || '/' || href
+                from image_file where image_id = ? order by file_id
+                """;
+        List<String> created = jdbc.queryForList(filesQuery, String.class, id);
+        assertThat(created).hasSize(2);
+        assertThat(created.get(0)).endsWith("/image.tif/DATA/s3://archive/image.tif");
+        String kept = created.get(1);
+        assertThat(kept).endsWith("/image.tif/DATA/https://example.test/image.tif");
+
+        mockMvc.perform(json(
+                        put(BASE + "/" + id),
+                        changed(
+                                "downloadUrls",
+                                List.of(
+                                        "https://example.test/image.tif",
+                                        "https://example.test/scene.tar.gz",
+                                        "https://example.test/meta.XML",
+                                        "https://example.test/meta.XML"))))
+                .andExpect(status().isOk());
+
+        List<String> updated = jdbc.queryForList(filesQuery, String.class, id);
+        assertThat(updated).hasSize(3);
+        assertThat(updated.get(0)).isEqualTo(kept);
+        assertThat(updated.get(1)).endsWith("/scene.tar.gz/ORIGINAL/https://example.test/scene.tar.gz");
+        assertThat(updated.get(2)).endsWith("/meta.XML/METADATA/https://example.test/meta.XML");
     }
 
     // 올포랜드 영상(등록)은 다른 출처의 컬렉션을 가질 수 있지만, 다른 출처의 영상은 그 출처의 컬렉션만 가진다

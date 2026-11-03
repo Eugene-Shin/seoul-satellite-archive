@@ -101,7 +101,10 @@ public class SatelliteImage extends BaseEntity {
                 request.getOrbitDirection() == null ? null : OrbitDirection.valueOf(request.getOrbitDirection());
         this.footprint = footprint;
         this.url = request.getUrl();
-        this.downloadUrls = request.getDownloadUrls().toArray(String[]::new);
+        // 자동으로 수집한 영상의 파일 정보는 수집기가 관리한다
+        if (provider.isOwnOrganization()) {
+            this.downloadUrls = request.getDownloadUrls().toArray(String[]::new);
+        }
         this.sourceUpdatedAt = request.getSourceUpdatedAt() == null
                 ? null
                 : request.getSourceUpdatedAt().toInstant();
