@@ -156,6 +156,60 @@ class ImageControllerTest {
                         """, Long.class)).isEqualTo(4);
     }
 
+    // STAC은 에셋마다 한 행, 밴드는 eo:bands. 픽셀 간격은 에셋의 proj:transform
+    @Test
+    void seedStacAssetsAreBackfilledAsFilesAndBands() {
+        assertThat(jdbc.queryForObject("""
+                        select count(*) from satellite_image i
+                        where i.provider = 'earth-search'
+                          and (select count(*) from image_file f where f.image_id = i.image_id)
+                              <> (select count(*) from jsonb_object_keys(i.raw_metadata -> 'assets'))
+                        """, Long.class)).isZero();
+        assertThat(jdbc.queryForList("""
+                        select f.asset_key || '/' || f.role || '/' || coalesce(f.pixel_spacing_meters::text, '-')
+                               || '/' || coalesce(string_agg(b.band_name || ':' || coalesce(b.common_name, '-')
+                                                             || ':' || coalesce(b.resolution_meters::text, '-'),
+                                                             ',' order by b.band_index), '-')
+                        from image_file f
+                                 join satellite_image i on i.image_id = f.image_id
+                                 left join image_file_band b on b.file_id = f.file_id
+                        where i.source_id = 'S2B_52SCG_20241227_0_L2A'
+                          and f.asset_key in ('red', 'coastal', 'visual', 'thumbnail', 'granule_metadata')
+                        group by f.asset_key, f.role, f.pixel_spacing_meters
+                        """, String.class))
+                .containsExactlyInAnyOrder(
+                        "red/DATA/10.00/red:red:10.00",
+                        "coastal/DATA/60.00/coastal:coastal:60.00",
+                        // visual 에셋엔 센서 해상도(gsd)가 없어서 비워 둔다
+                        "visual/PREVIEW/10.00/red:red:-,green:green:-,blue:blue:-",
+                        "thumbnail/THUMBNAIL/-/-",
+                        "granule_metadata/METADATA/-/-");
+    }
+
+    // CMR은 https 링크만. HLS DATA 파일은 그래뉼의 SPATIAL_RESOLUTION, S1은 원본 묶음 하나
+    @Test
+    void seedCmrRelatedUrlsAreBackfilledAsFiles() {
+        assertThat(jdbc.queryForList("""
+                        select c.code || '/' || f.role || '/' || coalesce(f.pixel_spacing_meters::text, '-')
+                               || '/' || count(*)
+                        from image_file f
+                                 join satellite_image i on i.image_id = f.image_id
+                                 join image_collection c on c.collection_id = i.collection_id
+                        where i.provider = 'nasa-cmr'
+                        group by i.image_id, c.code, f.role, f.pixel_spacing_meters
+                        """, String.class))
+                .containsOnly(
+                        "C2021957657-LPCLOUD/DATA/30.00/15",
+                        "C2021957657-LPCLOUD/METADATA/-/2",
+                        "C2021957657-LPCLOUD/THUMBNAIL/-/1",
+                        "C1214470488-ASF/ORIGINAL/-/1");
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from image_file where href not like 'https://%' and image_id in "
+                                + "(select image_id from satellite_image where provider = 'nasa-cmr')",
+                        Long.class))
+                .isZero();
+    }
+
     // ASF CMR은 umm.AdditionalAttributes에 SAR 정보를 준다. 입사각·해상도는 주지 않아서 NULL
     @Test
     void seedSarIsBackfilledFromCmrAttributes() throws Exception {
