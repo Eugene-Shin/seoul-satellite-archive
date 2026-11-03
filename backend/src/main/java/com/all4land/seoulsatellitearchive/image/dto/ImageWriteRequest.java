@@ -64,9 +64,6 @@ public class ImageWriteRequest {
     @Schema(description = "선택. 시간대가 포함된 ISO 8601. acquiredAt과 같거나 이후", example = "2026-10-19T10:00:27+09:00")
     private OffsetDateTime acquiredEndAt;
 
-    @Digits(integer = 6, fraction = 2) @Schema(example = "10.00")
-    private BigDecimal gsdMeters;
-
     @Digits(integer = 3, fraction = 2) @DecimalMin("0") @DecimalMax("100") @Schema(description = "SAR이면 null", example = "5.25")
     private BigDecimal cloudCover;
 

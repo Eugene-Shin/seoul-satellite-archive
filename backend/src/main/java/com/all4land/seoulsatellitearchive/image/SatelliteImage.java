@@ -58,8 +58,6 @@ public class SatelliteImage extends BaseEntity {
 
     private Instant acquiredEndAt;
 
-    private BigDecimal gsdMeters;
-
     private BigDecimal cloudCover;
 
     @Enumerated(EnumType.STRING)
@@ -95,7 +93,6 @@ public class SatelliteImage extends BaseEntity {
         this.acquiredEndAt = request.getAcquiredEndAt() == null
                 ? null
                 : request.getAcquiredEndAt().toInstant();
-        this.gsdMeters = request.getGsdMeters();
         this.cloudCover = request.getCloudCover();
         this.orbitDirection =
                 request.getOrbitDirection() == null ? null : OrbitDirection.valueOf(request.getOrbitDirection());

@@ -39,6 +39,7 @@ public class ImageService {
     private final ImageCollectionRepository imageCollectionRepository;
     private final ImageSarRepository imageSarRepository;
     private final ImageFileRepository imageFileRepository;
+    private final ImageResolutionRepository imageResolutionRepository;
     private final EntityManager entityManager;
 
     // 직접 등록하는 영상은 우리 기관이 보유한 것이다. API 출처의 영상은 수집기만 만든다
@@ -53,7 +54,9 @@ public class ImageService {
     public ImageDetailResponse getDetail(Long imageId) {
         SatelliteImage image = findImage(imageId);
         return ImageDetailResponse.from(
-                image, imageSarRepository.findById(imageId).orElse(null));
+                image,
+                imageSarRepository.findById(imageId).orElse(null),
+                imageResolutionRepository.findById(imageId).orElse(null));
     }
 
     @Transactional
@@ -144,15 +147,16 @@ public class ImageService {
         String nextCursor = rows.size() > size
                 ? ImageCursor.of(page.getLast(), request.getSorts()).encode()
                 : null;
-        // 이 페이지 영상들의 SAR 정보를 IN 쿼리 한 번으로 가져온다 (영상마다 조회하면 N+1)
-        Map<Long, ImageSar> sars =
-                imageSarRepository
-                        .findAllById(page.stream().map(SatelliteImage::getId).toList())
-                        .stream()
-                        .collect(Collectors.toMap(ImageSar::getImageId, Function.identity()));
+        // 이 페이지 영상들의 SAR 정보와 해상도를 IN 쿼리 한 번씩으로 가져온다 (영상마다 조회하면 N+1)
+        List<Long> imageIds = page.stream().map(SatelliteImage::getId).toList();
+        Map<Long, ImageSar> sars = imageSarRepository.findAllById(imageIds).stream()
+                .collect(Collectors.toMap(ImageSar::getImageId, Function.identity()));
+        Map<Long, ImageResolution> resolutions = imageResolutionRepository.findAllById(imageIds).stream()
+                .collect(Collectors.toMap(ImageResolution::getImageId, Function.identity()));
         return new SliceResponse<>(
                 page.stream()
-                        .map(image -> ImageResponse.from(image, sars.get(image.getId())))
+                        .map(image ->
+                                ImageResponse.from(image, sars.get(image.getId()), resolutions.get(image.getId())))
                         .toList(),
                 nextCursor);
     }
@@ -167,7 +171,7 @@ public class ImageService {
                         .toList(),
                 List.of(SensorType.values()),
                 List.of(OrbitDirection.values()),
-                new Range<>(ranges.getGsdMin(), ranges.getGsdMax()),
+                new Range<>(ranges.getResolutionMin(), ranges.getResolutionMax()),
                 new Range<>(ranges.getAcquiredMin(), ranges.getAcquiredMax()));
     }
 }

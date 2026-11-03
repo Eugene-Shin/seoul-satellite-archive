@@ -5,6 +5,8 @@ import com.all4land.seoulsatellitearchive.image.dto.ImageSearchRequest;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -40,8 +42,7 @@ public final class ImageSearchSpecification {
                 collectionIn(request.getCollectionIds()),
                 productTypeIn(request.getProductTypes()),
                 providerIsPaid(request.getIsPaid()),
-                gsdAtLeast(request.getGsdMin()),
-                gsdAtMost(request.getGsdMax()),
+                resolutionOverlaps(request.getResolutionMin(), request.getResolutionMax()),
                 cloudAtMost(request.getCloudMax()),
                 footprintIntersects(request.getBbox()));
     }
@@ -114,16 +115,24 @@ public final class ImageSearchSpecification {
                 : (root, query, cb) -> cb.equal(root.get("provider").get("isPaid"), isPaid);
     }
 
-    private static Specification<SatelliteImage> gsdAtLeast(BigDecimal min) {
-        return min == null
-                ? Specification.unrestricted()
-                : (root, query, cb) -> cb.greaterThanOrEqualTo(root.<BigDecimal>get("gsdMeters"), min);
-    }
-
-    private static Specification<SatelliteImage> gsdAtMost(BigDecimal max) {
-        return max == null
-                ? Specification.unrestricted()
-                : (root, query, cb) -> cb.lessThanOrEqualTo(root.<BigDecimal>get("gsdMeters"), max);
+    // 영상의 해상도 범위가 조건 범위와 겹치면 포함한다. 해상도 값이 없는 영상은 빠진다
+    private static Specification<SatelliteImage> resolutionOverlaps(BigDecimal min, BigDecimal max) {
+        if (min == null && max == null) {
+            return Specification.unrestricted();
+        }
+        return (root, query, cb) -> {
+            Subquery<Long> subquery = query.subquery(Long.class);
+            Root<ImageResolution> resolution = subquery.from(ImageResolution.class);
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(resolution.get("imageId"), root.get("id")));
+            if (min != null) {
+                predicates.add(cb.greaterThanOrEqualTo(resolution.get("maxMeters"), min));
+            }
+            if (max != null) {
+                predicates.add(cb.lessThanOrEqualTo(resolution.get("minMeters"), max));
+            }
+            return cb.exists(subquery.select(resolution.get("imageId")).where(predicates.toArray(Predicate[]::new)));
+        };
     }
 
     private static Specification<SatelliteImage> cloudAtMost(BigDecimal max) {

@@ -141,6 +141,16 @@ export function ImageForm({
                             }
                         />
                     </Field>
+                    <Field label="원본 갱신 일시" hint="한국 시간(KST) 기준">
+                        <Input
+                            type="datetime-local"
+                            step={MILLISECOND_STEP}
+                            value={form.sourceUpdatedAt}
+                            onChange={(e) =>
+                                change({ sourceUpdatedAt: e.target.value })
+                            }
+                        />
+                    </Field>
                     <Field
                         field="title"
                         label="제목"
@@ -229,17 +239,6 @@ export function ImageForm({
                             }
                         />
                     </Field>
-                    <Field label="해상도 (m)">
-                        <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={form.gsdMeters}
-                            onChange={(e) =>
-                                change({ gsdMeters: e.target.value })
-                            }
-                        />
-                    </Field>
                     <Field
                         label="구름량 (%)"
                         hint={
@@ -287,16 +286,6 @@ export function ImageForm({
                             aria-invalid={invalid("url")}
                             value={form.url}
                             onChange={(e) => change({ url: e.target.value })}
-                        />
-                    </Field>
-                    <Field label="원본 갱신 일시" hint="한국 시간(KST) 기준">
-                        <Input
-                            type="datetime-local"
-                            step={MILLISECOND_STEP}
-                            value={form.sourceUpdatedAt}
-                            onChange={(e) =>
-                                change({ sourceUpdatedAt: e.target.value })
-                            }
                         />
                     </Field>
                 </div>

@@ -39,7 +39,7 @@ export type ImageFilterOptionsResponse = z.infer<
     typeof imageFilterOptionsSchema
 >;
 
-export type GsdRange = ImageFilterOptionsResponse["gsdRange"];
+export type ResolutionRange = ImageFilterOptionsResponse["resolutionRange"];
 
 export type AcquiredRange = ImageFilterOptionsResponse["acquiredRange"];
 
@@ -55,7 +55,6 @@ export type ImageWriteRequest = {
     sensorType: SensorType;
     acquiredAt: string;
     acquiredEndAt: string | null;
-    gsdMeters: number | null;
     cloudCover: number | null;
     orbitDirection: OrbitDirection | null;
     sar: Sar | null;
@@ -88,8 +87,8 @@ export type ImageSearchParams = {
     collectionIds?: number[];
     productTypes?: string[];
     isPaid?: boolean;
-    gsdMin?: number;
-    gsdMax?: number;
+    resolutionMin?: number;
+    resolutionMax?: number;
     cloudMax?: number;
     sorts?: ImageSort[];
     bbox?: Bbox;

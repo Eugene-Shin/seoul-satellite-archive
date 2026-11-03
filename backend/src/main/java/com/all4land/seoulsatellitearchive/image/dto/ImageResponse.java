@@ -1,6 +1,7 @@
 package com.all4land.seoulsatellitearchive.image.dto;
 
 import com.all4land.seoulsatellitearchive.collection.dto.CollectionResponse;
+import com.all4land.seoulsatellitearchive.image.ImageResolution;
 import com.all4land.seoulsatellitearchive.image.ImageSar;
 import com.all4land.seoulsatellitearchive.image.OrbitDirection;
 import com.all4land.seoulsatellitearchive.image.SatelliteImage;
@@ -22,7 +23,10 @@ public record ImageResponse(
         SensorType sensorType,
         Instant acquiredAt,
         Instant acquiredEndAt,
-        BigDecimal gsdMeters,
+
+        @Schema(description = "파일의 픽셀 간격 범위. 없는 영상은 센서 해상도로 대체. 둘 다 없으면 null")
+        ResolutionResponse resolution,
+
         BigDecimal cloudCover,
         OrbitDirection orbitDirection,
         @Schema(description = "SAR 정보가 없으면 null") SarResponse sar,
@@ -33,7 +37,7 @@ public record ImageResponse(
         List<String> downloadUrls,
         Instant sourceUpdatedAt) {
 
-    public static ImageResponse from(SatelliteImage image, ImageSar sar) {
+    public static ImageResponse from(SatelliteImage image, ImageSar sar, ImageResolution resolution) {
         return new ImageResponse(
                 image.getId(),
                 ProviderResponse.from(image.getProvider()),
@@ -44,7 +48,7 @@ public record ImageResponse(
                 image.getSensorType(),
                 image.getAcquiredAt(),
                 image.getAcquiredEndAt(),
-                image.getGsdMeters(),
+                ResolutionResponse.from(resolution),
                 image.getCloudCover(),
                 image.getOrbitDirection(),
                 sar == null ? null : SarResponse.from(sar),

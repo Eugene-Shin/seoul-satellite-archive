@@ -3,7 +3,7 @@
 import { AcquiredDateField } from "@/features/image/filters/AcquiredDateField";
 import { CloudCoverField } from "@/features/image/filters/CloudCoverField";
 import { emptyToUndefined } from "@/features/image/filters/emptyToUndefined";
-import { GsdRangeField } from "@/features/image/filters/GsdRangeField";
+import { ResolutionRangeField } from "@/features/image/filters/ResolutionRangeField";
 import {
     isSarOnly,
     sensorTypesChange,
@@ -153,8 +153,8 @@ export function ImageSearchForm({
             </div>
 
             <div className="flex flex-col gap-4">
-                <GsdRangeField
-                    range={options.gsdRange}
+                <ResolutionRangeField
+                    range={options.resolutionRange}
                     conditions={conditions}
                     onChange={onChange}
                 />

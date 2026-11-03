@@ -48,10 +48,16 @@ export function acquiredEndAtText({
     return acquiredEndAt ? formatKstDateTime(acquiredEndAt) : "-";
 }
 
-export function gsdText({
-    gsdMeters,
-}: Pick<ImageResponse, "gsdMeters">): string {
-    return gsdMeters === null ? "-" : `${gsdMeters} m`;
+export function resolutionText({
+    resolution,
+}: Pick<ImageResponse, "resolution">): string {
+    if (resolution === null) {
+        return "-";
+    }
+    const { minMeters, maxMeters } = resolution;
+    return minMeters === maxMeters
+        ? `${minMeters} m`
+        : `${minMeters} ~ ${maxMeters} m`;
 }
 
 export function cloudCoverText({

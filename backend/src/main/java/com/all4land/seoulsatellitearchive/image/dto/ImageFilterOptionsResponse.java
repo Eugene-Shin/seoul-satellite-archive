@@ -13,7 +13,7 @@ public record ImageFilterOptionsResponse(
         List<ProviderResponse> providers,
         List<SensorType> sensorTypes,
         List<OrbitDirection> orbitDirections,
-        Range<BigDecimal> gsdRange,
+        Range<BigDecimal> resolutionRange,
         Range<Instant> acquiredRange) {
 
     public record Range<T>(T min, T max) {}

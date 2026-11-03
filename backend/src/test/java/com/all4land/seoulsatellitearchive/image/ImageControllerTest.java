@@ -55,7 +55,7 @@ class ImageControllerTest {
               "collectionId": null, "sourceId": "admin-crud-test", "title": "관리자 CRUD 테스트",
               "satellite": " sentinel-2a ", "instruments": [" msi "], "sensorType": "OPTICAL",
               "acquiredAt": "2026-10-19T10:00:00+09:00", "acquiredEndAt": "2026-10-19T10:00:27+09:00",
-              "gsdMeters": 10.25, "cloudCover": 5.25,
+              "cloudCover": 5.25,
               "orbitDirection": "ASCENDING",
               "footprint": {"type":"MultiPolygon","coordinates":[[[[126.9,37.5],[127,37.5],[127,37.6],[126.9,37.5]]]]},
               "url": "archive/metadata.json", "downloadUrls": ["s3://archive/image.tif", "https://example.test/image.tif"],
@@ -246,7 +246,10 @@ class ImageControllerTest {
                 .andExpect(jsonPath("$.data.sar.lookDirection").value("RIGHT"))
                 .andExpect(jsonPath("$.data.sar.incidenceAngle").value(38.5))
                 .andExpect(jsonPath("$.data.sar.resolutionRangeMeters").value(2.64))
-                .andExpect(jsonPath("$.data.sar.resolutionAzimuthMeters").value(3.3));
+                .andExpect(jsonPath("$.data.sar.resolutionAzimuthMeters").value(3.3))
+                // 파일에 픽셀 간격이 없어서 거리·방위 해상도로 대체한다
+                .andExpect(jsonPath("$.data.resolution.minMeters").value(2.64))
+                .andExpect(jsonPath("$.data.resolution.maxMeters").value(3.3));
 
         String replaced = JsonPath.parse(sarRequest())
                 .set("$.sar.relativeOrbit", 50)
@@ -260,7 +263,12 @@ class ImageControllerTest {
 
         String withoutSar = JsonPath.parse(sarRequest()).delete("$.sar").jsonString();
         mockMvc.perform(json(put(BASE + "/" + id), withoutSar)).andExpect(status().isOk());
-        mockMvc.perform(get(BASE + "/" + id)).andExpect(status().isOk()).andExpect(jsonPath("$.data.sar", nullValue()));
+        // 뷰 엔티티는 앞선 조회의 값이 영속성 컨텍스트에 남아 있다. 실제 요청처럼 비우고 조회한다
+        entityManager.clear();
+        mockMvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sar", nullValue()))
+                .andExpect(jsonPath("$.data.resolution", nullValue()));
         assertThat(jdbc.queryForObject("select count(*) from image_sar where image_id = ?", Long.class, id))
                 .isZero();
     }
@@ -420,6 +428,36 @@ class ImageControllerTest {
                 .andExpect(jsonPath("$.data.content[-1].cloudCover", nullValue()));
     }
 
+    // 해상도 범위가 겹치면 포함한다. S2는 파일 픽셀 간격 10~60 m, HLS는 30 m
+    @Test
+    void resolutionRangeOverlapsImageResolution() throws Exception {
+        mockMvc.perform(get("/api/images")
+                        .param("providers", "earth-search", "nasa-cmr")
+                        .param("resolutionMin", "40")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(12)))
+                .andExpect(jsonPath("$.data.content[*].provider.code", everyItem(is("earth-search"))))
+                .andExpect(jsonPath("$.data.content[*].resolution.minMeters", everyItem(is(10.00))))
+                .andExpect(jsonPath("$.data.content[*].resolution.maxMeters", everyItem(is(60.00))));
+        mockMvc.perform(get("/api/images")
+                        .param("providers", "earth-search", "nasa-cmr")
+                        .param("resolutionMax", "20")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[*].provider.code", everyItem(is("earth-search"))));
+        mockMvc.perform(get("/api/images")
+                        .param("providers", "earth-search", "nasa-cmr")
+                        .param("resolutionMin", "25")
+                        .param("resolutionMax", "35")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[*].provider.code", hasItems("earth-search", "nasa-cmr")))
+                .andExpect(jsonPath(
+                        "$.data.content[?(@.collection.code == 'C2021957657-LPCLOUD')].resolution.minMeters",
+                        everyItem(is(30.00))));
+    }
+
     @Test
     void cursorContinuesUntilNull() throws Exception {
         String first = search(null, "5", "providers", "earth-search");
@@ -524,7 +562,7 @@ class ImageControllerTest {
                 .andExpect(jsonPath("$.data.sensorType").value("OPTICAL"))
                 .andExpect(jsonPath("$.data.acquiredAt").value("2026-10-19T01:00:00Z"))
                 .andExpect(jsonPath("$.data.acquiredEndAt").value("2026-10-19T01:00:27Z"))
-                .andExpect(jsonPath("$.data.gsdMeters").value(10.25))
+                .andExpect(jsonPath("$.data.resolution", nullValue()))
                 .andExpect(jsonPath("$.data.cloudCover").value(5.25))
                 .andExpect(jsonPath("$.data.orbitDirection").value("ASCENDING"))
                 .andExpect(jsonPath("$.data.footprint.type").value("MultiPolygon"))
@@ -546,13 +584,7 @@ class ImageControllerTest {
                         List.of(List.of(
                                 List.of(List.of(128, 35), List.of(129, 35), List.of(129, 36), List.of(128, 35)))));
         for (String field : List.of(
-                "instruments",
-                "acquiredEndAt",
-                "gsdMeters",
-                "cloudCover",
-                "orbitDirection",
-                "sourceUpdatedAt",
-                "rawMetadata")) {
+                "instruments", "acquiredEndAt", "cloudCover", "orbitDirection", "sourceUpdatedAt", "rawMetadata")) {
             document.delete("$." + field);
         }
         mockMvc.perform(json(put(BASE + "/" + id), document.jsonString()))
@@ -562,7 +594,6 @@ class ImageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.title").value("수정된 영상"))
                 .andExpect(jsonPath("$.data.instruments", nullValue()))
-                .andExpect(jsonPath("$.data.gsdMeters", nullValue()))
                 .andExpect(jsonPath("$.data.cloudCover", nullValue()))
                 .andExpect(jsonPath("$.data.orbitDirection", nullValue()))
                 .andExpect(jsonPath("$.data.sourceUpdatedAt", nullValue()))
@@ -597,13 +628,7 @@ class ImageControllerTest {
         long id = create(request);
         var document = JsonPath.parse(request);
         for (String field : List.of(
-                "instruments",
-                "acquiredEndAt",
-                "gsdMeters",
-                "cloudCover",
-                "orbitDirection",
-                "sourceUpdatedAt",
-                "rawMetadata")) {
+                "instruments", "acquiredEndAt", "cloudCover", "orbitDirection", "sourceUpdatedAt", "rawMetadata")) {
             document.set("$." + field, null);
         }
         mockMvc.perform(json(put(BASE + "/" + id), document.jsonString())).andExpect(status().isOk());
@@ -611,7 +636,6 @@ class ImageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.rawMetadata").isEmpty())
                 .andExpect(jsonPath("$.data.instruments", nullValue()))
-                .andExpect(jsonPath("$.data.gsdMeters", nullValue()))
                 .andExpect(jsonPath("$.data.cloudCover", nullValue()))
                 .andExpect(jsonPath("$.data.orbitDirection", nullValue()))
                 .andExpect(jsonPath("$.data.sourceUpdatedAt", nullValue()))
@@ -727,8 +751,6 @@ class ImageControllerTest {
                 Arguments.of("orbitDirection", "SIDEWAYS"),
                 Arguments.of("cloudCover", -0.01),
                 Arguments.of("cloudCover", 100.01),
-                Arguments.of("gsdMeters", 1000000),
-                Arguments.of("gsdMeters", 0.001),
                 Arguments.of("downloadUrls", List.of()),
                 Arguments.of("downloadUrls", List.of(" ")),
                 Arguments.of("downloadUrls", java.util.Arrays.asList("ok", null)),

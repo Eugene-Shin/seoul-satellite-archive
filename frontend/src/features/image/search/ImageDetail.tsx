@@ -7,10 +7,10 @@ import {
     acquiredAtText,
     acquiredEndAtText,
     cloudCoverText,
-    gsdText,
     LOOK_DIRECTION_NAMES,
     orbitDirectionText,
     providerText,
+    resolutionText,
     satelliteText,
     sensorTypeText,
     sourceUpdatedAtText,
@@ -140,7 +140,7 @@ function ImageDetailContent({ image }: { image: ImageResponse }) {
                 <dt className="text-muted-foreground">촬영 종료(KST)</dt>
                 <dd>{acquiredEndAtText(image)}</dd>
                 <dt className="text-muted-foreground">해상도</dt>
-                <dd>{gsdText(image)}</dd>
+                <dd>{resolutionText(image)}</dd>
                 <dt className="text-muted-foreground">구름량</dt>
                 <dd>{cloudCoverText(image)}</dd>
                 <dt className="text-muted-foreground">궤도 방향</dt>

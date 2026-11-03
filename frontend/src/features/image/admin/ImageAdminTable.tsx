@@ -15,16 +15,16 @@ import { EditImageDialog } from "@/features/image/admin/EditImageDialog";
 import {
     AcquiredAtColumnFilter,
     CloudCoverColumnFilter,
-    GsdColumnFilter,
+    ResolutionColumnFilter,
 } from "@/features/image/admin/RangeColumnFilters";
 import { sensorTypesChange } from "@/features/image/filters/sensorTypesChange";
 import {
     acquiredAtText,
     cloudCoverText,
     collectionOptionLabel,
-    gsdText,
     ORBIT_DIRECTION_NAMES,
     orbitDirectionText,
+    resolutionText,
     SENSOR_TYPE_NAMES,
     sensorTypeText,
 } from "@/features/image/imageText";
@@ -55,7 +55,7 @@ const COLUMN_ALIGN = {
     instruments: ALIGN.text,
     sensorType: ALIGN.short,
     acquiredAt: ALIGN.text,
-    gsd: ALIGN.number,
+    resolution: ALIGN.number,
     cloudCover: ALIGN.number,
     orbitDirection: ALIGN.short,
     provider: ALIGN.text,
@@ -277,8 +277,11 @@ function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
                     onChange={onChange}
                 />
             </th>
-            <th className={headerClass("gsd")}>
-                <GsdColumnFilter conditions={conditions} onChange={onChange} />
+            <th className={headerClass("resolution")}>
+                <ResolutionColumnFilter
+                    conditions={conditions}
+                    onChange={onChange}
+                />
             </th>
             <th className={headerClass("cloudCover")}>
                 <CloudCoverColumnFilter
@@ -374,7 +377,7 @@ function ImageAdminRow({ image, onEdit, onDelete }: ImageAdminRowProps) {
             </td>
             <td className={cellClass("sensorType")}>{sensorTypeText(image)}</td>
             <td className={cellClass("acquiredAt")}>{acquiredAtText(image)}</td>
-            <td className={cellClass("gsd")}>{gsdText(image)}</td>
+            <td className={cellClass("resolution")}>{resolutionText(image)}</td>
             <td className={cellClass("cloudCover")}>{cloudCoverText(image)}</td>
             <td className={cellClass("orbitDirection")}>
                 {orbitDirectionText(image)}

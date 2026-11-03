@@ -18,7 +18,6 @@ export type ImageFormValues = {
     sensorType: SensorType;
     acquiredAt: string; // datetime-local, KST
     acquiredEndAt: string; // datetime-local, KST
-    gsdMeters: string;
     cloudCover: string;
     orbitDirection: OrbitDirection | null;
     sar: SarFormValues; // 유형이 SAR일 때만 요청에 넣는다
@@ -60,7 +59,6 @@ export const EMPTY_IMAGE_FORM: ImageFormValues = {
     sensorType: "OPTICAL",
     acquiredAt: "",
     acquiredEndAt: "",
-    gsdMeters: "",
     cloudCover: "",
     orbitDirection: null,
     sar: EMPTY_SAR_FORM,
@@ -130,7 +128,6 @@ export function toFormValues(detail: ImageDetailResponse): ImageFormValues {
         acquiredEndAt: detail.acquiredEndAt
             ? toKstDateTimeLocal(detail.acquiredEndAt)
             : "",
-        gsdMeters: detail.gsdMeters?.toString() ?? "",
         cloudCover: detail.cloudCover?.toString() ?? "",
         orbitDirection: detail.orbitDirection,
         sar: detail.sar ? toSarFormValues(detail.sar) : EMPTY_SAR_FORM,
@@ -160,7 +157,6 @@ export function toWriteRequest(form: ImageFormValues): ImageWriteRequest {
         acquiredEndAt: form.acquiredEndAt
             ? toKstOffsetDateTime(form.acquiredEndAt)
             : null,
-        gsdMeters: toNumber(form.gsdMeters),
         cloudCover:
             form.sensorType === "SAR" ? null : toNumber(form.cloudCover),
         orbitDirection: form.orbitDirection,

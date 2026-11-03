@@ -3,9 +3,9 @@
 import {
     acquiredAtText,
     cloudCoverText,
-    gsdText,
     orbitDirectionText,
     providerText,
+    resolutionText,
     satelliteText,
     sensorTypeText,
 } from "@/features/image/imageText";
@@ -54,7 +54,7 @@ export function ImageCard({
                 <dt className="text-muted-foreground">촬영일시(KST)</dt>
                 <dd>{acquiredAtText(image)}</dd>
                 <dt className="text-muted-foreground">해상도</dt>
-                <dd>{gsdText(image)}</dd>
+                <dd>{resolutionText(image)}</dd>
                 <dt className="text-muted-foreground">구름량</dt>
                 <dd>{cloudCoverText(image)}</dd>
                 <dt className="text-muted-foreground">궤도 방향</dt>

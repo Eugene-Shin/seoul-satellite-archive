@@ -45,7 +45,7 @@ describe("apiGet", () => {
             satellites: ["A", "B"],
             keyword: "",
             isPaid: false,
-            gsdMin: null,
+            resolutionMin: null,
             cloudMax: undefined,
         });
 
@@ -76,7 +76,7 @@ describe("apiGet", () => {
                     code: "INVALID_PARAM",
                     message: "잘못된 조건입니다.",
                     data: null,
-                    errorDetail: ["gsdMin: 0 이상"],
+                    errorDetail: ["resolutionMin: 0 이상"],
                 },
                 400,
             ),
@@ -86,7 +86,7 @@ describe("apiGet", () => {
         expect(error.message).toBe("잘못된 조건입니다.");
         expect(error.status).toBe(400);
         expect(error.code).toBe("INVALID_PARAM");
-        expect(error.details).toEqual(["gsdMin: 0 이상"]);
+        expect(error.details).toEqual(["resolutionMin: 0 이상"]);
     });
 
     it("data 형식이 다르면 필드 경로를 담은 ApiError", async () => {

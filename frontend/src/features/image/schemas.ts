@@ -44,6 +44,12 @@ export const sarSchema = z.object({
     resolutionAzimuthMeters: z.number().nullable(),
 });
 
+// 파일의 픽셀 간격 범위. 없는 영상은 센서 해상도로 대체
+export const resolutionSchema = z.object({
+    minMeters: z.number(),
+    maxMeters: z.number(),
+});
+
 export const multiPolygonSchema = z.object({
     type: z.literal("MultiPolygon"),
     coordinates: z.array(z.array(z.array(z.array(z.number())))),
@@ -59,7 +65,7 @@ export const imageResponseSchema = z.object({
     sensorType: sensorTypeSchema,
     acquiredAt: z.iso.datetime(),
     acquiredEndAt: z.iso.datetime().nullable(),
-    gsdMeters: z.number().nullable(),
+    resolution: resolutionSchema.nullable(),
     cloudCover: z.number().nullable(),
     orbitDirection: orbitDirectionSchema.nullable(),
     sar: sarSchema.nullable(),
@@ -79,7 +85,7 @@ export const imageDetailSchema = z.object({
     sensorType: sensorTypeSchema,
     acquiredAt: z.iso.datetime(),
     acquiredEndAt: z.iso.datetime().nullable(),
-    gsdMeters: z.number().nullable(),
+    resolution: resolutionSchema.nullable(),
     cloudCover: z.number().nullable(),
     orbitDirection: orbitDirectionSchema.nullable(),
     sar: sarSchema.nullable(),
@@ -103,7 +109,7 @@ export const imageFilterOptionsSchema = z.object({
     providers: z.array(providerSchema),
     sensorTypes: z.array(sensorTypeSchema),
     orbitDirections: z.array(orbitDirectionSchema),
-    gsdRange: rangeSchema(z.number()),
+    resolutionRange: rangeSchema(z.number()),
     acquiredRange: rangeSchema(z.iso.datetime()),
 });
 

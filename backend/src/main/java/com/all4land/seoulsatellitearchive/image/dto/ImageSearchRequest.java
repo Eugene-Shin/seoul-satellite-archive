@@ -46,9 +46,9 @@ public class ImageSearchRequest extends SliceRequest {
 
     private Boolean isPaid;
 
-    @DecimalMin("0") private BigDecimal gsdMin;
+    @DecimalMin("0") private BigDecimal resolutionMin;
 
-    @DecimalMin("0") private BigDecimal gsdMax;
+    @DecimalMin("0") private BigDecimal resolutionMax;
 
     @DecimalMin("0") @DecimalMax("100") private BigDecimal cloudMax;
 

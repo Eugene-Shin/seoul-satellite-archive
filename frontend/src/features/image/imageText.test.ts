@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
     cloudCoverText,
     collectionOptionLabel,
-    gsdText,
     orbitDirectionText,
     providerText,
+    resolutionText,
     satelliteText,
     sensorTypeText,
 } from "@/features/image/imageText";
@@ -33,13 +33,21 @@ describe("sensorTypeText", () => {
     });
 });
 
-describe("gsdText", () => {
-    it("값이 있으면 m 단위", () => {
-        expect(gsdText({ gsdMeters: 0.5 })).toBe("0.5 m");
+describe("resolutionText", () => {
+    it("범위면 최솟값 ~ 최댓값", () => {
+        expect(
+            resolutionText({ resolution: { minMeters: 10, maxMeters: 60 } }),
+        ).toBe("10 ~ 60 m");
+    });
+
+    it("값이 하나면 그 값만", () => {
+        expect(
+            resolutionText({ resolution: { minMeters: 30, maxMeters: 30 } }),
+        ).toBe("30 m");
     });
 
     it("null이면 -", () => {
-        expect(gsdText({ gsdMeters: null })).toBe("-");
+        expect(resolutionText({ resolution: null })).toBe("-");
     });
 });
 
