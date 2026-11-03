@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     EMPTY_IMAGE_FORM,
+    EMPTY_SAR_FORM,
     isSameForm,
     missingRequiredFields,
     toFormValues,
@@ -25,13 +26,13 @@ const FOOTPRINT = {
 
 const FILLED_FORM = {
     ...EMPTY_IMAGE_FORM,
-    providerCode: "dx",
+    collectionId: 3,
     sourceId: "admin-image-001",
     title: "서울 위성 영상",
     satellite: " sentinel-2a ",
     instruments: ["msi", "OLI"],
     acquiredAt: "2026-10-19T10:00",
-    gsdMeters: "10.5",
+    acquiredEndAt: "2026-10-19T10:00:27",
     cloudCover: "5.25",
     orbitDirection: "ASCENDING" as const,
     footprint: JSON.stringify(FOOTPRINT),
@@ -44,16 +45,17 @@ const FILLED_FORM = {
 describe("toWriteRequest", () => {
     it("입력칸 글자를 요청 형식으로 바꾼다", () => {
         expect(toWriteRequest(FILLED_FORM)).toEqual({
-            providerCode: "dx",
+            collectionId: 3,
             sourceId: "admin-image-001",
             title: "서울 위성 영상",
             satellite: "sentinel-2a",
             instruments: ["msi", "OLI"],
             sensorType: "OPTICAL",
             acquiredAt: "2026-10-19T10:00:00+09:00",
-            gsdMeters: 10.5,
+            acquiredEndAt: "2026-10-19T10:00:27+09:00",
             cloudCover: 5.25,
             orbitDirection: "ASCENDING",
+            sar: null,
             footprint: FOOTPRINT,
             url: "archive/metadata.json",
             downloadUrls: ["s3://archive/a.tif", "s3://archive/b.tif"],
@@ -66,7 +68,7 @@ describe("toWriteRequest", () => {
         const request = toWriteRequest({
             ...FILLED_FORM,
             instruments: [],
-            gsdMeters: "",
+            acquiredEndAt: "",
             cloudCover: "",
             orbitDirection: null,
             sourceUpdatedAt: "",
@@ -75,7 +77,7 @@ describe("toWriteRequest", () => {
 
         expect(request).toMatchObject({
             instruments: null,
-            gsdMeters: null,
+            acquiredEndAt: null,
             cloudCover: null,
             orbitDirection: null,
             sourceUpdatedAt: null,
@@ -96,6 +98,47 @@ describe("toWriteRequest", () => {
         ).toBe("2026-10-19T10:00:12.560+09:00");
     });
 
+    it("SAR 영상만 채운 SAR 정보를 보내고, 빈 칸은 null", () => {
+        const sar = {
+            ...EMPTY_SAR_FORM,
+            relativeOrbit: "127",
+            instrumentMode: " IW ",
+            polarizations: ["VV" as const, "VH" as const],
+        };
+
+        expect(
+            toWriteRequest({
+                ...FILLED_FORM,
+                sensorType: "SAR",
+                cloudCover: "",
+                sar,
+            }).sar,
+        ).toEqual({
+            relativeOrbit: 127,
+            frame: null,
+            instrumentMode: "IW",
+            polarizations: ["VV", "VH"],
+            lookDirection: null,
+            incidenceAngle: null,
+            resolutionRangeMeters: null,
+            resolutionAzimuthMeters: null,
+        });
+        expect(toWriteRequest({ ...FILLED_FORM, sar }).sar).toBeNull();
+        expect(
+            toWriteRequest({
+                ...FILLED_FORM,
+                sensorType: "SAR",
+                cloudCover: "",
+            }).sar,
+        ).toBeNull();
+    });
+
+    it("SAR 영상은 남아 있는 구름량을 보내지 않는다", () => {
+        expect(
+            toWriteRequest({ ...FILLED_FORM, sensorType: "SAR" }).cloudCover,
+        ).toBeNull();
+    });
+
     it("JSON 문법이 틀리면 칸 이름과 함께 알린다", () => {
         expect(() =>
             toWriteRequest({ ...FILLED_FORM, footprint: "{type:" }),
@@ -106,16 +149,25 @@ describe("toWriteRequest", () => {
 describe("toFormValues", () => {
     const DETAIL = {
         imageId: 1,
-        providerCode: "dx",
+        providerCode: "all4land",
+        collection: {
+            collectionId: 3,
+            providerCode: "earth-search",
+            code: "sentinel-2-l2a",
+            title: "Sentinel-2 Level-2A",
+            productType: "L2A",
+        },
         sourceId: "admin-image-001",
         title: "서울 위성 영상",
         satellite: "SENTINEL-2A",
         instruments: ["msi"],
         sensorType: "OPTICAL" as const,
         acquiredAt: "2024-09-03T20:27:12.560Z",
-        gsdMeters: 10.5,
+        acquiredEndAt: null,
+        resolution: null,
         cloudCover: null,
         orbitDirection: null,
+        sar: null,
         footprint: FOOTPRINT as ImageDetailResponse["footprint"],
         url: "archive/metadata.json",
         downloadUrls: ["s3://archive/a.tif", "s3://archive/b.tif"],
@@ -126,7 +178,7 @@ describe("toFormValues", () => {
     it("상세 응답을 KST 입력칸 값과 글자로 바꾼다", () => {
         expect(toFormValues(DETAIL)).toMatchObject({
             acquiredAt: "2024-09-04T05:27:12.560",
-            gsdMeters: "10.5",
+            acquiredEndAt: "",
             cloudCover: "",
             downloadUrls: "s3://archive/a.tif\ns3://archive/b.tif",
             sourceUpdatedAt: "",
@@ -137,10 +189,9 @@ describe("toFormValues", () => {
         const request = toWriteRequest(toFormValues(DETAIL));
 
         expect(request).toMatchObject({
-            providerCode: DETAIL.providerCode,
+            collectionId: DETAIL.collection.collectionId,
             satellite: DETAIL.satellite,
             instruments: DETAIL.instruments,
-            gsdMeters: DETAIL.gsdMeters,
             cloudCover: null,
             footprint: DETAIL.footprint,
             downloadUrls: DETAIL.downloadUrls,
@@ -149,6 +200,31 @@ describe("toFormValues", () => {
         expect(Date.parse(request.acquiredAt)).toBe(
             Date.parse(DETAIL.acquiredAt),
         );
+    });
+
+    it("SAR 정보를 불러와서 그대로 저장하면 같은 값이 된다", () => {
+        const sar = {
+            relativeOrbit: 127,
+            frame: null,
+            instrumentMode: "IW",
+            polarizations: ["VV" as const, "VH" as const],
+            lookDirection: "RIGHT" as const,
+            incidenceAngle: 38.5,
+            resolutionRangeMeters: 2.64,
+            resolutionAzimuthMeters: null,
+        };
+        const detail = {
+            ...DETAIL,
+            sensorType: "SAR" as const,
+            sar,
+        };
+
+        expect(toFormValues(detail).sar).toMatchObject({
+            relativeOrbit: "127",
+            frame: "",
+            resolutionAzimuthMeters: "",
+        });
+        expect(toWriteRequest(toFormValues(detail)).sar).toEqual(sar);
     });
 
     it("비어 있는 원본 메타데이터는 빈 칸", () => {
@@ -169,6 +245,21 @@ describe("isSameForm", () => {
         );
     });
 
+    it("SAR 정보는 안쪽 칸까지 비교한다", () => {
+        expect(
+            isSameForm(FILLED_FORM, {
+                ...FILLED_FORM,
+                sar: { ...EMPTY_SAR_FORM },
+            }),
+        ).toBe(true);
+        expect(
+            isSameForm(FILLED_FORM, {
+                ...FILLED_FORM,
+                sar: { ...EMPTY_SAR_FORM, polarizations: ["HH"] },
+            }),
+        ).toBe(false);
+    });
+
     it("센서의 개수나 순서가 다르면 다르다", () => {
         expect(
             isSameForm(FILLED_FORM, { ...FILLED_FORM, instruments: ["msi"] }),
@@ -187,11 +278,12 @@ describe("missingRequiredFields", () => {
         expect(
             missingRequiredFields({
                 ...FILLED_FORM,
-                providerCode: null,
+                collectionId: null,
+                sourceId: "",
                 title: "  ",
                 footprint: "",
             }),
-        ).toEqual(["providerCode", "title", "footprint"]);
+        ).toEqual(["collectionId", "sourceId", "title", "footprint"]);
     });
 
     it("다 채우면 빈 목록", () => {

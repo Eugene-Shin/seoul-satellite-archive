@@ -1,5 +1,6 @@
 package com.all4land.seoulsatellitearchive.image;
 
+import com.all4land.seoulsatellitearchive.collection.ImageCollection;
 import com.all4land.seoulsatellitearchive.global.entity.BaseEntity;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
 import com.all4land.seoulsatellitearchive.provider.Provider;
@@ -38,6 +39,10 @@ public class SatelliteImage extends BaseEntity {
     @JoinColumn(name = "provider")
     private Provider provider;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "collection_id")
+    private ImageCollection collection;
+
     private String sourceId;
 
     private String title;
@@ -51,7 +56,7 @@ public class SatelliteImage extends BaseEntity {
 
     private Instant acquiredAt;
 
-    private BigDecimal gsdMeters;
+    private Instant acquiredEndAt;
 
     private BigDecimal cloudCover;
 
@@ -73,8 +78,10 @@ public class SatelliteImage extends BaseEntity {
     @Column(name = "raw_metadata", nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> rawMetadata;
 
-    public void replaceMetadata(ImageWriteRequest request, Provider provider, MultiPolygon footprint) {
+    public void replaceMetadata(
+            ImageWriteRequest request, Provider provider, ImageCollection collection, MultiPolygon footprint) {
         this.provider = provider;
+        this.collection = collection;
         this.sourceId = request.getSourceId();
         this.title = request.getTitle();
         this.satellite = request.getSatellite();
@@ -83,13 +90,18 @@ public class SatelliteImage extends BaseEntity {
                 : request.getInstruments().toArray(String[]::new);
         this.sensorType = SensorType.valueOf(request.getSensorType());
         this.acquiredAt = request.getAcquiredAt().toInstant();
-        this.gsdMeters = request.getGsdMeters();
+        this.acquiredEndAt = request.getAcquiredEndAt() == null
+                ? null
+                : request.getAcquiredEndAt().toInstant();
         this.cloudCover = request.getCloudCover();
         this.orbitDirection =
                 request.getOrbitDirection() == null ? null : OrbitDirection.valueOf(request.getOrbitDirection());
         this.footprint = footprint;
         this.url = request.getUrl();
-        this.downloadUrls = request.getDownloadUrls().toArray(String[]::new);
+        // 자동으로 수집한 영상의 파일 정보는 수집기가 관리한다
+        if (provider.isOwnOrganization()) {
+            this.downloadUrls = request.getDownloadUrls().toArray(String[]::new);
+        }
         this.sourceUpdatedAt = request.getSourceUpdatedAt() == null
                 ? null
                 : request.getSourceUpdatedAt().toInstant();

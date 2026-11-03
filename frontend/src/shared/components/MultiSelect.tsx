@@ -39,10 +39,15 @@ export function MultiSelectMenu<T>({
             onValueChange={onChange}
         >
             {children}
-            <SelectContent>
+            {/* 좁은 트리거(표 머리글)에서도 이름이 보이게 넓히되, 너무 긴 이름은 줄인다 */}
+            <SelectContent className="w-max max-w-80 min-w-(--anchor-width)">
                 {options.map((option) => (
-                    <SelectItem key={String(option.value)} value={option.value}>
-                        {option.label}
+                    <SelectItem
+                        key={String(option.value)}
+                        value={option.value}
+                        title={option.label}
+                    >
+                        <span className="truncate">{option.label}</span>
                     </SelectItem>
                 ))}
             </SelectContent>

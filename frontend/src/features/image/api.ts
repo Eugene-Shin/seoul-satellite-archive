@@ -1,4 +1,7 @@
+import { z } from "zod";
+
 import {
+    collectionSchema,
     imageDetailSchema,
     imageFilterOptionsSchema,
     imageSearchResultSchema,
@@ -16,6 +19,10 @@ export function fetchFilterOptions(signal?: AbortSignal) {
         {},
         signal,
     );
+}
+
+export function fetchCollections(signal?: AbortSignal) {
+    return apiGet("/api/collections", z.array(collectionSchema), {}, signal);
 }
 
 export function searchImages(params: ImageSearchParams, signal?: AbortSignal) {

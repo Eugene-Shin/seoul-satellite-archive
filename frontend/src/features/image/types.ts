@@ -1,13 +1,17 @@
 import type { z } from "zod";
 
 import type {
+    collectionSchema,
     imageDetailSchema,
     imageFilterOptionsSchema,
     imageResponseSchema,
     imageSortSchema,
+    lookDirectionSchema,
     multiPolygonSchema,
     orbitDirectionSchema,
+    polarizationSchema,
     providerSchema,
+    sarSchema,
     sensorTypeSchema,
 } from "@/features/image/schemas";
 
@@ -16,6 +20,14 @@ export type SensorType = z.infer<typeof sensorTypeSchema>;
 export type OrbitDirection = z.infer<typeof orbitDirectionSchema>;
 
 export type Provider = z.infer<typeof providerSchema>;
+
+export type Collection = z.infer<typeof collectionSchema>;
+
+export type Polarization = z.infer<typeof polarizationSchema>;
+
+export type LookDirection = z.infer<typeof lookDirectionSchema>;
+
+export type Sar = z.infer<typeof sarSchema>;
 
 export type MultiPolygon = z.infer<typeof multiPolygonSchema>;
 
@@ -27,7 +39,7 @@ export type ImageFilterOptionsResponse = z.infer<
     typeof imageFilterOptionsSchema
 >;
 
-export type GsdRange = ImageFilterOptionsResponse["gsdRange"];
+export type ResolutionRange = ImageFilterOptionsResponse["resolutionRange"];
 
 export type AcquiredRange = ImageFilterOptionsResponse["acquiredRange"];
 
@@ -35,16 +47,17 @@ export type ImageSort = z.infer<typeof imageSortSchema>;
 
 // 등록·수정 요청 본문. 보내기만 해서 zod 스키마 없이 타입만 둔다
 export type ImageWriteRequest = {
-    providerCode: string;
+    collectionId: number | null;
     sourceId: string;
     title: string;
     satellite: string;
     instruments: string[] | null;
     sensorType: SensorType;
     acquiredAt: string;
-    gsdMeters: number | null;
+    acquiredEndAt: string | null;
     cloudCover: number | null;
     orbitDirection: OrbitDirection | null;
+    sar: Sar | null;
     footprint: unknown;
     url: string;
     downloadUrls: string[];
@@ -71,9 +84,11 @@ export type ImageSearchParams = {
     sensorTypes?: SensorType[];
     orbitDirection?: OrbitDirection;
     providers?: string[];
+    collectionIds?: number[];
+    productTypes?: string[];
     isPaid?: boolean;
-    gsdMin?: number;
-    gsdMax?: number;
+    resolutionMin?: number;
+    resolutionMax?: number;
     cloudMax?: number;
     sorts?: ImageSort[];
     bbox?: Bbox;

@@ -6,7 +6,7 @@ import {
 } from "@/features/image/admin/ColumnFilter";
 import { AcquiredDateField } from "@/features/image/filters/AcquiredDateField";
 import { CloudCoverField } from "@/features/image/filters/CloudCoverField";
-import { GsdRangeField } from "@/features/image/filters/GsdRangeField";
+import { ResolutionRangeField } from "@/features/image/filters/ResolutionRangeField";
 import { isSarOnly } from "@/features/image/filters/sensorTypesChange";
 import { useFilterOptions } from "@/features/image/queries";
 import { isSortedBy, sortDirectionOf } from "@/features/image/sortOptions";
@@ -59,7 +59,7 @@ export function AcquiredAtColumnFilter({
     );
 }
 
-export function GsdColumnFilter({
+export function ResolutionColumnFilter({
     conditions,
     onChange,
 }: RangeColumnFilterProps) {
@@ -69,14 +69,19 @@ export function GsdColumnFilter({
         <PopoverColumnFilter
             label="해상도"
             active={
-                conditions.gsdMin !== undefined ||
-                conditions.gsdMax !== undefined
+                conditions.resolutionMin !== undefined ||
+                conditions.resolutionMax !== undefined
             }
-            onReset={() => onChange({ gsdMin: undefined, gsdMax: undefined })}
+            onReset={() =>
+                onChange({
+                    resolutionMin: undefined,
+                    resolutionMax: undefined,
+                })
+            }
         >
             {options && (
-                <GsdRangeField
-                    range={options.gsdRange}
+                <ResolutionRangeField
+                    range={options.resolutionRange}
                     conditions={conditions}
                     onChange={onChange}
                 />

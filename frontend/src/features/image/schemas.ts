@@ -17,6 +17,37 @@ export const providerSchema = z.object({
     code: z.string(),
     name: z.string(),
     isPaid: z.boolean(),
+    ownOrganization: z.boolean(),
+});
+
+// providerCode는 이 컬렉션을 정의한 출처. 영상의 제공 기관과 다를 수 있다(올포랜드 영상)
+export const collectionSchema = z.object({
+    collectionId: z.number(),
+    providerCode: z.string(),
+    code: z.string(),
+    title: z.string(),
+    productType: z.string(),
+});
+
+export const polarizationSchema = z.enum(["HH", "HV", "VH", "VV"]);
+
+export const lookDirectionSchema = z.enum(["LEFT", "RIGHT"]);
+
+export const sarSchema = z.object({
+    relativeOrbit: z.number().nullable(),
+    frame: z.number().nullable(),
+    instrumentMode: z.string().nullable(),
+    polarizations: z.array(polarizationSchema).nullable(),
+    lookDirection: lookDirectionSchema.nullable(),
+    incidenceAngle: z.number().nullable(),
+    resolutionRangeMeters: z.number().nullable(),
+    resolutionAzimuthMeters: z.number().nullable(),
+});
+
+// 파일의 픽셀 간격 범위. 없는 영상은 센서 해상도로 대체
+export const resolutionSchema = z.object({
+    minMeters: z.number(),
+    maxMeters: z.number(),
 });
 
 export const multiPolygonSchema = z.object({
@@ -27,14 +58,17 @@ export const multiPolygonSchema = z.object({
 export const imageResponseSchema = z.object({
     imageId: z.number(),
     provider: providerSchema,
+    collection: collectionSchema,
     title: z.string(),
     satellite: z.string(),
     instruments: z.array(z.string()).nullable(),
     sensorType: sensorTypeSchema,
     acquiredAt: z.iso.datetime(),
-    gsdMeters: z.number().nullable(),
+    acquiredEndAt: z.iso.datetime().nullable(),
+    resolution: resolutionSchema.nullable(),
     cloudCover: z.number().nullable(),
     orbitDirection: orbitDirectionSchema.nullable(),
+    sar: sarSchema.nullable(),
     footprint: multiPolygonSchema,
     downloadUrls: z.array(z.string()),
     sourceUpdatedAt: z.iso.datetime().nullable(),
@@ -43,15 +77,18 @@ export const imageResponseSchema = z.object({
 export const imageDetailSchema = z.object({
     imageId: z.number(),
     providerCode: z.string(),
+    collection: collectionSchema,
     sourceId: z.string(),
     title: z.string(),
     satellite: z.string(),
     instruments: z.array(z.string()).nullable(),
     sensorType: sensorTypeSchema,
     acquiredAt: z.iso.datetime(),
-    gsdMeters: z.number().nullable(),
+    acquiredEndAt: z.iso.datetime().nullable(),
+    resolution: resolutionSchema.nullable(),
     cloudCover: z.number().nullable(),
     orbitDirection: orbitDirectionSchema.nullable(),
+    sar: sarSchema.nullable(),
     footprint: multiPolygonSchema,
     url: z.string(),
     downloadUrls: z.array(z.string()),
@@ -72,7 +109,7 @@ export const imageFilterOptionsSchema = z.object({
     providers: z.array(providerSchema),
     sensorTypes: z.array(sensorTypeSchema),
     orbitDirections: z.array(orbitDirectionSchema),
-    gsdRange: rangeSchema(z.number()),
+    resolutionRange: rangeSchema(z.number()),
     acquiredRange: rangeSchema(z.iso.datetime()),
 });
 

@@ -21,16 +21,17 @@ public interface SatelliteImageRepository
     List<String> findDistinctInstruments();
 
     @Query("""
-            select min(i.gsdMeters) as gsdMin, max(i.gsdMeters) as gsdMax,
+            select min(r.minMeters) as resolutionMin, max(r.maxMeters) as resolutionMax,
                    min(i.acquiredAt) as acquiredMin, max(i.acquiredAt) as acquiredMax
             from SatelliteImage i
+                     left join ImageResolution r on r.imageId = i.id
             """)
     Ranges findRanges();
 
     interface Ranges {
-        BigDecimal getGsdMin();
+        BigDecimal getResolutionMin();
 
-        BigDecimal getGsdMax();
+        BigDecimal getResolutionMax();
 
         Instant getAcquiredMin();
 

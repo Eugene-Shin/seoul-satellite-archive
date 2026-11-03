@@ -15,12 +15,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.all4land.seoulsatellitearchive.global.config.TestcontainersConfiguration;
+import com.all4land.seoulsatellitearchive.provider.Provider;
 import com.jayway.jsonpath.JsonPath;
+import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -37,7 +40,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
-// 로컬 전용 DX 시드(provider=dx)가 있어도 없어도 같은 결과가 나오는 조건으로만 검증한다
+// 로컬 전용 ALL4LAND 시드(provider=all4land)가 있어도 없어도 같은 결과가 나오는 조건으로만 검증한다
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -46,11 +49,13 @@ import org.springframework.transaction.annotation.Transactional;
 class ImageControllerTest {
 
     private static final String BASE = "/api/images";
-    private static final String REQUEST = """
+    // collectionId는 DB가 만드는 값이라 테스트마다 시드 컬렉션의 id로 채운다
+    private static final String REQUEST_TEMPLATE = """
             {
-              "providerCode": "earth-search", "sourceId": "admin-crud-test", "title": "관리자 CRUD 테스트",
-              "satellite": " sentinel-2a ", "instruments": ["msi"], "sensorType": "OPTICAL",
-              "acquiredAt": "2026-10-19T10:00:00+09:00", "gsdMeters": 10.25, "cloudCover": 5.25,
+              "collectionId": null, "sourceId": "admin-crud-test", "title": "관리자 CRUD 테스트",
+              "satellite": " sentinel-2a ", "instruments": [" msi "], "sensorType": "OPTICAL",
+              "acquiredAt": "2026-10-19T10:00:00+09:00", "acquiredEndAt": "2026-10-19T10:00:27+09:00",
+              "cloudCover": 5.25,
               "orbitDirection": "ASCENDING",
               "footprint": {"type":"MultiPolygon","coordinates":[[[[126.9,37.5],[127,37.5],[127,37.6],[126.9,37.5]]]]},
               "url": "archive/metadata.json", "downloadUrls": ["s3://archive/image.tif", "https://example.test/image.tif"],
@@ -67,14 +72,271 @@ class ImageControllerTest {
     @Autowired
     SatelliteImageRepository repository;
 
+    @Autowired
+    EntityManager entityManager;
+
+    private String request;
+
+    @BeforeEach
+    void fillCollectionId() {
+        request = JsonPath.parse(REQUEST_TEMPLATE)
+                .set("$.collectionId", collectionId("earth-search", "sentinel-2-l2a"))
+                .jsonString();
+    }
+
+    private long collectionId(String provider, String code) {
+        return jdbc.queryForObject(
+                "select collection_id from image_collection where provider = ? and code = ?",
+                Long.class,
+                provider,
+                code);
+    }
+
+    @Test
+    void collections() throws Exception {
+        mockMvc.perform(get("/api/collections"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(5)))
+                .andExpect(jsonPath("$.data[?(@.code == 'sentinel-2-l2a')].providerCode", contains("earth-search")));
+    }
+
+    // 백필은 출처가 영상에 적어 둔 컬렉션 참조(STAC collection, CMR collection-concept-id)를 따른다
+    @Test
+    void seedImagesAreBackfilledFromSourceCollectionReference() {
+        assertThat(jdbc.queryForList("""
+                        select distinct i.provider || '/' || c.code
+                        from satellite_image i join image_collection c on c.collection_id = i.collection_id
+                        where i.provider <> 'all4land'
+                        """, String.class))
+                .containsExactlyInAnyOrder(
+                        "earth-search/sentinel-2-l2a", "nasa-cmr/C2021957657-LPCLOUD", "nasa-cmr/C1214470488-ASF");
+    }
+
     @Test
     void filterOptions() throws Exception {
         mockMvc.perform(get("/api/images/filter-options"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.satellites", hasItems("LANDSAT-8", "SENTINEL-1A", "WV02")))
-                .andExpect(jsonPath("$.data.instruments", hasItems("C-SAR", "OLI", "msi")))
-                .andExpect(jsonPath("$.data.providers", hasSize(4)))
+                .andExpect(jsonPath("$.data.satellites", hasItems("LANDSAT-8", "SENTINEL-1A", "SENTINEL-2A")))
+                .andExpect(jsonPath("$.data.instruments", hasItems("C-SAR", "OLI", "MSI")))
+                .andExpect(jsonPath("$.data.providers", hasSize(5)))
+                .andExpect(jsonPath("$.data.providers[?(@.ownOrganization == true)].code", contains("all4land")))
                 .andExpect(jsonPath("$.data.sensorTypes", contains("OPTICAL", "SAR")));
+    }
+
+    @Test
+    void collectionsMatchAnySelected() throws Exception {
+        String s1Slc = String.valueOf(collectionId("nasa-cmr", "C1214470488-ASF"));
+        String hls = String.valueOf(collectionId("nasa-cmr", "C2021957657-LPCLOUD"));
+        mockMvc.perform(get("/api/images").param("collectionIds", s1Slc))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(2)))
+                .andExpect(jsonPath("$.data.content[*].collection.code", everyItem(is("C1214470488-ASF"))))
+                .andExpect(jsonPath("$.data.content[*].collection.productType", everyItem(is("SLC"))));
+        mockMvc.perform(get("/api/images").param("collectionIds", s1Slc, hls))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(4)));
+    }
+
+    @Test
+    void productTypesMatchAnySelected() throws Exception {
+        mockMvc.perform(get("/api/images").param("productTypes", "SLC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(2)));
+        mockMvc.perform(get("/api/images").param("productTypes", "SLC", "L30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(4)));
+    }
+
+    // 촬영 종료 일시도 출처 값 그대로: STAC은 end_datetime이 없으면 NULL, CMR은 RangeDateTime.EndingDateTime
+    @Test
+    void seedAcquiredEndAtIsBackfilledFromSource() {
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from satellite_image where provider = 'earth-search' and acquired_end_at is not null",
+                        Long.class))
+                .isZero();
+        assertThat(jdbc.queryForObject("""
+                        select count(*) from satellite_image
+                        where provider = 'nasa-cmr' and acquired_end_at = (raw_metadata #>> '{umm,TemporalExtent,RangeDateTime,EndingDateTime}')::timestamptz
+                        """, Long.class)).isEqualTo(4);
+    }
+
+    // STAC은 에셋마다 한 행, 밴드는 eo:bands. 픽셀 간격은 에셋의 proj:transform
+    @Test
+    void seedStacAssetsAreBackfilledAsFilesAndBands() {
+        assertThat(jdbc.queryForObject("""
+                        select count(*) from satellite_image i
+                        where i.provider = 'earth-search'
+                          and (select count(*) from image_file f where f.image_id = i.image_id)
+                              <> (select count(*) from jsonb_object_keys(i.raw_metadata -> 'assets'))
+                        """, Long.class)).isZero();
+        assertThat(jdbc.queryForList("""
+                        select f.asset_key || '/' || f.role || '/' || coalesce(f.pixel_spacing_meters::text, '-')
+                               || '/' || coalesce(string_agg(b.band_name || ':' || coalesce(b.common_name, '-')
+                                                             || ':' || coalesce(b.resolution_meters::text, '-'),
+                                                             ',' order by b.band_index), '-')
+                        from image_file f
+                                 join satellite_image i on i.image_id = f.image_id
+                                 left join image_file_band b on b.file_id = f.file_id
+                        where i.source_id = 'S2B_52SCG_20241227_0_L2A'
+                          and f.asset_key in ('red', 'coastal', 'visual', 'thumbnail', 'granule_metadata')
+                        group by f.asset_key, f.role, f.pixel_spacing_meters
+                        """, String.class))
+                .containsExactlyInAnyOrder(
+                        "red/DATA/10.00/red:red:10.00",
+                        "coastal/DATA/60.00/coastal:coastal:60.00",
+                        // visual 에셋엔 센서 해상도(gsd)가 없어서 비워 둔다
+                        "visual/PREVIEW/10.00/red:red:-,green:green:-,blue:blue:-",
+                        "thumbnail/THUMBNAIL/-/-",
+                        "granule_metadata/METADATA/-/-");
+    }
+
+    // CMR은 https 링크만. HLS DATA 파일은 그래뉼의 SPATIAL_RESOLUTION, S1은 원본 묶음 하나
+    @Test
+    void seedCmrRelatedUrlsAreBackfilledAsFiles() {
+        assertThat(jdbc.queryForList("""
+                        select c.code || '/' || f.role || '/' || coalesce(f.pixel_spacing_meters::text, '-')
+                               || '/' || count(*)
+                        from image_file f
+                                 join satellite_image i on i.image_id = f.image_id
+                                 join image_collection c on c.collection_id = i.collection_id
+                        where i.provider = 'nasa-cmr'
+                        group by i.image_id, c.code, f.role, f.pixel_spacing_meters
+                        """, String.class))
+                .containsOnly(
+                        "C2021957657-LPCLOUD/DATA/30.00/15",
+                        "C2021957657-LPCLOUD/METADATA/-/2",
+                        "C2021957657-LPCLOUD/THUMBNAIL/-/1",
+                        "C1214470488-ASF/ORIGINAL/-/1");
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from image_file where href not like 'https://%' and image_id in "
+                                + "(select image_id from satellite_image where provider = 'nasa-cmr')",
+                        Long.class))
+                .isZero();
+    }
+
+    // ASF CMR은 umm.AdditionalAttributes에 SAR 정보를 준다. 입사각·해상도는 주지 않아서 NULL
+    @Test
+    void seedSarIsBackfilledFromCmrAttributes() throws Exception {
+        assertThat(jdbc.queryForList("""
+                        select s.relative_orbit || '/' || s.frame || '/' || s.instrument_mode || '/'
+                               || array_to_string(s.polarizations, '+') || '/' || s.look_direction
+                               || '/' || coalesce(s.incidence_angle::text, '-')
+                        from image_sar s join satellite_image i on i.image_id = s.image_id
+                        where i.provider <> 'all4land'
+                        """, String.class))
+                .containsExactly("127/120/IW/VV+VH/RIGHT/-", "127/120/IW/VV+VH/RIGHT/-");
+        mockMvc.perform(get("/api/images").param("productTypes", "SLC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[*].sar.relativeOrbit", everyItem(is(127))))
+                .andExpect(jsonPath("$.data.content[*].sar.polarizations[0]", everyItem(is("VV"))));
+        mockMvc.perform(get("/api/images").param("productTypes", "L2A"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].sar", nullValue()));
+    }
+
+    @Test
+    void sarIsCreatedReplacedAndDeletedWithRequest() throws Exception {
+        long id = create(sarRequest());
+        mockMvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sar.relativeOrbit").value(127))
+                .andExpect(jsonPath("$.data.sar.frame").value(120))
+                .andExpect(jsonPath("$.data.sar.instrumentMode").value("IW"))
+                .andExpect(jsonPath("$.data.sar.polarizations", contains("VV", "VH")))
+                .andExpect(jsonPath("$.data.sar.lookDirection").value("RIGHT"))
+                .andExpect(jsonPath("$.data.sar.incidenceAngle").value(38.5))
+                .andExpect(jsonPath("$.data.sar.resolutionRangeMeters").value(2.64))
+                .andExpect(jsonPath("$.data.sar.resolutionAzimuthMeters").value(3.3))
+                // 파일에 픽셀 간격이 없어서 거리·방위 해상도로 대체한다
+                .andExpect(jsonPath("$.data.resolution.minMeters").value(2.64))
+                .andExpect(jsonPath("$.data.resolution.maxMeters").value(3.3));
+
+        String replaced = JsonPath.parse(sarRequest())
+                .set("$.sar.relativeOrbit", 50)
+                .delete("$.sar.frame")
+                .jsonString();
+        mockMvc.perform(json(put(BASE + "/" + id), replaced)).andExpect(status().isOk());
+        mockMvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sar.relativeOrbit").value(50))
+                .andExpect(jsonPath("$.data.sar.frame", nullValue()));
+
+        String withoutSar = JsonPath.parse(sarRequest()).delete("$.sar").jsonString();
+        mockMvc.perform(json(put(BASE + "/" + id), withoutSar)).andExpect(status().isOk());
+        // 뷰 엔티티는 앞선 조회의 값이 영속성 컨텍스트에 남아 있다. 실제 요청처럼 비우고 조회한다
+        entityManager.clear();
+        mockMvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sar", nullValue()))
+                .andExpect(jsonPath("$.data.resolution", nullValue()));
+        assertThat(jdbc.queryForObject("select count(*) from image_sar where image_id = ?", Long.class, id))
+                .isZero();
+    }
+
+    @Test
+    void opticalImagesCannotHaveSar() throws Exception {
+        String optical =
+                JsonPath.parse(sarRequest()).set("$.sensorType", "OPTICAL").jsonString();
+        mockMvc.perform(json(post(BASE), optical))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorDetail[0]").value("sarValid: SAR 영상만 sar를 가질 수 있습니다."));
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidSarFields")
+    void invalidSarReturns400WithoutWriting(String field, Object value) throws Exception {
+        long count = jdbc.queryForObject("select count(*) from image_sar", Long.class);
+        mockMvc.perform(json(
+                        post(BASE),
+                        JsonPath.parse(sarRequest())
+                                .set("$.sar." + field, value)
+                                .jsonString()))
+                .andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("select count(*) from image_sar", Long.class))
+                .isEqualTo(count);
+    }
+
+    static Stream<Arguments> invalidSarFields() {
+        return Stream.of(
+                Arguments.of("relativeOrbit", 0),
+                Arguments.of("frame", -1),
+                Arguments.of("instrumentMode", "M".repeat(11)),
+                Arguments.of("polarizations", List.of()),
+                Arguments.of("polarizations", List.of("XX")),
+                Arguments.of("polarizations", java.util.Arrays.asList("VV", null)),
+                Arguments.of("lookDirection", "UP"),
+                Arguments.of("incidenceAngle", 90.01),
+                Arguments.of("incidenceAngle", -1),
+                Arguments.of("resolutionRangeMeters", 0),
+                Arguments.of("resolutionAzimuthMeters", 0.001));
+    }
+
+    private String sarRequest() {
+        return JsonPath.parse(request)
+                .set("$.sensorType", "SAR")
+                .set("$.cloudCover", null)
+                // set은 없는 키를 만들지 못한다
+                .put(
+                        "$",
+                        "sar",
+                        Map.of(
+                                "relativeOrbit",
+                                127,
+                                "frame",
+                                120,
+                                "instrumentMode",
+                                " iw ",
+                                "polarizations",
+                                List.of("VV", "VH"),
+                                "lookDirection",
+                                "RIGHT",
+                                "incidenceAngle",
+                                38.5,
+                                "resolutionRangeMeters",
+                                2.64,
+                                "resolutionAzimuthMeters",
+                                3.3))
+                .jsonString();
     }
 
     @Test
@@ -86,7 +348,7 @@ class ImageControllerTest {
 
     @Test
     void keywordTreatsUnderscoreLiterally() throws Exception {
-        mockMvc.perform(get("/api/images").param("keyword", "_").param("providers", "maxar", "nasa-cmr"))
+        mockMvc.perform(get("/api/images").param("keyword", "_").param("providers", "nasa-cmr"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[*].satellite", everyItem(is("SENTINEL-1A"))))
                 .andExpect(jsonPath("$.data.content", hasSize(2)));
@@ -164,6 +426,36 @@ class ImageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].cloudCover").value(100.00))
                 .andExpect(jsonPath("$.data.content[-1].cloudCover", nullValue()));
+    }
+
+    // 해상도 범위가 겹치면 포함한다. S2는 파일 픽셀 간격 10~60 m, HLS는 30 m
+    @Test
+    void resolutionRangeOverlapsImageResolution() throws Exception {
+        mockMvc.perform(get("/api/images")
+                        .param("providers", "earth-search", "nasa-cmr")
+                        .param("resolutionMin", "40")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(12)))
+                .andExpect(jsonPath("$.data.content[*].provider.code", everyItem(is("earth-search"))))
+                .andExpect(jsonPath("$.data.content[*].resolution.minMeters", everyItem(is(10.00))))
+                .andExpect(jsonPath("$.data.content[*].resolution.maxMeters", everyItem(is(60.00))));
+        mockMvc.perform(get("/api/images")
+                        .param("providers", "earth-search", "nasa-cmr")
+                        .param("resolutionMax", "20")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[*].provider.code", everyItem(is("earth-search"))));
+        mockMvc.perform(get("/api/images")
+                        .param("providers", "earth-search", "nasa-cmr")
+                        .param("resolutionMin", "25")
+                        .param("resolutionMax", "35")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[*].provider.code", hasItems("earth-search", "nasa-cmr")))
+                .andExpect(jsonPath(
+                        "$.data.content[?(@.collection.code == 'C2021957657-LPCLOUD')].resolution.minMeters",
+                        everyItem(is(30.00))));
     }
 
     @Test
@@ -251,7 +543,7 @@ class ImageControllerTest {
     @Test
     void crudKeepsSearchFootprintAndAuditingAndCascadesOnlyDatabaseRows() throws Exception {
         long uploadsBefore = jdbc.queryForObject("select count(*) from image_upload", Long.class);
-        long id = create(REQUEST);
+        long id = create(request);
         assertThat(jdbc.queryForObject("select count(*) from image_upload", Long.class))
                 .isEqualTo(uploadsBefore);
         assertThat(jdbc.queryForObject(
@@ -261,13 +553,16 @@ class ImageControllerTest {
         String initial = mockMvc.perform(get(BASE + "/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.imageId").value(id))
-                .andExpect(jsonPath("$.data.providerCode").value("earth-search"))
+                .andExpect(jsonPath("$.data.providerCode").value("all4land"))
+                .andExpect(jsonPath("$.data.collection.providerCode").value("earth-search"))
+                .andExpect(jsonPath("$.data.collection.code").value("sentinel-2-l2a"))
                 .andExpect(jsonPath("$.data.sourceId").value("admin-crud-test"))
                 .andExpect(jsonPath("$.data.satellite").value("SENTINEL-2A"))
-                .andExpect(jsonPath("$.data.instruments[0]").value("msi"))
+                .andExpect(jsonPath("$.data.instruments[0]").value("MSI"))
                 .andExpect(jsonPath("$.data.sensorType").value("OPTICAL"))
                 .andExpect(jsonPath("$.data.acquiredAt").value("2026-10-19T01:00:00Z"))
-                .andExpect(jsonPath("$.data.gsdMeters").value(10.25))
+                .andExpect(jsonPath("$.data.acquiredEndAt").value("2026-10-19T01:00:27Z"))
+                .andExpect(jsonPath("$.data.resolution", nullValue()))
                 .andExpect(jsonPath("$.data.cloudCover").value(5.25))
                 .andExpect(jsonPath("$.data.orbitDirection").value("ASCENDING"))
                 .andExpect(jsonPath("$.data.footprint.type").value("MultiPolygon"))
@@ -281,15 +576,15 @@ class ImageControllerTest {
                 .getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
         searchFootprint(126.9);
-        var document = JsonPath.parse(REQUEST)
+        var document = JsonPath.parse(request)
                 .set("$.title", "수정된 영상")
                 .set("$.sensorType", "SAR")
                 .set(
                         "$.footprint.coordinates",
                         List.of(List.of(
                                 List.of(List.of(128, 35), List.of(129, 35), List.of(129, 36), List.of(128, 35)))));
-        for (String field :
-                List.of("instruments", "gsdMeters", "cloudCover", "orbitDirection", "sourceUpdatedAt", "rawMetadata")) {
+        for (String field : List.of(
+                "instruments", "acquiredEndAt", "cloudCover", "orbitDirection", "sourceUpdatedAt", "rawMetadata")) {
             document.delete("$." + field);
         }
         mockMvc.perform(json(put(BASE + "/" + id), document.jsonString()))
@@ -299,10 +594,10 @@ class ImageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.title").value("수정된 영상"))
                 .andExpect(jsonPath("$.data.instruments", nullValue()))
-                .andExpect(jsonPath("$.data.gsdMeters", nullValue()))
                 .andExpect(jsonPath("$.data.cloudCover", nullValue()))
                 .andExpect(jsonPath("$.data.orbitDirection", nullValue()))
                 .andExpect(jsonPath("$.data.sourceUpdatedAt", nullValue()))
+                .andExpect(jsonPath("$.data.acquiredEndAt", nullValue()))
                 .andExpect(jsonPath("$.data.rawMetadata").isEmpty())
                 .andReturn()
                 .getResponse()
@@ -317,19 +612,23 @@ class ImageControllerTest {
                 insert into image_upload (image_id, status, original_file_name)
                 values (?, 'UPLOADED', 'admin-crud-test.tar')
                 """, id);
+        // 테스트는 요청들이 트랜잭션 하나를 같이 쓴다. 실제 삭제 요청처럼 빈 영속성 컨텍스트에서 시작한다
+        entityManager.clear();
         mockMvc.perform(delete(BASE + "/" + id)).andExpect(status().isOk());
         mockMvc.perform(get(BASE + "/" + id)).andExpect(status().isNotFound());
         assertThat(repository.existsById(id)).isFalse();
         assertThat(jdbc.queryForObject("select count(*) from image_upload where image_id = ?", Long.class, id))
                 .isZero();
+        assertThat(jdbc.queryForObject("select count(*) from image_file where image_id = ?", Long.class, id))
+                .isZero();
     }
 
     @Test
     void nullOptionalsAndRawMetadataAreCleared() throws Exception {
-        long id = create(REQUEST);
-        var document = JsonPath.parse(REQUEST);
-        for (String field :
-                List.of("instruments", "gsdMeters", "cloudCover", "orbitDirection", "sourceUpdatedAt", "rawMetadata")) {
+        long id = create(request);
+        var document = JsonPath.parse(request);
+        for (String field : List.of(
+                "instruments", "acquiredEndAt", "cloudCover", "orbitDirection", "sourceUpdatedAt", "rawMetadata")) {
             document.set("$." + field, null);
         }
         mockMvc.perform(json(put(BASE + "/" + id), document.jsonString())).andExpect(status().isOk());
@@ -337,20 +636,86 @@ class ImageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.rawMetadata").isEmpty())
                 .andExpect(jsonPath("$.data.instruments", nullValue()))
-                .andExpect(jsonPath("$.data.gsdMeters", nullValue()))
                 .andExpect(jsonPath("$.data.cloudCover", nullValue()))
                 .andExpect(jsonPath("$.data.orbitDirection", nullValue()))
-                .andExpect(jsonPath("$.data.sourceUpdatedAt", nullValue()));
+                .andExpect(jsonPath("$.data.sourceUpdatedAt", nullValue()))
+                .andExpect(jsonPath("$.data.acquiredEndAt", nullValue()));
     }
 
     @Test
     void duplicateCreateAndUpdateConflictButOwnSourceAndOtherProvidersAreAllowed() throws Exception {
-        long id = create(REQUEST);
-        mockMvc.perform(json(post(BASE), REQUEST)).andExpect(status().isConflict());
-        mockMvc.perform(json(put(BASE + "/" + id), REQUEST)).andExpect(status().isOk());
+        long id = create(request);
+        mockMvc.perform(json(post(BASE), request)).andExpect(status().isConflict());
+        mockMvc.perform(json(put(BASE + "/" + id), request)).andExpect(status().isOk());
         long second = create(changed("sourceId", "other-source"));
-        mockMvc.perform(json(put(BASE + "/" + second), REQUEST)).andExpect(status().isConflict());
-        create(changed("providerCode", "nasa-cmr"));
+        mockMvc.perform(json(put(BASE + "/" + second), request)).andExpect(status().isConflict());
+        create(changed("sourceId", "S2B_52SCG_20241227_0_L2A"));
+    }
+
+    // 자동으로 수집한 영상의 파일 정보는 수집기가 관리하므로 요청의 다운로드 URL을 무시한다
+    @Test
+    void updateKeepsProviderAndCollectedFiles() throws Exception {
+        long seedId = jdbc.queryForObject(
+                "select image_id from satellite_image where provider = 'earth-search' and source_id = ?",
+                Long.class,
+                "S2B_52SCG_20241227_0_L2A");
+        String filesQuery = "select string_agg(href, ',' order by file_id) from image_file where image_id = ?";
+        String downloadUrlsQuery = "select array_to_string(download_urls, ',') from satellite_image where image_id = ?";
+        String files = jdbc.queryForObject(filesQuery, String.class, seedId);
+        String downloadUrls = jdbc.queryForObject(downloadUrlsQuery, String.class, seedId);
+
+        mockMvc.perform(json(put(BASE + "/" + seedId), request)).andExpect(status().isOk());
+        mockMvc.perform(get(BASE + "/" + seedId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.providerCode").value("earth-search"));
+        assertThat(jdbc.queryForObject(filesQuery, String.class, seedId)).isEqualTo(files);
+        assertThat(jdbc.queryForObject(downloadUrlsQuery, String.class, seedId)).isEqualTo(downloadUrls);
+    }
+
+    // 그대로인 URL의 행은 남기고, 빠진 URL은 지우고, 새 URL은 확장자로 역할을 정해 한 번만 추가한다
+    @Test
+    void ownOrganizationFilesFollowDownloadUrls() throws Exception {
+        long id = create(request);
+        String filesQuery = """
+                select file_id || '/' || asset_key || '/' || role || '/' || href
+                from image_file where image_id = ? order by file_id
+                """;
+        List<String> created = jdbc.queryForList(filesQuery, String.class, id);
+        assertThat(created).hasSize(2);
+        assertThat(created.get(0)).endsWith("/image.tif/DATA/s3://archive/image.tif");
+        String kept = created.get(1);
+        assertThat(kept).endsWith("/image.tif/DATA/https://example.test/image.tif");
+
+        mockMvc.perform(json(
+                        put(BASE + "/" + id),
+                        changed(
+                                "downloadUrls",
+                                List.of(
+                                        "https://example.test/image.tif",
+                                        "https://example.test/scene.tar.gz",
+                                        "https://example.test/meta.XML",
+                                        "https://example.test/meta.XML"))))
+                .andExpect(status().isOk());
+
+        List<String> updated = jdbc.queryForList(filesQuery, String.class, id);
+        assertThat(updated).hasSize(3);
+        assertThat(updated.get(0)).isEqualTo(kept);
+        assertThat(updated.get(1)).endsWith("/scene.tar.gz/ORIGINAL/https://example.test/scene.tar.gz");
+        assertThat(updated.get(2)).endsWith("/meta.XML/METADATA/https://example.test/meta.XML");
+    }
+
+    // 올포랜드 영상(등록)은 다른 출처의 컬렉션을 가질 수 있지만, 다른 출처의 영상은 그 출처의 컬렉션만 가진다
+    @Test
+    void onlyOwnOrganizationImagesTakeOtherProvidersCollections() throws Exception {
+        String otherProviders = changed("collectionId", collectionId("nasa-cmr", "C1214470488-ASF"));
+        create(otherProviders);
+        long seedId = jdbc.queryForObject(
+                "select image_id from satellite_image where provider = 'earth-search' and source_id = ?",
+                Long.class,
+                "S2B_52SCG_20241227_0_L2A");
+        mockMvc.perform(json(put(BASE + "/" + seedId), otherProviders))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorDetail[0]").value("collectionId: 이 제공 기관의 컬렉션이 아닙니다."));
     }
 
     @Test
@@ -358,7 +723,7 @@ class ImageControllerTest {
         long count = repository.count();
         String path = BASE + "/" + Long.MAX_VALUE;
         mockMvc.perform(get(path)).andExpect(status().isNotFound());
-        mockMvc.perform(json(put(path), REQUEST)).andExpect(status().isNotFound());
+        mockMvc.perform(json(put(path), request)).andExpect(status().isNotFound());
         mockMvc.perform(delete(path)).andExpect(status().isNotFound());
         assertThat(repository.count()).isEqualTo(count);
     }
@@ -375,8 +740,7 @@ class ImageControllerTest {
 
     static Stream<Arguments> invalidFields() {
         return Stream.of(
-                Arguments.of("providerCode", "unknown-provider"),
-                Arguments.of("providerCode", "p".repeat(31)),
+                Arguments.of("collectionId", Long.MAX_VALUE),
                 Arguments.of("sourceId", "s".repeat(201)),
                 Arguments.of("title", "t".repeat(301)),
                 Arguments.of("title", "  "),
@@ -387,8 +751,6 @@ class ImageControllerTest {
                 Arguments.of("orbitDirection", "SIDEWAYS"),
                 Arguments.of("cloudCover", -0.01),
                 Arguments.of("cloudCover", 100.01),
-                Arguments.of("gsdMeters", 1000000),
-                Arguments.of("gsdMeters", 0.001),
                 Arguments.of("downloadUrls", List.of()),
                 Arguments.of("downloadUrls", List.of(" ")),
                 Arguments.of("downloadUrls", java.util.Arrays.asList("ok", null)),
@@ -397,6 +759,8 @@ class ImageControllerTest {
                 Arguments.of("instruments", java.util.Arrays.asList("ok", null)),
                 Arguments.of("url", " "),
                 Arguments.of("acquiredAt", "2026-10-19T10:00:00"),
+                Arguments.of("acquiredEndAt", "2026-10-19T09:59:59+09:00"),
+                Arguments.of("acquiredEndAt", "bad-date"),
                 Arguments.of("sourceUpdatedAt", "bad-date"),
                 Arguments.of("rawMetadata", List.of("not-an-object")),
                 Arguments.of("footprint", "not-an-object"),
@@ -419,13 +783,13 @@ class ImageControllerTest {
     void requiredFieldsCannotBeNullOrOmitted(String field) throws Exception {
         mockMvc.perform(json(post(BASE), changed(field, null))).andExpect(status().isBadRequest());
         mockMvc.perform(json(
-                        post(BASE), JsonPath.parse(REQUEST).delete("$." + field).jsonString()))
+                        post(BASE), JsonPath.parse(request).delete("$." + field).jsonString()))
                 .andExpect(status().isBadRequest());
     }
 
     static Stream<String> requiredFields() {
         return Stream.of(
-                "providerCode",
+                "collectionId",
                 "sourceId",
                 "title",
                 "satellite",
@@ -441,12 +805,11 @@ class ImageControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data", nullValue()));
-        String providerCode = JsonPath.read(body, "$.providerCode");
         String sourceId = JsonPath.read(body, "$.sourceId");
         return jdbc.queryForObject(
                 "select image_id from satellite_image where provider = ? and source_id = ?",
                 Long.class,
-                providerCode,
+                Provider.OWN_ORGANIZATION_CODE,
                 sourceId);
     }
 
@@ -460,8 +823,8 @@ class ImageControllerTest {
                         .value(longitude));
     }
 
-    private static String changed(String field, Object value) {
-        return JsonPath.parse(REQUEST).set("$." + field, value).jsonString();
+    private String changed(String field, Object value) {
+        return JsonPath.parse(request).set("$." + field, value).jsonString();
     }
 
     private static Map<String, Object> geometry(String coordinates) {

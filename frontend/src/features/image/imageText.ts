@@ -1,6 +1,9 @@
 import type {
+    Collection,
     ImageResponse,
+    LookDirection,
     OrbitDirection,
+    Provider,
     SensorType,
 } from "@/features/image/types";
 import { formatKstDateTime } from "@/shared/utils/date";
@@ -13,6 +16,11 @@ export const SENSOR_TYPE_NAMES: Record<SensorType, string> = {
 export const ORBIT_DIRECTION_NAMES: Record<OrbitDirection, string> = {
     ASCENDING: "상향",
     DESCENDING: "하향",
+};
+
+export const LOOK_DIRECTION_NAMES: Record<LookDirection, string> = {
+    LEFT: "좌측",
+    RIGHT: "우측",
 };
 
 export function satelliteText({
@@ -34,10 +42,22 @@ export function acquiredAtText({
     return formatKstDateTime(acquiredAt);
 }
 
-export function gsdText({
-    gsdMeters,
-}: Pick<ImageResponse, "gsdMeters">): string {
-    return gsdMeters === null ? "-" : `${gsdMeters} m`;
+export function acquiredEndAtText({
+    acquiredEndAt,
+}: Pick<ImageResponse, "acquiredEndAt">): string {
+    return acquiredEndAt ? formatKstDateTime(acquiredEndAt) : "-";
+}
+
+export function resolutionText({
+    resolution,
+}: Pick<ImageResponse, "resolution">): string {
+    if (resolution === null) {
+        return "-";
+    }
+    const { minMeters, maxMeters } = resolution;
+    return minMeters === maxMeters
+        ? `${minMeters} m`
+        : `${minMeters} ~ ${maxMeters} m`;
 }
 
 export function cloudCoverText({
@@ -62,4 +82,15 @@ export function providerText({
     provider,
 }: Pick<ImageResponse, "provider">): string {
     return `${provider.name} (${provider.isPaid ? "유료" : "무료"})`;
+}
+
+// 컬렉션은 정의한 출처가 영상의 제공 기관과 다를 수 있어서(올포랜드 영상) 출처를 함께 보여준다
+export function collectionOptionLabel(
+    collection: Collection,
+    providers: Provider[],
+): string {
+    const providerName =
+        providers.find((provider) => provider.code === collection.providerCode)
+            ?.name ?? collection.providerCode;
+    return `${providerName} · ${collection.title}`;
 }

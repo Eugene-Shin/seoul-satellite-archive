@@ -8,6 +8,7 @@ type Range = [low: number, high: number];
 
 type RangeSliderProps = {
     label: string;
+    hint?: string;
     min: number;
     max: number;
     unit: string;
@@ -18,6 +19,7 @@ type RangeSliderProps = {
 
 export function RangeSlider({
     label,
+    hint,
     min,
     max,
     step,
@@ -51,6 +53,9 @@ export function RangeSlider({
                 }}
                 getAriaLabel={thumbLabel}
             />
+            {hint && (
+                <span className="text-sm text-muted-foreground">{hint}</span>
+            )}
         </fieldset>
     );
 }

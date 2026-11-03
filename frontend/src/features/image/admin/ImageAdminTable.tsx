@@ -15,19 +15,24 @@ import { EditImageDialog } from "@/features/image/admin/EditImageDialog";
 import {
     AcquiredAtColumnFilter,
     CloudCoverColumnFilter,
-    GsdColumnFilter,
+    ResolutionColumnFilter,
 } from "@/features/image/admin/RangeColumnFilters";
 import { sensorTypesChange } from "@/features/image/filters/sensorTypesChange";
 import {
     acquiredAtText,
     cloudCoverText,
-    gsdText,
+    collectionOptionLabel,
     ORBIT_DIRECTION_NAMES,
     orbitDirectionText,
+    resolutionText,
     SENSOR_TYPE_NAMES,
     sensorTypeText,
 } from "@/features/image/imageText";
-import { useAdminImages, useFilterOptions } from "@/features/image/queries";
+import {
+    useAdminImages,
+    useCollections,
+    useFilterOptions,
+} from "@/features/image/queries";
 import type { ImageResponse, ImageSearchParams } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import { IconButton } from "@/shared/components/IconButton";
@@ -50,10 +55,12 @@ const COLUMN_ALIGN = {
     instruments: ALIGN.text,
     sensorType: ALIGN.short,
     acquiredAt: ALIGN.text,
-    gsd: ALIGN.number,
+    resolution: ALIGN.number,
     cloudCover: ALIGN.number,
     orbitDirection: ALIGN.short,
     provider: ALIGN.text,
+    collection: ALIGN.text,
+    productType: ALIGN.short,
     isPaid: ALIGN.short,
 };
 
@@ -230,6 +237,7 @@ type ImageAdminHeaderProps = {
 
 function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
     const { data: options } = useFilterOptions();
+    const { data: collections } = useCollections();
 
     return (
         <tr>
@@ -269,8 +277,11 @@ function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
                     onChange={onChange}
                 />
             </th>
-            <th className={headerClass("gsd")}>
-                <GsdColumnFilter conditions={conditions} onChange={onChange} />
+            <th className={headerClass("resolution")}>
+                <ResolutionColumnFilter
+                    conditions={conditions}
+                    onChange={onChange}
+                />
             </th>
             <th className={headerClass("cloudCover")}>
                 <CloudCoverColumnFilter
@@ -300,6 +311,34 @@ function ImageAdminHeader({ conditions, onChange }: ImageAdminHeaderProps) {
                     }))}
                     selected={conditions.providers}
                     onChange={(providers) => onChange({ providers })}
+                />
+            </th>
+            <th className={headerClass("collection")}>
+                <MultiColumnFilter
+                    label="컬렉션"
+                    options={(collections ?? []).map((collection) => ({
+                        value: collection.collectionId,
+                        label: collectionOptionLabel(
+                            collection,
+                            options?.providers ?? [],
+                        ),
+                    }))}
+                    selected={conditions.collectionIds}
+                    onChange={(collectionIds) => onChange({ collectionIds })}
+                />
+            </th>
+            <th className={headerClass("productType")}>
+                <MultiColumnFilter
+                    label="제품 유형"
+                    options={toOptions([
+                        ...new Set(
+                            (collections ?? []).map(
+                                (collection) => collection.productType,
+                            ),
+                        ),
+                    ])}
+                    selected={conditions.productTypes}
+                    onChange={(productTypes) => onChange({ productTypes })}
                 />
             </th>
             <th className={headerClass("isPaid")}>
@@ -338,12 +377,23 @@ function ImageAdminRow({ image, onEdit, onDelete }: ImageAdminRowProps) {
             </td>
             <td className={cellClass("sensorType")}>{sensorTypeText(image)}</td>
             <td className={cellClass("acquiredAt")}>{acquiredAtText(image)}</td>
-            <td className={cellClass("gsd")}>{gsdText(image)}</td>
+            <td className={cellClass("resolution")}>{resolutionText(image)}</td>
             <td className={cellClass("cloudCover")}>{cloudCoverText(image)}</td>
             <td className={cellClass("orbitDirection")}>
                 {orbitDirectionText(image)}
             </td>
             <td className={cellClass("provider")}>{image.provider.name}</td>
+            <td className={cellClass("collection")}>
+                <span
+                    className="block max-w-60 truncate"
+                    title={image.collection.title}
+                >
+                    {image.collection.title}
+                </span>
+            </td>
+            <td className={cellClass("productType")}>
+                {image.collection.productType}
+            </td>
             <td className={cellClass("isPaid")}>
                 {image.provider.isPaid ? "유료" : "무료"}
             </td>
