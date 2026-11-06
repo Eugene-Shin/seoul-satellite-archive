@@ -1,6 +1,7 @@
 package com.all4land.seoulsatellitearchive.image.dto;
 
 import com.all4land.seoulsatellitearchive.collection.dto.CollectionResponse;
+import com.all4land.seoulsatellitearchive.image.ImageFile;
 import com.all4land.seoulsatellitearchive.image.ImageResolution;
 import com.all4land.seoulsatellitearchive.image.ImageSar;
 import com.all4land.seoulsatellitearchive.image.OrbitDirection;
@@ -45,12 +46,14 @@ public class ImageDetailResponse {
 
     private final String url;
     private final List<String> downloadUrls;
+    private final List<ImageFileResponse> files;
     private final Instant sourceUpdatedAt;
     private final Map<String, Object> rawMetadata;
     private final Instant createdAt;
     private final Instant updatedAt;
 
-    public static ImageDetailResponse from(SatelliteImage image, ImageSar sar, ImageResolution resolution) {
+    public static ImageDetailResponse from(
+            SatelliteImage image, ImageSar sar, ImageResolution resolution, List<ImageFile> files) {
         return new ImageDetailResponse(
                 image.getId(),
                 image.getProvider().getCode(),
@@ -69,6 +72,7 @@ public class ImageDetailResponse {
                 image.getFootprintGeoJson(),
                 image.getUrl(),
                 List.of(image.getDownloadUrls()),
+                files.stream().map(ImageFileResponse::from).toList(),
                 image.getSourceUpdatedAt(),
                 image.getRawMetadata(),
                 image.getCreatedAt(),

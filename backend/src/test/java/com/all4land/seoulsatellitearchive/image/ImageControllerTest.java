@@ -2,6 +2,7 @@ package com.all4land.seoulsatellitearchive.image;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
@@ -188,6 +189,50 @@ class ImageControllerTest {
                         "visual/PREVIEW/10.00/red:red:-,green:green:-,blue:blue:-",
                         "thumbnail/THUMBNAIL/-/-",
                         "granule_metadata/METADATA/-/-");
+    }
+
+    // 파일은 역할순, 밴드는 파일 안 순서. 밴드가 없는 파일도 빠지지 않고 빈 배열로 온다
+    @Test
+    void detailReturnsFilesWithBands() throws Exception {
+        long seedId = jdbc.queryForObject(
+                "select image_id from satellite_image where provider = 'earth-search' and source_id = ?",
+                Long.class,
+                "S2B_52SCG_20241227_0_L2A");
+        String body = mockMvc.perform(get(BASE + "/" + seedId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.files[?(@.assetKey == 'visual')].role", contains("PREVIEW")))
+                .andExpect(jsonPath("$.data.files[?(@.assetKey == 'visual')].pixelSpacingMeters", contains(10.00)))
+                .andExpect(jsonPath("$.data.files[?(@.assetKey == 'visual')].bands[*].bandIndex", contains(1, 2, 3)))
+                .andExpect(jsonPath(
+                        "$.data.files[?(@.assetKey == 'visual')].bands[*].bandName", contains("red", "green", "blue")))
+                .andExpect(jsonPath("$.data.files[?(@.assetKey == 'red')].bands[0].commonName", contains("red")))
+                .andExpect(
+                        jsonPath("$.data.files[?(@.assetKey == 'red')].bands[0].centerWavelengthUm", contains(0.665)))
+                .andExpect(jsonPath("$.data.files[?(@.assetKey == 'red')].bands[0].bandwidthUm", contains(0.038)))
+                .andExpect(jsonPath("$.data.files[?(@.assetKey == 'red')].bands[0].resolutionMeters", contains(10.00)))
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        List<String> roles = JsonPath.read(body, "$.data.files[*].role");
+        assertThat(roles).isSorted();
+        List<List<?>> thumbnailBands = JsonPath.read(body, "$.data.files[?(@.assetKey == 'thumbnail')].bands");
+        assertThat(thumbnailBands).containsExactly(List.of());
+    }
+
+    @Test
+    void detailReturnsFilesOfRegisteredImage() throws Exception {
+        long id = create(request);
+        entityManager.clear();
+        mockMvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(
+                        "$.data.files[*].href",
+                        containsInAnyOrder("s3://archive/image.tif", "https://example.test/image.tif")))
+                .andExpect(jsonPath("$.data.files[*].assetKey", everyItem(is("image.tif"))))
+                .andExpect(jsonPath("$.data.files[*].role", everyItem(is("DATA"))))
+                .andExpect(jsonPath("$.data.files[*].mediaType", everyItem(nullValue())))
+                .andExpect(jsonPath("$.data.files[*].pixelSpacingMeters", everyItem(nullValue())))
+                .andExpect(jsonPath("$.data.files[*].bands[*]", hasSize(0)));
     }
 
     // CMR은 https 링크만. HLS DATA 파일은 그래뉼의 SPATIAL_RESOLUTION, S1은 원본 묶음 하나

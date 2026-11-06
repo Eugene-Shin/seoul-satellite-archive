@@ -1,6 +1,8 @@
 package com.all4land.seoulsatellitearchive.image;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -10,7 +12,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OrderBy;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,6 +46,11 @@ public class ImageFile {
     private String mediaType;
 
     private BigDecimal pixelSpacingMeters;
+
+    @ElementCollection
+    @CollectionTable(name = "image_file_band", joinColumns = @JoinColumn(name = "file_id"))
+    @OrderBy("bandIndex")
+    private List<ImageFileBand> bands = new ArrayList<>();
 
     // 링크만으로는 형식·픽셀 간격·밴드를 알 수 없어서 비워 둔다
     public ImageFile(SatelliteImage image, String href) {

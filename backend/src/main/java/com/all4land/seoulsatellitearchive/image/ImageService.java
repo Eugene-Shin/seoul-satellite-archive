@@ -56,7 +56,8 @@ public class ImageService {
         return ImageDetailResponse.from(
                 image,
                 imageSarRepository.findById(imageId).orElse(null),
-                imageResolutionRepository.findById(imageId).orElse(null));
+                imageResolutionRepository.findById(imageId).orElse(null),
+                imageFileRepository.findAllWithBandsByImage_IdOrderByRoleAscAssetKeyAsc(imageId));
     }
 
     @Transactional
