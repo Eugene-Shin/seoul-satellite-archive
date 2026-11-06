@@ -98,6 +98,7 @@ export const imageResponseSchema = z.object({
     sar: sarSchema.nullable(),
     footprint: multiPolygonSchema,
     sourceUpdatedAt: z.iso.datetime().nullable(),
+    thumbnailUrl: z.string().nullable(),
 });
 
 export const imageDetailSchema = z.object({

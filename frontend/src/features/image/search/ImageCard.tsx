@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
     acquiredAtText,
     cloudCoverText,
@@ -28,6 +30,8 @@ export function ImageCard({
     onHoverStart,
     onHoverEnd,
 }: ImageCardProps) {
+    const [thumbnailFailed, setThumbnailFailed] = useState(false);
+    const hasThumbnail = image.thumbnailUrl !== null && !thumbnailFailed;
     const emphasisClassName = selected
         ? "border-foreground ring-foreground"
         : "border-ring ring-ring bg-muted";
@@ -43,9 +47,25 @@ export function ImageCard({
             onPointerLeave={() => onHoverEnd()}
             className={`flex w-full flex-col gap-2 rounded-lg border bg-card p-4 text-left text-card-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${stateClassName}`}
         >
-            <h2 className="truncate font-semibold" title={image.title}>
-                {image.title}
-            </h2>
+            <div className="flex items-center gap-3">
+                {hasThumbnail && (
+                    // 출처 서버의 이미지를 그대로 보여주므로 next/image의 최적화 서버를 거치지 않는다
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                        src={image.thumbnailUrl ?? undefined}
+                        alt=""
+                        loading="lazy"
+                        onError={() => setThumbnailFailed(true)}
+                        className="size-20 shrink-0 rounded border border-border object-cover"
+                    />
+                )}
+                <h2
+                    className={`min-w-0 font-semibold ${hasThumbnail ? "line-clamp-3 break-all" : "truncate"}`}
+                    title={image.title}
+                >
+                    {image.title}
+                </h2>
+            </div>
             <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-sm">
                 <dt className="text-muted-foreground">위성</dt>
                 <dd>{satelliteText(image)}</dd>

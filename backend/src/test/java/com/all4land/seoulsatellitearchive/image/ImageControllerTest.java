@@ -3,6 +3,7 @@ package com.all4land.seoulsatellitearchive.image;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
@@ -471,6 +472,41 @@ class ImageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].cloudCover").value(100.00))
                 .andExpect(jsonPath("$.data.content[-1].cloudCover", nullValue()));
+    }
+
+    // S2·HLS는 출처 썸네일, S1은 썸네일이 없다
+    @Test
+    void searchReturnsThumbnailOfSeedImages() throws Exception {
+        mockMvc.perform(get("/api/images")
+                        .param("providers", "earth-search", "nasa-cmr")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(
+                        "$.data.content[?(@.collection.code == 'sentinel-2-l2a')].thumbnailUrl",
+                        everyItem(endsWith(".jpg"))))
+                .andExpect(jsonPath(
+                        "$.data.content[?(@.collection.code == 'C2021957657-LPCLOUD')].thumbnailUrl",
+                        everyItem(endsWith(".jpg"))))
+                .andExpect(jsonPath(
+                        "$.data.content[?(@.collection.code == 'C1214470488-ASF')].thumbnailUrl",
+                        everyItem(nullValue())));
+    }
+
+    // 여러 개면 https 링크 중 가장 앞서는 것 하나
+    @Test
+    void searchPicksOneHttpsThumbnail() throws Exception {
+        long id = create(request);
+        for (String href : List.of(
+                "https://example.test/b.jpg", "https://example.test/a.jpg", "http://example.test/insecure.jpg")) {
+            jdbc.update(
+                    "insert into image_file (image_id, asset_key, role, href) values (?, 'thumbnail', 'THUMBNAIL', ?)",
+                    id,
+                    href);
+        }
+        mockMvc.perform(get("/api/images").param("keyword", "관리자 CRUD 테스트"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].imageId").value(id))
+                .andExpect(jsonPath("$.data.content[0].thumbnailUrl").value("https://example.test/a.jpg"));
     }
 
     // 해상도 범위가 겹치면 포함한다. S2는 파일 픽셀 간격 10~60 m, HLS는 30 m

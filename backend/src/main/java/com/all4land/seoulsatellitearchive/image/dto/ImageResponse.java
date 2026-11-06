@@ -34,9 +34,11 @@ public record ImageResponse(
         @Schema(type = "object", description = "GeoJSON MultiPolygon") @JsonRawValue
         String footprint,
 
-        Instant sourceUpdatedAt) {
+        Instant sourceUpdatedAt,
+        @Schema(description = "썸네일이 없으면 null") String thumbnailUrl) {
 
-    public static ImageResponse from(SatelliteImage image, ImageSar sar, ImageResolution resolution) {
+    public static ImageResponse from(
+            SatelliteImage image, ImageSar sar, ImageResolution resolution, String thumbnailUrl) {
         return new ImageResponse(
                 image.getId(),
                 ProviderResponse.from(image.getProvider()),
@@ -52,6 +54,7 @@ public record ImageResponse(
                 image.getOrbitDirection(),
                 sar == null ? null : SarResponse.from(sar),
                 image.getFootprintGeoJson(),
-                image.getSourceUpdatedAt());
+                image.getSourceUpdatedAt(),
+                thumbnailUrl);
     }
 }
