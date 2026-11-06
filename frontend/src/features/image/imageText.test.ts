@@ -3,12 +3,54 @@ import { describe, expect, it } from "vitest";
 import {
     cloudCoverText,
     collectionOptionLabel,
+    imageFileDetailText,
     orbitDirectionText,
     providerText,
     resolutionText,
     satelliteText,
     sensorTypeText,
 } from "@/features/image/imageText";
+
+describe("imageFileDetailText", () => {
+    const band = {
+        bandIndex: 1,
+        bandName: null,
+        commonName: null,
+        centerWavelengthUm: null,
+        bandwidthUm: null,
+        resolutionMeters: null,
+    };
+
+    it("픽셀 간격과 밴드 이름을 함께 보여준다", () => {
+        expect(
+            imageFileDetailText({
+                pixelSpacingMeters: 10,
+                bands: [
+                    { ...band, bandName: "red" },
+                    { ...band, bandIndex: 2, bandName: "green" },
+                ],
+            }),
+        ).toBe("10 m · red, green");
+    });
+
+    it("밴드 이름이 없으면 표준 이름, 그것도 없으면 번호", () => {
+        expect(
+            imageFileDetailText({
+                pixelSpacingMeters: null,
+                bands: [
+                    { ...band, commonName: "nir" },
+                    { ...band, bandIndex: 2 },
+                ],
+            }),
+        ).toBe("nir, 밴드 2");
+    });
+
+    it("값이 없으면 빈 문자열", () => {
+        expect(
+            imageFileDetailText({ pixelSpacingMeters: null, bands: [] }),
+        ).toBe("");
+    });
+});
 
 describe("satelliteText", () => {
     it("센서가 있으면 괄호 안에 쉼표로 붙인다", () => {

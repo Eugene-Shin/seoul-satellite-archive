@@ -34,7 +34,6 @@ public record ImageResponse(
         @Schema(type = "object", description = "GeoJSON MultiPolygon") @JsonRawValue
         String footprint,
 
-        List<String> downloadUrls,
         Instant sourceUpdatedAt) {
 
     public static ImageResponse from(SatelliteImage image, ImageSar sar, ImageResolution resolution) {
@@ -53,7 +52,6 @@ public record ImageResponse(
                 image.getOrbitDirection(),
                 sar == null ? null : SarResponse.from(sar),
                 image.getFootprintGeoJson(),
-                List.of(image.getDownloadUrls()),
                 image.getSourceUpdatedAt());
     }
 }

@@ -3,6 +3,8 @@ import type { z } from "zod";
 import type {
     collectionSchema,
     imageDetailSchema,
+    imageFileRoleSchema,
+    imageFileSchema,
     imageFilterOptionsSchema,
     imageResponseSchema,
     imageSortSchema,
@@ -28,6 +30,10 @@ export type Polarization = z.infer<typeof polarizationSchema>;
 export type LookDirection = z.infer<typeof lookDirectionSchema>;
 
 export type Sar = z.infer<typeof sarSchema>;
+
+export type ImageFileRole = z.infer<typeof imageFileRoleSchema>;
+
+export type ImageFile = z.infer<typeof imageFileSchema>;
 
 export type MultiPolygon = z.infer<typeof multiPolygonSchema>;
 

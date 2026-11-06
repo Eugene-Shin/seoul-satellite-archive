@@ -15,6 +15,7 @@ import {
     sensorTypeText,
     sourceUpdatedAtText,
 } from "@/features/image/imageText";
+import { ImageFileList } from "@/features/image/search/ImageFileList";
 import type { ImageResponse, Sar } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
 
@@ -156,18 +157,7 @@ function ImageDetailContent({ image }: { image: ImageResponse }) {
                 <dd>{sourceUpdatedAtText(image)}</dd>
             </dl>
 
-            <section className="flex flex-col gap-2">
-                <h3 className="font-semibold">
-                    다운로드 ({image.downloadUrls.length})
-                </h3>
-                <ul className="flex flex-col gap-1 text-sm">
-                    {image.downloadUrls.map((url) => (
-                        <li key={url}>
-                            <DownloadLink url={url} />
-                        </li>
-                    ))}
-                </ul>
-            </section>
+            <ImageFileList imageId={image.imageId} />
         </div>
     );
 }
@@ -205,28 +195,4 @@ function SarRows({ sar }: { sar: Sar }) {
             <dd>{value ?? "-"}</dd>
         </Fragment>
     ));
-}
-
-function DownloadLink({ url }: { url: string }) {
-    const fileName = url.split("/").pop() || url;
-
-    if (!url.startsWith("http")) {
-        return (
-            <span className="break-all text-muted-foreground" title={url}>
-                {fileName}
-            </span>
-        );
-    }
-
-    return (
-        <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="break-all underline"
-            title={url}
-        >
-            {fileName}
-        </a>
-    );
 }

@@ -1,5 +1,7 @@
 import type {
     Collection,
+    ImageFile,
+    ImageFileRole,
     ImageResponse,
     LookDirection,
     OrbitDirection,
@@ -22,6 +24,30 @@ export const LOOK_DIRECTION_NAMES: Record<LookDirection, string> = {
     LEFT: "좌측",
     RIGHT: "우측",
 };
+
+export const IMAGE_FILE_ROLE_NAMES: Record<ImageFileRole, string> = {
+    ORIGINAL: "원본",
+    DATA: "데이터",
+    PREVIEW: "미리보기",
+    THUMBNAIL: "썸네일",
+    METADATA: "메타데이터",
+};
+
+// 픽셀 간격과 밴드 이름. 출처에 이름이 없는 밴드는 표준 이름, 그것도 없으면 번호로 보여준다
+export function imageFileDetailText({
+    pixelSpacingMeters,
+    bands,
+}: Pick<ImageFile, "pixelSpacingMeters" | "bands">): string {
+    const spacing =
+        pixelSpacingMeters === null ? [] : [`${pixelSpacingMeters} m`];
+    const bandNames = bands.map(
+        (band) => band.bandName ?? band.commonName ?? `밴드 ${band.bandIndex}`,
+    );
+    return [
+        ...spacing,
+        ...(bandNames.length ? [bandNames.join(", ")] : []),
+    ].join(" · ");
+}
 
 export function satelliteText({
     satellite,

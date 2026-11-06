@@ -50,6 +50,33 @@ export const resolutionSchema = z.object({
     maxMeters: z.number(),
 });
 
+export const imageFileRoleSchema = z.enum([
+    "ORIGINAL",
+    "DATA",
+    "PREVIEW",
+    "THUMBNAIL",
+    "METADATA",
+]);
+
+export const imageFileBandSchema = z.object({
+    bandIndex: z.number(),
+    bandName: z.string().nullable(),
+    commonName: z.string().nullable(),
+    centerWavelengthUm: z.number().nullable(),
+    bandwidthUm: z.number().nullable(),
+    resolutionMeters: z.number().nullable(),
+});
+
+export const imageFileSchema = z.object({
+    fileId: z.number(),
+    assetKey: z.string(),
+    role: imageFileRoleSchema,
+    href: z.string(),
+    mediaType: z.string().nullable(),
+    pixelSpacingMeters: z.number().nullable(),
+    bands: z.array(imageFileBandSchema),
+});
+
 export const multiPolygonSchema = z.object({
     type: z.literal("MultiPolygon"),
     coordinates: z.array(z.array(z.array(z.array(z.number())))),
@@ -70,7 +97,6 @@ export const imageResponseSchema = z.object({
     orbitDirection: orbitDirectionSchema.nullable(),
     sar: sarSchema.nullable(),
     footprint: multiPolygonSchema,
-    downloadUrls: z.array(z.string()),
     sourceUpdatedAt: z.iso.datetime().nullable(),
 });
 
@@ -92,6 +118,7 @@ export const imageDetailSchema = z.object({
     footprint: multiPolygonSchema,
     url: z.string(),
     downloadUrls: z.array(z.string()),
+    files: z.array(imageFileSchema),
     sourceUpdatedAt: z.iso.datetime().nullable(),
     rawMetadata: z.record(z.string(), z.unknown()),
 });

@@ -171,6 +171,7 @@ describe("toFormValues", () => {
         footprint: FOOTPRINT as ImageDetailResponse["footprint"],
         url: "archive/metadata.json",
         downloadUrls: ["s3://archive/a.tif", "s3://archive/b.tif"],
+        files: [],
         sourceUpdatedAt: null,
         rawMetadata: { cloud: 5 },
     };
