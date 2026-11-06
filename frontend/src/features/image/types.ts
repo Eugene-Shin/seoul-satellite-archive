@@ -71,10 +71,10 @@ export type ImageWriteRequest = {
     rawMetadata: unknown;
 };
 
-// alwaysFit: 화면 안에 있어도 지도를 영상 범위에 맞춘다. 아니면 화면 밖일 때만 이동한다
 export type ImageSelection = {
     image: ImageResponse;
-    alwaysFit: boolean;
+    move: "always" | "ifOutOfView" | "none";
+    showOverlay: boolean;
 };
 
 // 지도 도구는 한 번에 하나만: 영역 그리기 / 거리 측정 / 면적 측정

@@ -22,9 +22,20 @@ public interface ImageFileRepository extends JpaRepository<ImageFile, Long> {
               and f.href like 'https://%'
             group by f.image.id
             """)
-    List<Thumbnail> findThumbnails(Collection<Long> imageIds);
+    List<ImageFileUrl> findThumbnails(Collection<Long> imageIds);
 
-    interface Thumbnail {
+    @Query("""
+            select f.image.id as imageId, min(f.href) as href
+            from ImageFile f
+            where f.image.id in :imageIds
+              and f.role = com.all4land.seoulsatellitearchive.image.ImageFileRole.PREVIEW
+              and f.mediaType like '%profile=cloud-optimized%'
+              and f.href like 'https://%'
+            group by f.image.id
+            """)
+    List<ImageFileUrl> findOverlays(Collection<Long> imageIds);
+
+    interface ImageFileUrl {
         Long getImageId();
 
         String getHref();

@@ -15,7 +15,8 @@ const csp = `
     style-src 'self' 'unsafe-inline';
     img-src 'self' blob: data: https:;
     font-src 'self';
-    connect-src 'self' ${apiOrigin};
+    connect-src 'self' ${apiOrigin} https://sentinel-cogs.s3.us-west-2.amazonaws.com;
+    worker-src 'self' blob: data:;
     object-src 'none';
     base-uri 'self';
     form-action 'self';

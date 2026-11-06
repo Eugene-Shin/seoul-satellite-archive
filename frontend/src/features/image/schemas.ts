@@ -99,6 +99,7 @@ export const imageResponseSchema = z.object({
     footprint: multiPolygonSchema,
     sourceUpdatedAt: z.iso.datetime().nullable(),
     thumbnailUrl: z.string().nullable(),
+    overlayUrl: z.string().nullable(),
 });
 
 export const imageDetailSchema = z.object({

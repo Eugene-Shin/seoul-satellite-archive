@@ -1,6 +1,6 @@
 "use client";
 
-import { GripHorizontalIcon, XIcon } from "lucide-react";
+import { GripHorizontalIcon, ImageIcon, XIcon } from "lucide-react";
 import { Fragment, type PointerEvent, useEffect, useRef } from "react";
 
 import {
@@ -16,13 +16,18 @@ import {
     sourceUpdatedAtText,
 } from "@/features/image/imageText";
 import { ImageFileList } from "@/features/image/search/ImageFileList";
-import { ImagePreviewDialog } from "@/features/image/search/ImagePreviewDialog";
+import {
+    ImagePreviewDialog,
+    PREVIEW_LABEL,
+} from "@/features/image/search/ImagePreviewDialog";
 import type { ImageResponse, Sar } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
 
 type ImageDetailProps = {
     image: ImageResponse | null;
+    overlayShown: boolean;
     onPreview: (image: ImageResponse) => void;
+    onToggleOverlay: (image: ImageResponse) => void;
     onClose: () => void;
 };
 
@@ -43,7 +48,13 @@ function moveTo(panel: HTMLElement, x: number, y: number) {
     panel.style.bottom = "auto";
 }
 
-export function ImageDetail({ image, onPreview, onClose }: ImageDetailProps) {
+export function ImageDetail({
+    image,
+    overlayShown,
+    onPreview,
+    onToggleOverlay,
+    onClose,
+}: ImageDetailProps) {
     const panelRef = useRef<HTMLElement>(null);
     const dragOffset = useRef<Position | null>(null);
 
@@ -125,7 +136,9 @@ export function ImageDetail({ image, onPreview, onClose }: ImageDetailProps) {
                 <ImageDetailContent
                     key={image.imageId}
                     image={image}
+                    overlayShown={overlayShown}
                     onPreview={() => onPreview(image)}
+                    onToggleOverlay={() => onToggleOverlay(image)}
                 />
             )}
         </aside>
@@ -134,10 +147,14 @@ export function ImageDetail({ image, onPreview, onClose }: ImageDetailProps) {
 
 function ImageDetailContent({
     image,
+    overlayShown,
     onPreview,
+    onToggleOverlay,
 }: {
     image: ImageResponse;
+    overlayShown: boolean;
     onPreview: () => void;
+    onToggleOverlay: () => void;
 }) {
     return (
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
@@ -145,13 +162,12 @@ function ImageDetailContent({
                 <h2 className="min-w-0 font-semibold break-all">
                     {image.title}
                 </h2>
-                {image.thumbnailUrl && (
-                    <ImagePreviewDialog
-                        title={image.title}
-                        thumbnailUrl={image.thumbnailUrl}
-                        onOpen={onPreview}
-                    />
-                )}
+                <PreviewButton
+                    image={image}
+                    overlayShown={overlayShown}
+                    onPreview={onPreview}
+                    onToggleOverlay={onToggleOverlay}
+                />
             </div>
 
             <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-sm">
@@ -185,6 +201,45 @@ function ImageDetailContent({
             <ImageFileList imageId={image.imageId} />
         </div>
     );
+}
+
+type PreviewButtonProps = {
+    image: ImageResponse;
+    overlayShown: boolean;
+    onPreview: () => void;
+    onToggleOverlay: () => void;
+};
+
+function PreviewButton({
+    image,
+    overlayShown,
+    onPreview,
+    onToggleOverlay,
+}: PreviewButtonProps) {
+    if (image.overlayUrl) {
+        return (
+            <IconButton
+                label={PREVIEW_LABEL}
+                title={PREVIEW_LABEL}
+                aria-pressed={overlayShown}
+                variant={overlayShown ? "default" : "outline"}
+                className="shrink-0"
+                onClick={onToggleOverlay}
+            >
+                <ImageIcon />
+            </IconButton>
+        );
+    }
+    if (image.thumbnailUrl) {
+        return (
+            <ImagePreviewDialog
+                title={image.title}
+                thumbnailUrl={image.thumbnailUrl}
+                onOpen={onPreview}
+            />
+        );
+    }
+    return null;
 }
 
 function SarRows({ sar }: { sar: Sar }) {

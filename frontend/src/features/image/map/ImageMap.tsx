@@ -14,14 +14,17 @@ import DragBox from "ol/interaction/DragBox";
 import Draw from "ol/interaction/Draw";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
+import WebGLTileLayer from "ol/layer/WebGLTile";
 import OlMap from "ol/Map";
 import type MapBrowserEvent from "ol/MapBrowserEvent";
 import { unByKey } from "ol/Observable";
 import { fromLonLat, transformExtent } from "ol/proj";
+import GeoTIFF from "ol/source/GeoTIFF";
 import VectorSource from "ol/source/Vector";
 import XYZ from "ol/source/XYZ";
 import View from "ol/View";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { ImageAdminDialog } from "@/features/image/admin/ImageAdminDialog";
 import { AreaToolbar } from "@/features/image/map/AreaToolbar";
@@ -165,9 +168,13 @@ function fitView(map: OlMap, extent: Extent, maxZoom = FIT_MAX_ZOOM) {
     });
 }
 
-function moveToSelection(map: OlMap, { image, alwaysFit }: ImageSelection) {
+function moveToSelection(map: OlMap, { image, move }: ImageSelection) {
     const geometry = toFeature(image).getGeometry();
-    if (geometry && (alwaysFit || isOutOfView(map, geometry))) {
+    if (
+        geometry &&
+        (move === "always" ||
+            (move === "ifOutOfView" && isOutOfView(map, geometry)))
+    ) {
         fitView(map, geometry.getExtent());
     }
 }
@@ -187,6 +194,9 @@ export function ImageMap({
     onToolStop,
 }: ImageMapProps) {
     const selectedImage = selection ? selection.image : null;
+    const overlayUrl = selection?.showOverlay
+        ? selection.image.overlayUrl
+        : null;
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<OlMap | null>(null);
     const dragBoxRef = useRef<DragBox | null>(null);
@@ -210,8 +220,10 @@ export function ImageMap({
                 renderOrder: largerFirst,
             }),
     );
+    const [overlayLayer] = useState(() => new WebGLTileLayer());
     const [baseMap, changeBaseMap] = useStoredBaseMap();
     const [footprintFillScale, setFootprintFillScale] = useState(1);
+    const [overlayOpacity, setOverlayOpacity] = useState(1);
     const [chooser, setChooser] = useState<Chooser | null>(null);
     const [chooserOpen, setChooserOpen] = useState(false);
 
@@ -299,6 +311,7 @@ export function ImageMap({
             layers: [
                 ...baseLayers,
                 footprintLayer,
+                overlayLayer,
                 areaLayer,
                 measureLayer,
                 hoverLayer,
@@ -367,6 +380,7 @@ export function ImageMap({
         hoverSource,
         areaSource,
         vworldLayers,
+        overlayLayer,
         footprintLayer,
         measureLayer,
     ]);
@@ -472,9 +486,11 @@ export function ImageMap({
         if (!selectedImage) {
             return;
         }
-        selectionSource.addFeature(toFeature(selectedImage));
+        const feature = toFeature(selectedImage);
+        feature.set("overlayShown", overlayUrl !== null);
+        selectionSource.addFeature(feature);
         return () => selectionSource.clear();
-    }, [selectionSource, selectedImage]);
+    }, [selectionSource, selectedImage, overlayUrl]);
 
     useEffect(() => {
         hoverSource.addFeatures(hoveredImages.map(toFeature));
@@ -512,6 +528,24 @@ export function ImageMap({
             moveToSelection(map, selection);
         }
     }, [selection]);
+
+    useEffect(() => {
+        if (!overlayUrl) {
+            return;
+        }
+        const source = new GeoTIFF({ sources: [{ url: overlayUrl }] });
+        source.on("change", () => {
+            if (source.getState() === "error") {
+                toast.error("위성 영상 미리보기를 불러오지 못했습니다.");
+            }
+        });
+        overlayLayer.setSource(source);
+        return () => overlayLayer.setSource(null);
+    }, [overlayLayer, overlayUrl]);
+
+    useEffect(() => {
+        overlayLayer.setOpacity(overlayOpacity);
+    }, [overlayLayer, overlayOpacity]);
 
     function selectCurrentView() {
         const map = mapRef.current;
@@ -565,8 +599,10 @@ export function ImageMap({
                 <MapLayerControl
                     baseMap={baseMap}
                     footprintFillScale={footprintFillScale}
+                    overlayOpacity={overlayOpacity}
                     onBaseMapChange={changeBaseMap}
                     onFootprintFillScaleChange={setFootprintFillScale}
+                    onOverlayOpacityChange={setOverlayOpacity}
                 />
                 <ImageAdminDialog />
             </div>

@@ -118,8 +118,14 @@ export function ImageSearch() {
         updateConditions({ bbox: area });
     }
 
+    // 같은 영상을 다시 눌러도 켜 둔 겹치기는 유지한다
     function selectImage(image: ImageResponse) {
-        setSelection({ image, alwaysFit: false });
+        setSelection((current) => ({
+            image,
+            move: "ifOutOfView",
+            showOverlay:
+                current?.image.imageId === image.imageId && current.showOverlay,
+        }));
     }
 
     function selectFromMap(image: ImageResponse) {
@@ -128,7 +134,15 @@ export function ImageSearch() {
     }
 
     function fitToImage(image: ImageResponse) {
-        setSelection({ image, alwaysFit: true });
+        setSelection({ image, move: "always", showOverlay: false });
+    }
+
+    function toggleOverlay(image: ImageResponse) {
+        setSelection(
+            shownSelection?.showOverlay
+                ? { image, move: "none", showOverlay: false }
+                : { image, move: "always", showOverlay: true },
+        );
     }
 
     if (error) {
@@ -246,7 +260,9 @@ export function ImageSearch() {
                 />
                 <ImageDetail
                     image={shownSelectedImage}
+                    overlayShown={shownSelection?.showOverlay ?? false}
                     onPreview={fitToImage}
+                    onToggleOverlay={toggleOverlay}
                     onClose={() => setSelection(null)}
                 />
             </section>

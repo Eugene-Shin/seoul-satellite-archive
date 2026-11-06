@@ -492,6 +492,24 @@ class ImageControllerTest {
                         everyItem(nullValue())));
     }
 
+    // S2만 겹칠 수 있는 COG(visual)가 있다. HLS는 미리보기 파일이 없고 S1은 묶음 파일 하나다
+    @Test
+    void searchReturnsOverlayOfSeedImages() throws Exception {
+        mockMvc.perform(get("/api/images")
+                        .param("providers", "earth-search", "nasa-cmr")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(
+                        "$.data.content[?(@.collection.code == 'sentinel-2-l2a')].overlayUrl",
+                        everyItem(endsWith("/TCI.tif"))))
+                .andExpect(jsonPath(
+                        "$.data.content[?(@.collection.code == 'C2021957657-LPCLOUD')].overlayUrl",
+                        everyItem(nullValue())))
+                .andExpect(jsonPath(
+                        "$.data.content[?(@.collection.code == 'C1214470488-ASF')].overlayUrl",
+                        everyItem(nullValue())));
+    }
+
     // 여러 개면 https 링크 중 가장 앞서는 것 하나
     @Test
     void searchPicksOneHttpsThumbnail() throws Exception {

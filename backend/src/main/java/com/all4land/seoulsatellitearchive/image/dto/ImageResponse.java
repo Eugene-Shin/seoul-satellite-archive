@@ -35,10 +35,11 @@ public record ImageResponse(
         String footprint,
 
         Instant sourceUpdatedAt,
-        @Schema(description = "썸네일이 없으면 null") String thumbnailUrl) {
+        @Schema(description = "썸네일이 없으면 null") String thumbnailUrl,
+        @Schema(description = "지도에 겹칠 COG. 없으면 null") String overlayUrl) {
 
     public static ImageResponse from(
-            SatelliteImage image, ImageSar sar, ImageResolution resolution, String thumbnailUrl) {
+            SatelliteImage image, ImageSar sar, ImageResolution resolution, String thumbnailUrl, String overlayUrl) {
         return new ImageResponse(
                 image.getId(),
                 ProviderResponse.from(image.getProvider()),
@@ -55,6 +56,7 @@ public record ImageResponse(
                 sar == null ? null : SarResponse.from(sar),
                 image.getFootprintGeoJson(),
                 image.getSourceUpdatedAt(),
-                thumbnailUrl);
+                thumbnailUrl,
+                overlayUrl);
     }
 }

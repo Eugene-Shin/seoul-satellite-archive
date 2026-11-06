@@ -11,7 +11,7 @@ import {
     DialogTrigger,
 } from "@/shared/components/ui/dialog";
 
-const PREVIEW_LABEL = "위성 영상 미리보기";
+export const PREVIEW_LABEL = "위성 영상 미리보기";
 
 type ImagePreviewDialogProps = {
     title: string;

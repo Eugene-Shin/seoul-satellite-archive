@@ -5,7 +5,7 @@ import com.all4land.seoulsatellitearchive.collection.ImageCollectionRepository;
 import com.all4land.seoulsatellitearchive.global.exception.BusinessException;
 import com.all4land.seoulsatellitearchive.global.paging.SliceResponse;
 import com.all4land.seoulsatellitearchive.global.response.CommonErrorCode;
-import com.all4land.seoulsatellitearchive.image.ImageFileRepository.Thumbnail;
+import com.all4land.seoulsatellitearchive.image.ImageFileRepository.ImageFileUrl;
 import com.all4land.seoulsatellitearchive.image.dto.ImageDetailResponse;
 import com.all4land.seoulsatellitearchive.image.dto.ImageFilterOptionsResponse;
 import com.all4land.seoulsatellitearchive.image.dto.ImageFilterOptionsResponse.Range;
@@ -156,14 +156,17 @@ public class ImageService {
         Map<Long, ImageResolution> resolutions = imageResolutionRepository.findAllById(imageIds).stream()
                 .collect(Collectors.toMap(ImageResolution::getImageId, Function.identity()));
         Map<Long, String> thumbnailUrls = imageFileRepository.findThumbnails(imageIds).stream()
-                .collect(Collectors.toMap(Thumbnail::getImageId, Thumbnail::getHref));
+                .collect(Collectors.toMap(ImageFileUrl::getImageId, ImageFileUrl::getHref));
+        Map<Long, String> overlayUrls = imageFileRepository.findOverlays(imageIds).stream()
+                .collect(Collectors.toMap(ImageFileUrl::getImageId, ImageFileUrl::getHref));
         return new SliceResponse<>(
                 page.stream()
                         .map(image -> ImageResponse.from(
                                 image,
                                 sars.get(image.getId()),
                                 resolutions.get(image.getId()),
-                                thumbnailUrls.get(image.getId())))
+                                thumbnailUrls.get(image.getId()),
+                                overlayUrls.get(image.getId())))
                         .toList(),
                 nextCursor);
     }

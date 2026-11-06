@@ -20,19 +20,24 @@ const BASE_MAP_NAMES: Record<BaseMap, string> = {
 
 const LABEL = "배경 지도 및 위성 영상 범위 설정";
 const FOOTPRINT_OPACITY = "위성 영상 범위 투명도";
+const OVERLAY_OPACITY = "위성 영상 미리보기 투명도";
 
 type MapLayerControlProps = {
     baseMap: BaseMap;
     footprintFillScale: number;
+    overlayOpacity: number;
     onBaseMapChange: (baseMap: BaseMap) => void;
     onFootprintFillScaleChange: (scale: number) => void;
+    onOverlayOpacityChange: (opacity: number) => void;
 };
 
 export function MapLayerControl({
     baseMap,
     footprintFillScale,
+    overlayOpacity,
     onBaseMapChange,
     onFootprintFillScaleChange,
+    onOverlayOpacityChange,
 }: MapLayerControlProps) {
     return (
         <Popover>
@@ -66,6 +71,19 @@ export function MapLayerControl({
                             onFootprintFillScaleChange(scale)
                         }
                         getAriaLabel={() => FOOTPRINT_OPACITY}
+                    />
+                </label>
+                <label className="flex flex-col gap-2">
+                    <span>{OVERLAY_OPACITY}</span>
+                    <Slider
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={[overlayOpacity]}
+                        onValueChange={([opacity]) =>
+                            onOverlayOpacityChange(opacity)
+                        }
+                        getAriaLabel={() => OVERLAY_OPACITY}
                     />
                 </label>
             </PopoverContent>
