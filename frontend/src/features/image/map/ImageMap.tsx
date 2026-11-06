@@ -50,11 +50,16 @@ import {
     prefersReducedMotion,
 } from "@/features/image/map/mapStyles";
 import { MeasureToolbar } from "@/features/image/map/MeasureToolbar";
-import type { Bbox, ImageResponse, MapTool } from "@/features/image/types";
+import type {
+    Bbox,
+    ImageResponse,
+    ImageSelection,
+    MapTool,
+} from "@/features/image/types";
 
 type ImageMapProps = {
     images: ImageResponse[];
-    selectedImage: ImageResponse | null;
+    selection: ImageSelection | null;
     hoveredImages: ImageResponse[];
     area: Bbox | undefined;
     areaApplied: boolean;
@@ -157,16 +162,16 @@ function fitView(map: OlMap, extent: Extent, maxZoom = FIT_MAX_ZOOM) {
     });
 }
 
-function revealIfOutOfView(map: OlMap, image: ImageResponse) {
+function moveToSelection(map: OlMap, { image, alwaysFit }: ImageSelection) {
     const geometry = toFeature(image).getGeometry();
-    if (geometry && isOutOfView(map, geometry)) {
+    if (geometry && (alwaysFit || isOutOfView(map, geometry))) {
         fitView(map, geometry.getExtent());
     }
 }
 
 export function ImageMap({
     images,
-    selectedImage,
+    selection,
     hoveredImages,
     area,
     areaApplied,
@@ -178,6 +183,7 @@ export function ImageMap({
     onToolStart,
     onToolStop,
 }: ImageMapProps) {
+    const selectedImage = selection ? selection.image : null;
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<OlMap | null>(null);
     const dragBoxRef = useRef<DragBox | null>(null);
@@ -499,10 +505,10 @@ export function ImageMap({
 
     useEffect(() => {
         const map = mapRef.current;
-        if (map && selectedImage) {
-            revealIfOutOfView(map, selectedImage);
+        if (map && selection) {
+            moveToSelection(map, selection);
         }
-    }, [selectedImage]);
+    }, [selection]);
 
     function selectCurrentView() {
         const map = mapRef.current;

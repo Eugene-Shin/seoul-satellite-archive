@@ -16,11 +16,13 @@ import {
     sourceUpdatedAtText,
 } from "@/features/image/imageText";
 import { ImageFileList } from "@/features/image/search/ImageFileList";
+import { ImagePreviewDialog } from "@/features/image/search/ImagePreviewDialog";
 import type { ImageResponse, Sar } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
 
 type ImageDetailProps = {
     image: ImageResponse | null;
+    onPreview: (image: ImageResponse) => void;
     onClose: () => void;
 };
 
@@ -41,7 +43,7 @@ function moveTo(panel: HTMLElement, x: number, y: number) {
     panel.style.bottom = "auto";
 }
 
-export function ImageDetail({ image, onClose }: ImageDetailProps) {
+export function ImageDetail({ image, onPreview, onClose }: ImageDetailProps) {
     const panelRef = useRef<HTMLElement>(null);
     const dragOffset = useRef<Position | null>(null);
 
@@ -119,15 +121,38 @@ export function ImageDetail({ image, onClose }: ImageDetailProps) {
                 </IconButton>
             </div>
 
-            {image && <ImageDetailContent key={image.imageId} image={image} />}
+            {image && (
+                <ImageDetailContent
+                    key={image.imageId}
+                    image={image}
+                    onPreview={() => onPreview(image)}
+                />
+            )}
         </aside>
     );
 }
 
-function ImageDetailContent({ image }: { image: ImageResponse }) {
+function ImageDetailContent({
+    image,
+    onPreview,
+}: {
+    image: ImageResponse;
+    onPreview: () => void;
+}) {
     return (
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-            <h2 className="font-semibold break-all">{image.title}</h2>
+            <div className="flex items-start justify-between gap-2">
+                <h2 className="min-w-0 font-semibold break-all">
+                    {image.title}
+                </h2>
+                {image.thumbnailUrl && (
+                    <ImagePreviewDialog
+                        title={image.title}
+                        thumbnailUrl={image.thumbnailUrl}
+                        onOpen={onPreview}
+                    />
+                )}
+            </div>
 
             <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-sm">
                 <dt className="text-muted-foreground">영상 ID</dt>
