@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     cloudCoverText,
     collectionOptionLabel,
+    creditText,
     imageFileDetailText,
     orbitDirectionText,
     providerText,
@@ -10,6 +11,36 @@ import {
     satelliteText,
     sensorTypeText,
 } from "@/features/image/imageText";
+
+describe("creditText", () => {
+    const collection = {
+        collectionId: 1,
+        providerCode: "earth-search",
+        code: "sentinel-2-l2a",
+        title: "Sentinel-2 Level-2A",
+        productType: "L2A",
+        licenseName: null,
+        licenseUrl: null,
+    };
+
+    it("표기 문구에 UTC 기준 촬영 연도를 붙인다", () => {
+        expect(
+            creditText({
+                collection: { ...collection, creditText: "Contains data" },
+                acquiredAt: "2024-12-31T23:30:00Z",
+            }),
+        ).toBe("Contains data 2024");
+    });
+
+    it("표기 문구가 없으면 null", () => {
+        expect(
+            creditText({
+                collection: { ...collection, creditText: null },
+                acquiredAt: "2024-12-31T23:30:00Z",
+            }),
+        ).toBeNull();
+    });
+});
 
 describe("imageFileDetailText", () => {
     const band = {
@@ -147,6 +178,9 @@ describe("collectionOptionLabel", () => {
         code: "sentinel-2-l2a",
         title: "Sentinel-2 Level-2A",
         productType: "L2A",
+        licenseName: null,
+        licenseUrl: null,
+        creditText: null,
     };
 
     it("컬렉션을 정의한 출처 이름을 앞에 붙인다", () => {

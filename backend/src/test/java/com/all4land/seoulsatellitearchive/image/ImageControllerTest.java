@@ -492,6 +492,22 @@ class ImageControllerTest {
                         everyItem(nullValue())));
     }
 
+    // 출처 표기 의무가 없는 컬렉션은 creditText가 없다. 올포랜드 제품은 약관도 없다(계약 조건)
+    @Test
+    void collectionsReturnLicenseAndCredit() throws Exception {
+        mockMvc.perform(get("/api/collections"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.code == 'sentinel-2-l2a')].licenseName", contains("proprietary")))
+                .andExpect(jsonPath(
+                        "$.data[?(@.code == 'sentinel-2-l2a')].licenseUrl",
+                        contains("https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice")))
+                .andExpect(jsonPath(
+                        "$.data[?(@.code == 'sentinel-2-l2a')].creditText",
+                        contains("Contains modified Copernicus Sentinel data")))
+                .andExpect(jsonPath("$.data[?(@.code == 'C2021957657-LPCLOUD')].creditText", contains(nullValue())))
+                .andExpect(jsonPath("$.data[?(@.code == 'PAZ_SSC')].licenseName", contains(nullValue())));
+    }
+
     // S2만 겹칠 수 있는 COG(visual)가 있다. HLS는 미리보기 파일이 없고 S1은 묶음 파일 하나다
     @Test
     void searchReturnsOverlayOfSeedImages() throws Exception {

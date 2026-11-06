@@ -110,6 +110,17 @@ export function providerText({
     return `${provider.name} (${provider.isPaid ? "유료" : "무료"})`;
 }
 
+// 표기 문구에 촬영 연도(UTC)를 붙인다. 표기 의무가 없으면 null
+export function creditText({
+    collection,
+    acquiredAt,
+}: Pick<ImageResponse, "collection" | "acquiredAt">): string | null {
+    return (
+        collection.creditText &&
+        `${collection.creditText} ${new Date(acquiredAt).getUTCFullYear()}`
+    );
+}
+
 // 컬렉션은 정의한 출처가 영상의 제공 기관과 다를 수 있어서(올포랜드 영상) 출처를 함께 보여준다
 export function collectionOptionLabel(
     collection: Collection,

@@ -7,6 +7,7 @@ import {
     acquiredAtText,
     acquiredEndAtText,
     cloudCoverText,
+    creditText,
     LOOK_DIRECTION_NAMES,
     orbitDirectionText,
     providerText,
@@ -20,7 +21,7 @@ import {
     ImagePreviewDialog,
     PREVIEW_LABEL,
 } from "@/features/image/search/ImagePreviewDialog";
-import type { ImageResponse, Sar } from "@/features/image/types";
+import type { Collection, ImageResponse, Sar } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
 
 type ImageDetailProps = {
@@ -196,6 +197,8 @@ function ImageDetailContent({
                 <dd>{image.collection.productType}</dd>
                 <dt className="text-muted-foreground">원본 갱신(KST)</dt>
                 <dd>{sourceUpdatedAtText(image)}</dd>
+                <LicenseRow collection={image.collection} />
+                <CreditRow image={image} />
             </dl>
 
             <ImageFileList imageId={image.imageId} />
@@ -235,11 +238,58 @@ function PreviewButton({
             <ImagePreviewDialog
                 title={image.title}
                 thumbnailUrl={image.thumbnailUrl}
+                credit={creditText(image)}
                 onOpen={onPreview}
             />
         );
     }
     return null;
+}
+
+function LicenseRow({ collection }: { collection: Collection }) {
+    if (!collection.licenseName) {
+        return null;
+    }
+    return (
+        <>
+            <dt className="text-muted-foreground">라이선스</dt>
+            <dd className="break-all">
+                <LicenseName
+                    name={collection.licenseName}
+                    url={collection.licenseUrl}
+                />
+            </dd>
+        </>
+    );
+}
+
+function LicenseName({ name, url }: { name: string; url: string | null }) {
+    if (!url?.startsWith("http")) {
+        return name;
+    }
+    return (
+        <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+        >
+            {name}
+        </a>
+    );
+}
+
+function CreditRow({ image }: { image: ImageResponse }) {
+    const credit = creditText(image);
+    if (!credit) {
+        return null;
+    }
+    return (
+        <>
+            <dt className="text-muted-foreground">출처</dt>
+            <dd className="break-all">{credit}</dd>
+        </>
+    );
 }
 
 function SarRows({ sar }: { sar: Sar }) {

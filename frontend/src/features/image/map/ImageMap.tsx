@@ -2,6 +2,8 @@
 
 import "ol/ol.css";
 
+import Attribution from "ol/control/Attribution";
+import { defaults as defaultControls } from "ol/control/defaults";
 import MousePosition from "ol/control/MousePosition";
 import OverviewMap from "ol/control/OverviewMap";
 import ScaleLine from "ol/control/ScaleLine";
@@ -27,6 +29,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ImageAdminDialog } from "@/features/image/admin/ImageAdminDialog";
+import { creditText } from "@/features/image/imageText";
 import { AreaToolbar } from "@/features/image/map/AreaToolbar";
 import {
     useStoredBaseMap,
@@ -197,6 +200,7 @@ export function ImageMap({
     const overlayUrl = selection?.showOverlay
         ? selection.image.overlayUrl
         : null;
+    const overlayCredit = selectedImage && creditText(selectedImage);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<OlMap | null>(null);
     const dragBoxRef = useRef<DragBox | null>(null);
@@ -308,6 +312,7 @@ export function ImageMap({
 
         const map = new OlMap({
             target: containerRef.current ?? undefined,
+            controls: defaultControls({ attribution: false }),
             layers: [
                 ...baseLayers,
                 footprintLayer,
@@ -337,6 +342,7 @@ export function ImageMap({
             }),
         );
         map.addControl(new ScaleLine({ target: status }));
+        map.addControl(new Attribution({ target: status, collapsible: false }));
 
         const overviewMap = VWORLD_KEY ? createOverviewMap() : null;
         if (overviewMap) {
@@ -533,7 +539,10 @@ export function ImageMap({
         if (!overlayUrl) {
             return;
         }
-        const source = new GeoTIFF({ sources: [{ url: overlayUrl }] });
+        const source = new GeoTIFF({
+            sources: [{ url: overlayUrl }],
+            attributions: overlayCredit ?? undefined,
+        });
         source.on("change", () => {
             if (source.getState() === "error") {
                 toast.error("위성 영상 미리보기를 불러오지 못했습니다.");
@@ -541,7 +550,7 @@ export function ImageMap({
         });
         overlayLayer.setSource(source);
         return () => overlayLayer.setSource(null);
-    }, [overlayLayer, overlayUrl]);
+    }, [overlayLayer, overlayUrl, overlayCredit]);
 
     useEffect(() => {
         overlayLayer.setOpacity(overlayOpacity);
