@@ -208,16 +208,27 @@
 
 /* OL CSS는 지도 안 절대 위치로 두는데, 상태 줄 안에선 차례로 쌓는다 */
 .map-status .ol-scale-line,
-.map-status .ol-mouse-position {
+.map-status .ol-mouse-position,
+.map-status .ol-attribution {
     position: static;
 }
 
-.map-status .ol-mouse-position {
+.map-status .ol-mouse-position,
+.map-status .ol-attribution {
     border-radius: 4px;
     padding: 0 4px;
     background: var(--ol-partial-background-color);
     color: var(--ol-foreground-color);
     font-size: 10px;
+}
+
+.map-status .ol-attribution {
+    max-width: none;
+    white-space: nowrap;
+}
+
+.map-status .ol-attribution ul {
+    font-size: inherit;
 }
 
 .map-status .ol-mouse-position:empty {

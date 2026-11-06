@@ -1,12 +1,13 @@
 "use client";
 
-import { GripHorizontalIcon, XIcon } from "lucide-react";
+import { GripHorizontalIcon, ImageIcon, XIcon } from "lucide-react";
 import { Fragment, type PointerEvent, useEffect, useRef } from "react";
 
 import {
     acquiredAtText,
     acquiredEndAtText,
     cloudCoverText,
+    creditText,
     LOOK_DIRECTION_NAMES,
     orbitDirectionText,
     providerText,
@@ -15,11 +16,19 @@ import {
     sensorTypeText,
     sourceUpdatedAtText,
 } from "@/features/image/imageText";
-import type { ImageResponse, Sar } from "@/features/image/types";
+import { ImageFileList } from "@/features/image/search/ImageFileList";
+import {
+    ImagePreviewDialog,
+    PREVIEW_LABEL,
+} from "@/features/image/search/ImagePreviewDialog";
+import type { Collection, ImageResponse, Sar } from "@/features/image/types";
 import { IconButton } from "@/shared/components/IconButton";
 
 type ImageDetailProps = {
     image: ImageResponse | null;
+    overlayShown: boolean;
+    onPreview: (image: ImageResponse) => void;
+    onToggleOverlay: (image: ImageResponse) => void;
     onClose: () => void;
 };
 
@@ -40,7 +49,13 @@ function moveTo(panel: HTMLElement, x: number, y: number) {
     panel.style.bottom = "auto";
 }
 
-export function ImageDetail({ image, onClose }: ImageDetailProps) {
+export function ImageDetail({
+    image,
+    overlayShown,
+    onPreview,
+    onToggleOverlay,
+    onClose,
+}: ImageDetailProps) {
     const panelRef = useRef<HTMLElement>(null);
     const dragOffset = useRef<Position | null>(null);
 
@@ -118,15 +133,43 @@ export function ImageDetail({ image, onClose }: ImageDetailProps) {
                 </IconButton>
             </div>
 
-            {image && <ImageDetailContent key={image.imageId} image={image} />}
+            {image && (
+                <ImageDetailContent
+                    key={image.imageId}
+                    image={image}
+                    overlayShown={overlayShown}
+                    onPreview={() => onPreview(image)}
+                    onToggleOverlay={() => onToggleOverlay(image)}
+                />
+            )}
         </aside>
     );
 }
 
-function ImageDetailContent({ image }: { image: ImageResponse }) {
+function ImageDetailContent({
+    image,
+    overlayShown,
+    onPreview,
+    onToggleOverlay,
+}: {
+    image: ImageResponse;
+    overlayShown: boolean;
+    onPreview: () => void;
+    onToggleOverlay: () => void;
+}) {
     return (
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-            <h2 className="font-semibold break-all">{image.title}</h2>
+            <div className="flex items-start justify-between gap-2">
+                <h2 className="min-w-0 font-semibold break-all">
+                    {image.title}
+                </h2>
+                <PreviewButton
+                    image={image}
+                    overlayShown={overlayShown}
+                    onPreview={onPreview}
+                    onToggleOverlay={onToggleOverlay}
+                />
+            </div>
 
             <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-sm">
                 <dt className="text-muted-foreground">영상 ID</dt>
@@ -154,21 +197,98 @@ function ImageDetailContent({ image }: { image: ImageResponse }) {
                 <dd>{image.collection.productType}</dd>
                 <dt className="text-muted-foreground">원본 갱신(KST)</dt>
                 <dd>{sourceUpdatedAtText(image)}</dd>
+                <LicenseRow collection={image.collection} />
+                <CreditRow image={image} />
             </dl>
 
-            <section className="flex flex-col gap-2">
-                <h3 className="font-semibold">
-                    다운로드 ({image.downloadUrls.length})
-                </h3>
-                <ul className="flex flex-col gap-1 text-sm">
-                    {image.downloadUrls.map((url) => (
-                        <li key={url}>
-                            <DownloadLink url={url} />
-                        </li>
-                    ))}
-                </ul>
-            </section>
+            <ImageFileList imageId={image.imageId} />
         </div>
+    );
+}
+
+type PreviewButtonProps = {
+    image: ImageResponse;
+    overlayShown: boolean;
+    onPreview: () => void;
+    onToggleOverlay: () => void;
+};
+
+function PreviewButton({
+    image,
+    overlayShown,
+    onPreview,
+    onToggleOverlay,
+}: PreviewButtonProps) {
+    if (image.overlayUrl) {
+        return (
+            <IconButton
+                label={PREVIEW_LABEL}
+                title={PREVIEW_LABEL}
+                aria-pressed={overlayShown}
+                variant={overlayShown ? "default" : "outline"}
+                className="shrink-0"
+                onClick={onToggleOverlay}
+            >
+                <ImageIcon />
+            </IconButton>
+        );
+    }
+    if (image.thumbnailUrl) {
+        return (
+            <ImagePreviewDialog
+                title={image.title}
+                thumbnailUrl={image.thumbnailUrl}
+                credit={creditText(image)}
+                onOpen={onPreview}
+            />
+        );
+    }
+    return null;
+}
+
+function LicenseRow({ collection }: { collection: Collection }) {
+    if (!collection.licenseName) {
+        return null;
+    }
+    return (
+        <>
+            <dt className="text-muted-foreground">라이선스</dt>
+            <dd className="break-all">
+                <LicenseName
+                    name={collection.licenseName}
+                    url={collection.licenseUrl}
+                />
+            </dd>
+        </>
+    );
+}
+
+function LicenseName({ name, url }: { name: string; url: string | null }) {
+    if (!url?.startsWith("http")) {
+        return name;
+    }
+    return (
+        <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+        >
+            {name}
+        </a>
+    );
+}
+
+function CreditRow({ image }: { image: ImageResponse }) {
+    const credit = creditText(image);
+    if (!credit) {
+        return null;
+    }
+    return (
+        <>
+            <dt className="text-muted-foreground">출처</dt>
+            <dd className="break-all">{credit}</dd>
+        </>
     );
 }
 
@@ -205,28 +325,4 @@ function SarRows({ sar }: { sar: Sar }) {
             <dd>{value ?? "-"}</dd>
         </Fragment>
     ));
-}
-
-function DownloadLink({ url }: { url: string }) {
-    const fileName = url.split("/").pop() || url;
-
-    if (!url.startsWith("http")) {
-        return (
-            <span className="break-all text-muted-foreground" title={url}>
-                {fileName}
-            </span>
-        );
-    }
-
-    return (
-        <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="break-all underline"
-            title={url}
-        >
-            {fileName}
-        </a>
-    );
 }

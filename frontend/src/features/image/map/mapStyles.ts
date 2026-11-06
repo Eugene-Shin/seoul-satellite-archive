@@ -99,8 +99,15 @@ export function createHoveredStyle(): Style {
     return createVectorStyle(HOVERED_STYLE_OPTIONS);
 }
 
-export function createSelectedStyle(): Style {
-    return createVectorStyle(SELECTED_STYLE_OPTIONS);
+export function createSelectedStyle(): StyleFunction {
+    const selectedStyle = createVectorStyle(SELECTED_STYLE_OPTIONS);
+    const outlineStyle = createVectorStyle({
+        ...SELECTED_STYLE_OPTIONS,
+        fillOpacity: 0,
+    });
+
+    return (feature) =>
+        feature.get("overlayShown") ? outlineStyle : selectedStyle;
 }
 
 export function createAreaStyle(): StyleFunction {

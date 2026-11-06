@@ -156,6 +156,9 @@ describe("toFormValues", () => {
             code: "sentinel-2-l2a",
             title: "Sentinel-2 Level-2A",
             productType: "L2A",
+            licenseName: null,
+            licenseUrl: null,
+            creditText: null,
         },
         sourceId: "admin-image-001",
         title: "서울 위성 영상",
@@ -171,6 +174,7 @@ describe("toFormValues", () => {
         footprint: FOOTPRINT as ImageDetailResponse["footprint"],
         url: "archive/metadata.json",
         downloadUrls: ["s3://archive/a.tif", "s3://archive/b.tif"],
+        files: [],
         sourceUpdatedAt: null,
         rawMetadata: { cloud: 5 },
     };

@@ -18,6 +18,7 @@ import type {
     Bbox,
     ImageResponse,
     ImageSearchParams,
+    ImageSelection,
     MapTool,
 } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
@@ -55,9 +56,7 @@ export function ImageSearch() {
         searchWith,
     } = useCurrentSearch();
     const [activeTab, setActiveTab] = useState<PanelTab>("results");
-    const [selectedImage, setSelectedImage] = useState<ImageResponse | null>(
-        null,
-    );
+    const [selection, setSelection] = useState<ImageSelection | null>(null);
     // 지도 도구와 적용 전 편집은 시작한 검색에서만 유효하다
     const [activeTool, startTool, stopTool] =
         useSearchScopedState<MapTool>(currentSearchKey);
@@ -83,10 +82,11 @@ export function ImageSearch() {
     // 선택한 영상이 지금 결과에 없으면(뒤로 가기 등으로 결과가 바뀐 경우) 카드 강조·지도 선택 표시·상세 패널에 넘기지 않는다.
     // 렌더링마다 계산하되, 받는 중엔 아직 안 온 페이지에 있을 수 있어 결과에 있는 것으로 보고 다 받은 뒤에만 실제로 찾아본다
     const selectionInResults =
-        selectedImage !== null &&
+        selection !== null &&
         (!allLoaded ||
-            images.some((image) => image.imageId === selectedImage.imageId));
-    const shownSelectedImage = selectionInResults ? selectedImage : null;
+            images.some((image) => image.imageId === selection.image.imageId));
+    const shownSelection = selectionInResults ? selection : null;
+    const shownSelectedImage = shownSelection ? shownSelection.image : null;
 
     // 도구를 쓰는 중엔 강조하지 않는다. 결과에 없는 id(검색이 바뀐 경우)는 pickImages가 걸러낸다
     const hoveredImages = activeTool ? [] : pickImages(images, hover.imageIds);
@@ -111,16 +111,38 @@ export function ImageSearch() {
     function runSearch() {
         searchWith(inputConditions);
         setActiveTab("results");
-        setSelectedImage(null);
+        setSelection(null);
     }
 
     function changeArea(area: Bbox | undefined) {
         updateConditions({ bbox: area });
     }
 
+    // 같은 영상을 다시 눌러도 켜 둔 겹치기는 유지한다
+    function selectImage(image: ImageResponse) {
+        setSelection((current) => ({
+            image,
+            move: "ifOutOfView",
+            showOverlay:
+                current?.image.imageId === image.imageId && current.showOverlay,
+        }));
+    }
+
     function selectFromMap(image: ImageResponse) {
-        setSelectedImage(image);
+        selectImage(image);
         setActiveTab("results");
+    }
+
+    function fitToImage(image: ImageResponse) {
+        setSelection({ image, move: "always", showOverlay: false });
+    }
+
+    function toggleOverlay(image: ImageResponse) {
+        setSelection(
+            shownSelection?.showOverlay
+                ? { image, move: "none", showOverlay: false }
+                : { image, move: "always", showOverlay: true },
+        );
     }
 
     if (error) {
@@ -187,7 +209,7 @@ export function ImageSearch() {
                                 (image) => image.imageId,
                             )}
                             scrollTargetImageId={scrollTargetImageId}
-                            onSelect={setSelectedImage}
+                            onSelect={selectImage}
                             onHover={(imageIds) =>
                                 setHover({ imageIds, fromMap: false })
                             }
@@ -222,7 +244,7 @@ export function ImageSearch() {
             <section className="area-map relative min-h-0 bg-muted/40">
                 <ImageMap
                     images={images}
-                    selectedImage={shownSelectedImage}
+                    selection={shownSelection}
                     hoveredImages={hoveredImages}
                     area={inputConditions.bbox}
                     areaApplied={areaApplied}
@@ -238,7 +260,10 @@ export function ImageSearch() {
                 />
                 <ImageDetail
                     image={shownSelectedImage}
-                    onClose={() => setSelectedImage(null)}
+                    overlayShown={shownSelection?.showOverlay ?? false}
+                    onPreview={fitToImage}
+                    onToggleOverlay={toggleOverlay}
+                    onClose={() => setSelection(null)}
                 />
             </section>
         </div>
