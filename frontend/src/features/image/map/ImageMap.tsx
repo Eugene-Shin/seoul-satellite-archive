@@ -50,12 +50,15 @@ import {
     prefersReducedMotion,
 } from "@/features/image/map/mapStyles";
 import { MeasureToolbar } from "@/features/image/map/MeasureToolbar";
+import { registerUtmProjections } from "@/features/image/map/projections";
 import type {
     Bbox,
     ImageResponse,
     ImageSelection,
     MapTool,
 } from "@/features/image/types";
+
+registerUtmProjections();
 
 type ImageMapProps = {
     images: ImageResponse[];
