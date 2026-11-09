@@ -126,6 +126,8 @@ export const imageDetailSchema = z.object({
     files: z.array(imageFileSchema),
     sourceUpdatedAt: z.iso.datetime().nullable(),
     rawMetadata: z.record(z.string(), z.unknown()),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
 });
 
 function rangeSchema<T extends z.ZodType>(valueSchema: T) {

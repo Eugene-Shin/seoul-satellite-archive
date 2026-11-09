@@ -177,6 +177,8 @@ describe("toFormValues", () => {
         files: [],
         sourceUpdatedAt: null,
         rawMetadata: { cloud: 5 },
+        createdAt: "2026-11-04T00:00:00Z",
+        updatedAt: "2026-11-04T00:00:00Z",
     };
 
     it("상세 응답을 KST 입력칸 값과 글자로 바꾼다", () => {

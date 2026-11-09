@@ -1,17 +1,18 @@
 "use client";
 
-import { Undo2Icon } from "lucide-react";
+import { SatelliteIcon, Undo2Icon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
 import { pickImages } from "@/features/image/map/footprint";
-import { useFilterOptions, useImageSearch } from "@/features/image/queries";
+import {
+    useCollections,
+    useFilterOptions,
+    useImageSearch,
+} from "@/features/image/queries";
 import { ImageDetail } from "@/features/image/search/ImageDetail";
 import { ImageResults } from "@/features/image/search/ImageResults";
-import {
-    IMAGE_SEARCH_FORM_ID,
-    ImageSearchForm,
-} from "@/features/image/search/ImageSearchForm";
+import { ImageSearchForm } from "@/features/image/search/ImageSearchForm";
 import { useCurrentSearch } from "@/features/image/search/searchParams";
 import { useSearchScopedState } from "@/features/image/search/useSearchScopedState";
 import type {
@@ -24,13 +25,6 @@ import type {
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import { IconButton } from "@/shared/components/IconButton";
 import { Button } from "@/shared/components/ui/button";
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from "@/shared/components/ui/tabs";
-
 const ImageMap = dynamic(
     () =>
         import("@/features/image/map/ImageMap").then(
@@ -39,7 +33,7 @@ const ImageMap = dynamic(
     { ssr: false },
 );
 
-type PanelTab = "conditions" | "results";
+type PanelTab = "map" | "results";
 
 type Hover = {
     imageIds: number[];
@@ -49,6 +43,7 @@ type Hover = {
 
 export function ImageSearch() {
     const { data: options, error, refetch } = useFilterOptions();
+    const collectionsQuery = useCollections();
     const {
         conditions: appliedConditions,
         id: searchId,
@@ -159,105 +154,122 @@ export function ImageSearch() {
         );
     }
 
-    if (options.satellites.length === 0) {
-        return <p className="area-panel p-4">등록된 영상이 없습니다.</p>;
-    }
-
     return (
-        <div className="contents">
-            <aside className="area-panel relative flex min-h-0 flex-col border-r">
-                <Tabs
-                    value={activeTab}
-                    onValueChange={setActiveTab}
-                    className="min-h-0 flex-1 gap-0"
-                >
-                    <TabsList
-                        variant="line"
-                        className="w-full shrink-0 border-b"
-                    >
-                        <TabsTrigger value="conditions">검색 조건</TabsTrigger>
-                        <TabsTrigger value="results">검색 결과</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent
-                        value="conditions"
-                        keepMounted
-                        className="min-h-0 overflow-y-auto p-4 pb-16"
-                    >
-                        <ImageSearchForm
-                            options={options}
-                            conditions={inputConditions}
-                            onChange={updateConditions}
-                            onSubmit={runSearch}
-                        />
-                    </TabsContent>
-
-                    <TabsContent
-                        value="results"
-                        keepMounted
-                        className="flex min-h-0 flex-col"
-                    >
-                        <ImageResults
-                            searchId={searchId}
-                            conditions={appliedConditions}
-                            selectedImageId={
-                                shownSelectedImage
-                                    ? shownSelectedImage.imageId
-                                    : null
-                            }
-                            hoveredImageIds={hoveredImages.map(
-                                (image) => image.imageId,
-                            )}
-                            scrollTargetImageId={scrollTargetImageId}
-                            onSelect={selectImage}
-                            onHover={(imageIds) =>
-                                setHover({ imageIds, fromMap: false })
-                            }
-                        />
-                    </TabsContent>
-                </Tabs>
-
-                {/* 두 탭 위에 떠 있는 버튼들. 탭 내용은 아래 여백(pb-16)을 둬서 끝까지 스크롤하면 버튼에 가리지 않는다 */}
-                <div className="absolute inset-x-4 bottom-4 flex gap-2">
+        <div className="catalog-shell">
+            <header className="catalog-search border-b bg-background">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <span className="rounded-lg bg-primary p-2 text-primary-foreground">
+                            <SatelliteIcon className="size-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-xl font-semibold tracking-tight">
+                                서울시 위성영상 카탈로그
+                            </h1>
+                            <p className="text-xs text-muted-foreground">
+                                촬영영역과 메타데이터로 원하는 영상을
+                                찾아보세요.
+                            </p>
+                        </div>
+                    </div>
                     {editedConditions && (
                         <IconButton
-                            label="되돌리기"
-                            title="되돌리기"
-                            variant="secondary"
-                            size="icon"
-                            className="shadow-md"
+                            label="검색조건 되돌리기"
+                            title="검색조건 되돌리기"
                             onClick={() => discardEdit()}
                         >
                             <Undo2Icon />
                         </IconButton>
                     )}
-                    <Button
-                        type="submit"
-                        form={IMAGE_SEARCH_FORM_ID}
-                        className="flex-1 shadow-md"
-                    >
-                        검색
-                    </Button>
                 </div>
-            </aside>
-
-            <section className="area-map relative min-h-0 bg-muted/40">
-                <ImageMap
-                    images={images}
-                    selection={shownSelection}
-                    hoveredImages={hoveredImages}
-                    area={inputConditions.bbox}
-                    areaApplied={areaApplied}
-                    allLoaded={allLoaded}
-                    tool={activeTool}
-                    onSelect={selectFromMap}
-                    onHover={(imageIds) =>
-                        setHover({ imageIds, fromMap: true })
-                    }
-                    onAreaChange={changeArea}
-                    onToolStart={startTool}
-                    onToolStop={stopTool}
+                <ImageSearchForm
+                    options={options}
+                    collections={collectionsQuery.data ?? []}
+                    collectionsError={collectionsQuery.error}
+                    onRetryCollections={() => void collectionsQuery.refetch()}
+                    conditions={inputConditions}
+                    onChange={updateConditions}
+                    onSubmit={runSearch}
                 />
+                {editedConditions && (
+                    <p
+                        role="status"
+                        className="mt-2 text-xs text-muted-foreground"
+                    >
+                        변경한 조건은 검색 버튼을 누르면 적용됩니다.
+                    </p>
+                )}
+            </header>
+            <nav
+                className="catalog-mobile-switch border-b p-2"
+                aria-label="탐색 화면"
+            >
+                <Button
+                    variant={activeTab === "results" ? "default" : "outline"}
+                    onClick={() => setActiveTab("results")}
+                    aria-pressed={activeTab === "results"}
+                >
+                    검색 결과
+                </Button>
+                <Button
+                    variant={activeTab === "map" ? "default" : "outline"}
+                    onClick={() => setActiveTab("map")}
+                    aria-pressed={activeTab === "map"}
+                >
+                    촬영영역 지도
+                </Button>
+            </nav>
+            <div className="catalog-workspace" data-view={activeTab}>
+                <aside
+                    className="catalog-results flex min-h-0 min-w-0 flex-col border-r bg-muted/20"
+                    aria-label="위성영상 검색 결과"
+                >
+                    <div className="border-b px-4 py-3">
+                        <h2 className="text-sm font-semibold">검색 결과</h2>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            영상을 선택하면 지도와 상세정보를 함께 확인할 수
+                            있습니다.
+                        </p>
+                    </div>
+                    <ImageResults
+                        searchId={searchId}
+                        conditions={appliedConditions}
+                        selectedImageId={
+                            shownSelectedImage
+                                ? shownSelectedImage.imageId
+                                : null
+                        }
+                        hoveredImageIds={hoveredImages.map(
+                            (image) => image.imageId,
+                        )}
+                        scrollTargetImageId={scrollTargetImageId}
+                        onSelect={selectImage}
+                        onHover={(imageIds) =>
+                            setHover({ imageIds, fromMap: false })
+                        }
+                    />
+                </aside>
+                <section
+                    className="catalog-map relative min-h-0 min-w-0 bg-muted/40"
+                    aria-label="촬영영역 지도"
+                >
+                    <ImageMap
+                        images={images}
+                        selection={shownSelection}
+                        hoveredImages={hoveredImages}
+                        area={inputConditions.bbox}
+                        areaApplied={areaApplied}
+                        allLoaded={allLoaded}
+                        tool={activeTool}
+                        onSelect={selectFromMap}
+                        onHover={(imageIds) =>
+                            setHover({ imageIds, fromMap: true })
+                        }
+                        onAreaChange={changeArea}
+                        onToolStart={startTool}
+                        onToolStop={stopTool}
+                    />
+                </section>
                 <ImageDetail
                     image={shownSelectedImage}
                     overlayShown={shownSelection?.showOverlay ?? false}
@@ -265,7 +277,7 @@ export function ImageSearch() {
                     onToggleOverlay={toggleOverlay}
                     onClose={() => setSelection(null)}
                 />
-            </section>
+            </div>
         </div>
     );
 }

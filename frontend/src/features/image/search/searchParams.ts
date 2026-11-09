@@ -4,6 +4,7 @@ import {
     parseAsArrayOf,
     parseAsBoolean,
     parseAsFloat,
+    parseAsInteger,
     parseAsString,
     parseAsStringLiteral,
     useQueryStates,
@@ -23,7 +24,7 @@ const parseAsBbox = createParser({
     serialize: (bbox) => bbox.join(","),
 });
 
-const imageSearchParsers = {
+export const imageSearchParsers = {
     keyword: parseAsString,
     acquiredFrom: parseAsString,
     acquiredTo: parseAsString,
@@ -32,6 +33,8 @@ const imageSearchParsers = {
     sensorTypes: parseAsArrayOf(parseAsStringLiteral(sensorTypeSchema.options)),
     orbitDirection: parseAsStringLiteral(orbitDirectionSchema.options),
     providers: parseAsArrayOf(parseAsString),
+    collectionIds: parseAsArrayOf(parseAsInteger),
+    productTypes: parseAsArrayOf(parseAsString),
     isPaid: parseAsBoolean,
     resolutionMin: parseAsFloat,
     resolutionMax: parseAsFloat,
@@ -42,7 +45,7 @@ const imageSearchParsers = {
 
 type ImageSearchValues = inferParserType<typeof imageSearchParsers>;
 
-function fromSearchValues(values: ImageSearchValues): ImageSearchParams {
+export function fromSearchValues(values: ImageSearchValues): ImageSearchParams {
     return {
         keyword: values.keyword ?? undefined,
         acquiredFrom: values.acquiredFrom ?? undefined,
@@ -52,6 +55,8 @@ function fromSearchValues(values: ImageSearchValues): ImageSearchParams {
         sensorTypes: values.sensorTypes ?? undefined,
         orbitDirection: values.orbitDirection ?? undefined,
         providers: values.providers ?? undefined,
+        collectionIds: values.collectionIds ?? undefined,
+        productTypes: values.productTypes ?? undefined,
         isPaid: values.isPaid ?? undefined,
         resolutionMin: values.resolutionMin ?? undefined,
         resolutionMax: values.resolutionMax ?? undefined,
@@ -61,7 +66,9 @@ function fromSearchValues(values: ImageSearchValues): ImageSearchParams {
     };
 }
 
-function toSearchValues(conditions: ImageSearchParams): ImageSearchValues {
+export function toSearchValues(
+    conditions: ImageSearchParams,
+): ImageSearchValues {
     return {
         keyword: conditions.keyword ?? null,
         acquiredFrom: conditions.acquiredFrom ?? null,
@@ -71,6 +78,8 @@ function toSearchValues(conditions: ImageSearchParams): ImageSearchValues {
         sensorTypes: conditions.sensorTypes ?? null,
         orbitDirection: conditions.orbitDirection ?? null,
         providers: conditions.providers ?? null,
+        collectionIds: conditions.collectionIds ?? null,
+        productTypes: conditions.productTypes ?? null,
         isPaid: conditions.isPaid ?? null,
         resolutionMin: conditions.resolutionMin ?? null,
         resolutionMax: conditions.resolutionMax ?? null,

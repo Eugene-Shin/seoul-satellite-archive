@@ -13,7 +13,7 @@ const csp = `
     default-src 'self';
     script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""};
     style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data: https:;
+    img-src 'self' blob: data: http: https:;
     font-src 'self';
     connect-src 'self' ${apiOrigin} https://sentinel-cogs.s3.us-west-2.amazonaws.com;
     worker-src 'self' blob: data:;

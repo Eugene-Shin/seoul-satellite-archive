@@ -331,6 +331,8 @@ export function ImageMap({
             }),
         });
         mapRef.current = map;
+        const resizeObserver = new ResizeObserver(() => map.updateSize());
+        if (containerRef.current) resizeObserver.observe(containerRef.current);
 
         const status = statusRef.current ?? undefined;
         map.addControl(
@@ -375,6 +377,7 @@ export function ImageMap({
         map.on("movestart", () => setChooserOpen(false));
 
         return () => {
+            resizeObserver.disconnect();
             darkMode.removeEventListener("change", applyTheme);
             map.dispose();
             mapRef.current = null;

@@ -20,11 +20,14 @@ import com.all4land.seoulsatellitearchive.global.config.TestcontainersConfigurat
 import com.all4land.seoulsatellitearchive.provider.Provider;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.persistence.EntityManager;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -92,6 +95,131 @@ class ImageControllerTest {
                 Long.class,
                 provider,
                 code);
+    }
+
+    @Test
+    void searchUsesHttpsThumbnailInsteadOfPrivateStorageLocation() throws Exception {
+        long id = create(changed("title", "thumbnail-response-test"));
+        String firstHref = "s3://private-archive/first-thumbnail.jpg";
+        long firstId = insertFile(id, "first", "THUMBNAIL", firstHref, "image/jpeg", null);
+        long secondId = insertFile(id, "second", "THUMBNAIL", "https://example.test/second.jpg", "image/jpeg", null);
+        assertThat(firstId).isLessThan(secondId);
+        // 먼저 등록한 S3 주소 대신 브라우저에서 열 수 있는 HTTPS 썸네일을 선택한다.
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mockMvc.perform(get(BASE).param("keyword", "thumbnail-response-test"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content", hasSize(1)))
+                    .andExpect(jsonPath("$.data.content[0].imageId").value(id))
+                    .andExpect(jsonPath("$.data.content[0].thumbnailUrl").value("https://example.test/second.jpg"));
+        }
+    }
+
+    @Test
+    void searchReturnsNullWhenThumbnailIsMissing() throws Exception {
+        create(changed("title", "thumbnail-missing-test"));
+        String body = mockMvc.perform(get(BASE).param("keyword", "thumbnail-missing-test"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].thumbnailUrl", nullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Map<String, Object> image = JsonPath.read(body, "$.data.content[0]");
+        assertThat(image).containsEntry("thumbnailUrl", null);
+    }
+
+    @Test
+    void detailReturnsFileMetadataAndKeepsDownloadUrls() throws Exception {
+        long id = create(request);
+        jdbc.update("delete from image_file where image_id = ?", id);
+        long dataId = insertFile(id, "red", "DATA", "s3://archive/red.tif", "image/tiff", new BigDecimal("10.25"));
+        long thumbnailId = insertFile(id, "thumbnail", "THUMBNAIL", "s3://private-archive/thumb.jpg", null, null);
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mockMvc.perform(get(BASE + "/" + id))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.files", hasSize(2)))
+                    .andExpect(jsonPath("$.data.files[0].fileId").value(dataId))
+                    .andExpect(jsonPath("$.data.files[0].assetKey").value("red"))
+                    .andExpect(jsonPath("$.data.files[0].role").value("DATA"))
+                    .andExpect(jsonPath("$.data.files[0].href").value("s3://archive/red.tif"))
+                    .andExpect(jsonPath("$.data.files[0].mediaType").value("image/tiff"))
+                    .andExpect(jsonPath("$.data.files[0].pixelSpacingMeters").value(10.25))
+                    .andExpect(jsonPath("$.data.files[1].fileId").value(thumbnailId))
+                    .andExpect(jsonPath("$.data.files[1].assetKey").value("thumbnail"))
+                    .andExpect(jsonPath("$.data.files[1].role").value("THUMBNAIL"))
+                    .andExpect(jsonPath("$.data.files[1].href").value("s3://private-archive/thumb.jpg"))
+                    .andExpect(jsonPath("$.data.files[1].mediaType", nullValue()))
+                    .andExpect(jsonPath("$.data.files[1].pixelSpacingMeters", nullValue()))
+                    .andExpect(jsonPath(
+                            "$.data.downloadUrls",
+                            contains("s3://archive/image.tif", "https://example.test/image.tif")));
+        }
+    }
+
+    @Test
+    void detailReturnsEmptyFilesWhenNoFilesAreLinked() throws Exception {
+        long id = create(request);
+        jdbc.update("delete from image_file where image_id = ?", id);
+        mockMvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.files", hasSize(0)))
+                .andExpect(jsonPath(
+                        "$.data.downloadUrls", contains("s3://archive/image.tif", "https://example.test/image.tif")));
+    }
+
+    @Test
+    void searchLoadsOnlyPageThumbnailsWithConstantQueryCount() throws Exception {
+        for (int index = 0; index < 3; index++) {
+            long id = create(JsonPath.parse(changed("sourceId", "thumbnail-batch-" + index))
+                    .set("$.title", "thumbnail-batch-" + index)
+                    .jsonString());
+            insertFile(
+                    id, "thumbnail", "THUMBNAIL", "https://example.test/thumb-" + index + ".jpg", "image/jpeg", null);
+        }
+        Statistics statistics = entityManager
+                .getEntityManagerFactory()
+                .unwrap(SessionFactory.class)
+                .getStatistics();
+        boolean wasEnabled = statistics.isStatisticsEnabled();
+        statistics.setStatisticsEnabled(true);
+        try {
+            entityManager.clear();
+            statistics.clear();
+            mockMvc.perform(get(BASE).param("keyword", "thumbnail-batch-").param("size", "1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content", hasSize(1)));
+            long singleImageQueries = statistics.getPrepareStatementCount();
+            assertThat(statistics.getEntityStatistics(ImageFile.class.getName()).getLoadCount())
+                    .isZero();
+
+            entityManager.clear();
+            statistics.clear();
+            mockMvc.perform(get(BASE).param("keyword", "thumbnail-batch-").param("size", "3"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content", hasSize(3)));
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(singleImageQueries);
+            assertThat(statistics.getEntityStatistics(ImageFile.class.getName()).getLoadCount())
+                    .isZero();
+
+            entityManager.clear();
+            statistics.clear();
+            mockMvc.perform(get(BASE).param("keyword", "thumbnail-batch-no-match"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content", hasSize(0)));
+            assertThat(statistics.getEntityStatistics(ImageFile.class.getName()).getLoadCount())
+                    .isZero();
+        } finally {
+            statistics.setStatisticsEnabled(wasEnabled);
+            statistics.clear();
+        }
+    }
+
+    private long insertFile(
+            long imageId, String assetKey, String role, String href, String mediaType, BigDecimal pixelSpacingMeters) {
+        return jdbc.queryForObject("""
+                insert into image_file (image_id, asset_key, role, href, media_type, pixel_spacing_meters)
+                values (?, ?, ?, ?, ?, ?) returning file_id
+                """, Long.class, imageId, assetKey, role, href, mediaType, pixelSpacingMeters);
     }
 
     @Test

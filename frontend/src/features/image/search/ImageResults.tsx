@@ -18,9 +18,9 @@ type ImageResultsProps = {
     onHover: (imageIds: number[]) => void;
 };
 
-const CARD_HEIGHT_ESTIMATE = 250;
+const CARD_HEIGHT_ESTIMATE = 292;
 const CARD_GAP = 12;
-const SEARCH_BUTTON_SPACE = 64;
+const SCROLL_PADDING_END = 16;
 
 export function ImageResults({
     searchId,
@@ -45,13 +45,14 @@ export function ImageResults({
 
     const images = data ? data.pages.flatMap((page) => page.content) : [];
 
+    // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer는 내부 가변 상태를 사용하므로 Compiler 자동 최적화 대상에서 제외된다.
     const virtualizer = useVirtualizer({
         count: images.length,
         getScrollElement: () => scrollRef.current,
         estimateSize: () => CARD_HEIGHT_ESTIMATE,
+        getItemKey: (index) => images[index].imageId,
         gap: CARD_GAP,
-        // 선택한 카드로 스크롤할 때 패널 하단의 검색 버튼에 가리지 않게 한다 (pb-16과 같은 64px)
-        scrollPaddingEnd: SEARCH_BUTTON_SPACE,
+        scrollPaddingEnd: SCROLL_PADDING_END,
     });
 
     const scrollToImage = useEffectEvent((imageId: number | null) => {
@@ -121,7 +122,7 @@ export function ImageResults({
             </div>
             <div
                 ref={scrollRef}
-                className="min-h-0 flex-1 overflow-y-auto px-4 pb-16"
+                className="min-h-0 flex-1 overflow-y-auto px-4 pb-4"
             >
                 <ul
                     className="relative"
