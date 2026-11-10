@@ -7,11 +7,7 @@ import {
     ImageForm,
 } from "@/features/image/admin/ImageForm";
 import { toFormValues } from "@/features/image/admin/imageFormValues";
-import {
-    useFilterOptions,
-    useImageDetail,
-    useUpdateImage,
-} from "@/features/image/queries";
+import { useImageDetail, useUpdateImage } from "@/features/image/queries";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import {
     Dialog,
@@ -57,7 +53,6 @@ type EditImageFormProps = {
 function EditImageForm({ imageId, onSaved }: EditImageFormProps) {
     const detail = useImageDetail(imageId);
     const updateImage = useUpdateImage(imageId);
-    const { data: options } = useFilterOptions();
 
     if (detail.error) {
         return (
@@ -79,9 +74,6 @@ function EditImageForm({ imageId, onSaved }: EditImageFormProps) {
     return (
         <ImageForm
             initialValues={toFormValues(detail.data)}
-            provider={options?.providers.find(
-                (provider) => provider.code === detail.data.providerCode,
-            )}
             submitLabel="저장"
             pending={updateImage.isPending}
             error={updateImage.error}

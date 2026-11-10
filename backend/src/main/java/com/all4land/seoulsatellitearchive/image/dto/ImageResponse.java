@@ -42,7 +42,7 @@ public record ImageResponse(
             SatelliteImage image, ImageSar sar, ImageResolution resolution, String thumbnailUrl, String overlayUrl) {
         return new ImageResponse(
                 image.getId(),
-                ProviderResponse.from(image.getProvider()),
+                ProviderResponse.from(image.getCollection().getProvider()),
                 CollectionResponse.from(image.getCollection()),
                 image.getTitle(),
                 image.getSatellite(),

@@ -17,7 +17,6 @@ export const providerSchema = z.object({
     code: z.string(),
     name: z.string(),
     isPaid: z.boolean(),
-    ownOrganization: z.boolean(),
 });
 
 // providerCode는 이 컬렉션을 정의한 출처. 영상의 제공 기관과 다를 수 있다(올포랜드 영상)

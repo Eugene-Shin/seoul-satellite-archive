@@ -13,7 +13,6 @@ import com.all4land.seoulsatellitearchive.image.dto.ImageResponse;
 import com.all4land.seoulsatellitearchive.image.dto.ImageSearchRequest;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest.SarRequest;
-import com.all4land.seoulsatellitearchive.provider.Provider;
 import com.all4land.seoulsatellitearchive.provider.ProviderRepository;
 import com.all4land.seoulsatellitearchive.provider.dto.ProviderResponse;
 import jakarta.persistence.EntityManager;
@@ -43,13 +42,9 @@ public class ImageService {
     private final ImageResolutionRepository imageResolutionRepository;
     private final EntityManager entityManager;
 
-    // 직접 등록하는 영상은 우리 기관이 보유한 것이다. API 출처의 영상은 수집기만 만든다
     @Transactional
     public void create(ImageWriteRequest request) {
-        Provider ownOrganization = providerRepository
-                .findById(Provider.OWN_ORGANIZATION_CODE)
-                .orElseThrow(() -> new IllegalStateException("우리 기관 제공 기관 행이 없습니다."));
-        replaceMetadata(new SatelliteImage(), ownOrganization, request);
+        replaceMetadata(new SatelliteImage(), request);
     }
 
     public ImageDetailResponse getDetail(Long imageId) {
@@ -63,8 +58,7 @@ public class ImageService {
 
     @Transactional
     public void update(Long imageId, ImageWriteRequest request) {
-        SatelliteImage image = findImage(imageId);
-        replaceMetadata(image, image.getProvider(), request);
+        replaceMetadata(findImage(imageId), request);
     }
 
     @Transactional
@@ -79,27 +73,21 @@ public class ImageService {
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }
 
-    private void replaceMetadata(SatelliteImage image, Provider provider, ImageWriteRequest request) {
+    private void replaceMetadata(SatelliteImage image, ImageWriteRequest request) {
         ImageCollection collection = imageCollectionRepository
                 .findById(request.getCollectionId())
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BAD_REQUEST, "collectionId: 존재하지 않는 컬렉션입니다."));
-        // 올포랜드는 보유한 어느 출처의 제품이든 올린다. 다른 출처의 영상은 그 출처의 컬렉션만 가진다
-        if (!provider.isOwnOrganization() && !collection.getProvider().getCode().equals(provider.getCode())) {
-            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "collectionId: 이 제공 기관의 컬렉션이 아닙니다.");
-        }
         boolean duplicate = image.getId() == null
-                ? satelliteImageRepository.existsByProvider_CodeAndSourceId(provider.getCode(), request.getSourceId())
-                : satelliteImageRepository.existsByProvider_CodeAndSourceIdAndIdNot(
-                        provider.getCode(), request.getSourceId(), image.getId());
+                ? satelliteImageRepository.existsByCollection_IdAndSourceId(collection.getId(), request.getSourceId())
+                : satelliteImageRepository.existsByCollection_IdAndSourceIdAndIdNot(
+                        collection.getId(), request.getSourceId(), image.getId());
         if (duplicate) {
-            throw new BusinessException(CommonErrorCode.CONFLICT, "해당 제공 기관에 같은 sourceId의 영상이 존재합니다.");
+            throw new BusinessException(CommonErrorCode.CONFLICT, "해당 컬렉션에 같은 sourceId의 영상이 존재합니다.");
         }
-        image.replaceMetadata(request, provider, collection, request.toFootprint());
+        image.replaceMetadata(request, collection, request.toFootprint());
         satelliteImageRepository.saveAndFlush(image);
         replaceSar(image, request.getSar());
-        if (provider.isOwnOrganization()) {
-            syncFiles(image, request.getDownloadUrls());
-        }
+        syncFiles(image, request.getDownloadUrls());
         // @Formula는 쓰기 후 자동 갱신되지 않으므로 같은 영속성 컨텍스트에서 검색해도 최신 도형을 반환하게 한다.
         entityManager.refresh(image);
     }

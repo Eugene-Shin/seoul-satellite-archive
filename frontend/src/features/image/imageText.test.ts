@@ -154,7 +154,6 @@ describe("providerText", () => {
                     code: "KARI",
                     name: "항우연",
                     isPaid: true,
-                    ownOrganization: false,
                 },
             }),
         ).toBe("항우연 (유료)");
@@ -164,7 +163,6 @@ describe("providerText", () => {
                     code: "ESA",
                     name: "ESA",
                     isPaid: false,
-                    ownOrganization: false,
                 },
             }),
         ).toBe("ESA (무료)");
@@ -190,7 +188,6 @@ describe("collectionOptionLabel", () => {
                     code: "earth-search",
                     name: "Earth Search",
                     isPaid: false,
-                    ownOrganization: false,
                 },
             ]),
         ).toBe("Earth Search · Sentinel-2 Level-2A");

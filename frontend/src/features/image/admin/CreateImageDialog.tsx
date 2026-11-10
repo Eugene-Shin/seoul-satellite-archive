@@ -9,7 +9,7 @@ import {
     ImageForm,
 } from "@/features/image/admin/ImageForm";
 import { EMPTY_IMAGE_FORM } from "@/features/image/admin/imageFormValues";
-import { useCreateImage, useFilterOptions } from "@/features/image/queries";
+import { useCreateImage } from "@/features/image/queries";
 import { Button } from "@/shared/components/ui/button";
 import {
     Dialog,
@@ -22,7 +22,6 @@ import {
 export function CreateImageDialog() {
     const [open, setOpen] = useState(false);
     const createImage = useCreateImage();
-    const { data: options } = useFilterOptions();
 
     return (
         <Dialog
@@ -44,9 +43,6 @@ export function CreateImageDialog() {
                 </DialogHeader>
                 <ImageForm
                     initialValues={EMPTY_IMAGE_FORM}
-                    provider={options?.providers.find(
-                        (provider) => provider.ownOrganization,
-                    )}
                     submitLabel="등록"
                     pending={createImage.isPending}
                     error={createImage.error}

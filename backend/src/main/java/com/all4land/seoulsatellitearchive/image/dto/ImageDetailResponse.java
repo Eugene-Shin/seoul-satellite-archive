@@ -56,7 +56,7 @@ public class ImageDetailResponse {
             SatelliteImage image, ImageSar sar, ImageResolution resolution, List<ImageFile> files) {
         return new ImageDetailResponse(
                 image.getId(),
-                image.getProvider().getCode(),
+                image.getCollection().getProvider().getCode(),
                 CollectionResponse.from(image.getCollection()),
                 image.getSourceId(),
                 image.getTitle(),

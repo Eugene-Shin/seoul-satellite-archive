@@ -121,13 +121,13 @@ export function creditText({
     );
 }
 
-// 컬렉션은 정의한 출처가 영상의 제공 기관과 다를 수 있어서(올포랜드 영상) 출처를 함께 보여준다
+export function providerName(code: string, providers: Provider[]): string {
+    return providers.find((provider) => provider.code === code)?.name ?? code;
+}
+
 export function collectionOptionLabel(
     collection: Collection,
     providers: Provider[],
 ): string {
-    const providerName =
-        providers.find((provider) => provider.code === collection.providerCode)
-            ?.name ?? collection.providerCode;
-    return `${providerName} · ${collection.title}`;
+    return `${providerName(collection.providerCode, providers)} · ${collection.title}`;
 }

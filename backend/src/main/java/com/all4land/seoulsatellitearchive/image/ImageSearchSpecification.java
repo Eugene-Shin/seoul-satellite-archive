@@ -94,7 +94,8 @@ public final class ImageSearchSpecification {
     private static Specification<SatelliteImage> providerIn(List<String> providers) {
         return CollectionUtils.isEmpty(providers)
                 ? Specification.unrestricted()
-                : (root, query, cb) -> root.get("provider").get("code").in(providers);
+                : (root, query, cb) ->
+                        root.get("collection").get("provider").get("code").in(providers);
     }
 
     private static Specification<SatelliteImage> collectionIn(List<Long> collectionIds) {
@@ -112,7 +113,8 @@ public final class ImageSearchSpecification {
     private static Specification<SatelliteImage> providerIsPaid(Boolean isPaid) {
         return isPaid == null
                 ? Specification.unrestricted()
-                : (root, query, cb) -> cb.equal(root.get("provider").get("isPaid"), isPaid);
+                : (root, query, cb) ->
+                        cb.equal(root.get("collection").get("provider").get("isPaid"), isPaid);
     }
 
     // 영상의 해상도 범위가 조건 범위와 겹치면 포함한다. 해상도 값이 없는 영상은 빠진다

@@ -14,6 +14,7 @@ import {
     collectionOptionLabel,
     LOOK_DIRECTION_NAMES,
     ORBIT_DIRECTION_NAMES,
+    providerName,
     SENSOR_TYPE_NAMES,
 } from "@/features/image/imageText";
 import { useCollections, useFilterOptions } from "@/features/image/queries";
@@ -21,7 +22,7 @@ import {
     lookDirectionSchema,
     polarizationSchema,
 } from "@/features/image/schemas";
-import type { Polarization, Provider } from "@/features/image/types";
+import type { Polarization } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
 import { MultiSelectMenu } from "@/shared/components/MultiSelect";
 import { Button } from "@/shared/components/ui/button";
@@ -48,7 +49,6 @@ const MILLISECOND_STEP = 0.001;
 
 type ImageFormProps = {
     initialValues: ImageFormValues;
-    provider: Provider | undefined;
     submitLabel: string;
     pending: boolean;
     error: unknown;
@@ -57,7 +57,6 @@ type ImageFormProps = {
 
 export function ImageForm({
     initialValues,
-    provider,
     submitLabel,
     pending,
     error,
@@ -73,17 +72,18 @@ export function ImageForm({
 
     const missing = submitted ? missingRequiredFields(form) : [];
 
-    // 올포랜드는 보유한 어느 출처의 제품이든 올린다. 다른 출처의 영상은 그 출처의 컬렉션만 고른다
-    const collectionOptions = (collections ?? [])
-        .filter(
-            (collection) =>
-                provider?.ownOrganization ||
-                collection.providerCode === provider?.code,
-        )
-        .map((collection) => ({
-            value: collection.collectionId,
-            label: collectionOptionLabel(collection, options?.providers ?? []),
-        }));
+    const providers = options?.providers ?? [];
+    const collectionOptions = (collections ?? []).map((collection) => ({
+        value: collection.collectionId,
+        label: collectionOptionLabel(collection, providers),
+    }));
+    // 영상의 제공 기관은 고른 컬렉션의 제공 기관이다
+    const selectedCollection = collections?.find(
+        (collection) => collection.collectionId === form.collectionId,
+    );
+    const selectedProviderName = selectedCollection
+        ? providerName(selectedCollection.providerCode, providers)
+        : "";
 
     function invalid(field: RequiredField): boolean {
         return missing.includes(field);
@@ -115,7 +115,7 @@ export function ImageForm({
             <div className="-mx-4 flex min-h-0 flex-col gap-4 overflow-y-auto px-4 py-1">
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="제공 기관">
-                        <Input readOnly value={provider?.name ?? ""} />
+                        <Input readOnly value={selectedProviderName} />
                     </Field>
                     <FormSelect
                         field="collectionId"
@@ -300,15 +300,10 @@ export function ImageForm({
                     label="다운로드 URL"
                     required
                     invalid={invalid("downloadUrls")}
-                    hint={
-                        provider?.ownOrganization
-                            ? "Enter로 링크를 구분하여 입력"
-                            : "자동으로 수집한 영상의 파일 정보는 수집기가 관리합니다"
-                    }
+                    hint="Enter로 링크를 구분하여 입력"
                 >
                     <Textarea
                         required
-                        readOnly={!provider?.ownOrganization}
                         aria-invalid={invalid("downloadUrls")}
                         value={form.downloadUrls}
                         onChange={(e) =>
