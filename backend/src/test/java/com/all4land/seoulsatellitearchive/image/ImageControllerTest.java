@@ -5,9 +5,11 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -96,7 +98,7 @@ class ImageControllerTest {
     void collections() throws Exception {
         mockMvc.perform(get("/api/collections"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(5)))
+                .andExpect(jsonPath("$.data", hasSize(3)))
                 .andExpect(jsonPath("$.data[?(@.code == 'sentinel-2-l2a')].providerCode", contains("earth-search")));
     }
 
@@ -117,7 +119,8 @@ class ImageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.satellites", hasItems("LANDSAT-8", "SENTINEL-1A", "SENTINEL-2A")))
                 .andExpect(jsonPath("$.data.instruments", hasItems("C-SAR", "OLI", "MSI")))
-                .andExpect(jsonPath("$.data.providers", hasSize(5)))
+                .andExpect(jsonPath("$.data.providers", hasSize(4)))
+                .andExpect(jsonPath("$.data.providers[*].code", not(hasItem("all4land"))))
                 .andExpect(jsonPath("$.data.sensorTypes", contains("OPTICAL", "SAR")));
     }
 
@@ -485,7 +488,7 @@ class ImageControllerTest {
                         everyItem(nullValue())));
     }
 
-    // 출처 표기 의무가 없는 컬렉션은 creditText가 없다. 올포랜드 제품은 약관도 없다(계약 조건)
+    // 출처 표기 의무가 없는 컬렉션은 creditText가 없다
     @Test
     void collectionsReturnLicenseAndCredit() throws Exception {
         mockMvc.perform(get("/api/collections"))
@@ -497,8 +500,7 @@ class ImageControllerTest {
                 .andExpect(jsonPath(
                         "$.data[?(@.code == 'sentinel-2-l2a')].creditText",
                         contains("Contains modified Copernicus Sentinel data")))
-                .andExpect(jsonPath("$.data[?(@.code == 'C2021957657-LPCLOUD')].creditText", contains(nullValue())))
-                .andExpect(jsonPath("$.data[?(@.code == 'PAZ_SSC')].licenseName", contains(nullValue())));
+                .andExpect(jsonPath("$.data[?(@.code == 'C2021957657-LPCLOUD')].creditText", contains(nullValue())));
     }
 
     // S2만 겹칠 수 있는 COG(visual)가 있다. HLS는 미리보기 파일이 없고 S1은 묶음 파일 하나다
