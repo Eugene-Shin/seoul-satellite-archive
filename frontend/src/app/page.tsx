@@ -1,4 +1,3 @@
-import { SatelliteIcon } from "lucide-react";
 import { Suspense } from "react";
 
 import { ImageSearch } from "@/features/image/search/ImageSearch";
@@ -6,8 +5,7 @@ import { ImageSearch } from "@/features/image/search/ImageSearch";
 export default function Home() {
     return (
         <div className="app-layout h-dvh">
-            <header className="area-header flex items-center justify-center gap-2 border-r border-b px-4 py-3">
-                <SatelliteIcon className="size-5" />
+            <header className="area-header flex items-center justify-center border-r border-b px-4 py-3">
                 <h1 className="text-lg font-semibold">
                     위성 영상 검색 및 아카이빙 시스템
                 </h1>
