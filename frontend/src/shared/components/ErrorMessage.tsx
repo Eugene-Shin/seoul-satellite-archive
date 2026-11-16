@@ -35,7 +35,8 @@ export function ErrorMessage({ error, onRetry }: ErrorMessageProps) {
             <CircleAlertIcon />
             <AlertTitle>{message}</AlertTitle>
             <AlertDescription>
-                <ul className="list-disc pl-5">
+                {/* 상세가 많으면(응답 검증 실패 등) 패널을 밀어내지 않고 이 안에서 스크롤한다 */}
+                <ul className="max-h-40 list-disc overflow-y-auto pl-5">
                     {details.map((detail) => (
                         <li key={detail}>{detail}</li>
                     ))}
