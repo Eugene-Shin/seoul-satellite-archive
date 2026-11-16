@@ -57,4 +57,28 @@ public class CollectRun {
     @ElementCollection
     @CollectionTable(name = "collect_run_skip", joinColumns = @JoinColumn(name = "run_id"))
     private List<CollectRunSkip> skips = new ArrayList<>();
+
+    public CollectRun(CollectTarget target, Instant windowFrom, Instant windowTo, Instant startedAt) {
+        this.target = target;
+        this.status = CollectRunStatus.RUNNING;
+        this.windowFrom = windowFrom;
+        this.windowTo = windowTo;
+        this.startedAt = startedAt;
+    }
+
+    public void succeed(int found, int inserted, int updated, List<CollectRunSkip> skips, Instant finishedAt) {
+        this.status = CollectRunStatus.SUCCEEDED;
+        this.found = found;
+        this.inserted = inserted;
+        this.updated = updated;
+        this.skipped = skips.size();
+        this.skips.addAll(skips);
+        this.finishedAt = finishedAt;
+    }
+
+    public void fail(String failureReason, Instant finishedAt) {
+        this.status = CollectRunStatus.FAILED;
+        this.failureReason = failureReason;
+        this.finishedAt = finishedAt;
+    }
 }

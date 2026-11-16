@@ -14,6 +14,7 @@ import java.time.Duration;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Formula;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.MultiPolygon;
@@ -33,6 +34,9 @@ public class CollectTarget extends BaseEntity {
     private ImageCollection collection;
 
     private MultiPolygon aoi;
+
+    @Formula("ST_AsGeoJSON(aoi)")
+    private String aoiGeoJson;
 
     private String scheduleCron;
 

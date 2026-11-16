@@ -1,5 +1,6 @@
 package com.all4land.seoulsatellitearchive.image;
 
+import com.all4land.seoulsatellitearchive.collect.CollectTarget;
 import com.all4land.seoulsatellitearchive.collection.ImageCollection;
 import com.all4land.seoulsatellitearchive.global.entity.BaseEntity;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
@@ -72,6 +73,14 @@ public class SatelliteImage extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_metadata", nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> rawMetadata;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "collect_target_id")
+    private CollectTarget collectTarget;
+
+    public SatelliteImage(CollectTarget collectTarget) {
+        this.collectTarget = collectTarget;
+    }
 
     public void replaceMetadata(ImageWriteRequest request, ImageCollection collection, MultiPolygon footprint) {
         this.collection = collection;
