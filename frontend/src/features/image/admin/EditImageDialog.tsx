@@ -74,6 +74,7 @@ function EditImageForm({ imageId, onSaved }: EditImageFormProps) {
     return (
         <ImageForm
             initialValues={toFormValues(detail.data)}
+            readOnly={detail.data.collected}
             submitLabel="저장"
             pending={updateImage.isPending}
             error={updateImage.error}

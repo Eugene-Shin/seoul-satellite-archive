@@ -49,6 +49,8 @@ const MILLISECOND_STEP = 0.001;
 
 type ImageFormProps = {
     initialValues: ImageFormValues;
+    // 자동으로 수집한 영상은 출처 값이 원본이라 보기만 한다
+    readOnly?: boolean;
     submitLabel: string;
     pending: boolean;
     error: unknown;
@@ -57,6 +59,7 @@ type ImageFormProps = {
 
 export function ImageForm({
     initialValues,
+    readOnly = false,
     submitLabel,
     pending,
     error,
@@ -113,230 +116,255 @@ export function ImageForm({
         >
             {/* 입력칸만 스크롤해서 제목·닫기·버튼은 항상 보이게. 음수 여백은 초점 테두리가 잘리지 않게 */}
             <div className="-mx-4 flex min-h-0 flex-col gap-4 overflow-y-auto px-4 py-1">
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="제공 기관">
-                        <Input readOnly value={selectedProviderName} />
-                    </Field>
-                    <FormSelect
-                        field="collectionId"
-                        label="컬렉션"
-                        required
-                        invalid={invalid("collectionId")}
-                        options={collectionOptions}
-                        value={form.collectionId}
-                        onChange={(collectionId) => change({ collectionId })}
-                    />
-                    <Field
-                        field="sourceId"
-                        label="원본 ID"
-                        required
-                        invalid={invalid("sourceId")}
-                    >
-                        <Input
+                {/* fieldset disabled는 안의 입력칸·선택 버튼을 한 번에 막는다.
+                    fieldset은 스크롤 상자로 쓰면 높이가 줄지 않아서 contents로 상자를 없앤다 */}
+                <fieldset disabled={readOnly} className="contents">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <Field label="제공 기관">
+                            <Input readOnly value={selectedProviderName} />
+                        </Field>
+                        <FormSelect
+                            field="collectionId"
+                            label="컬렉션"
                             required
-                            aria-invalid={invalid("sourceId")}
-                            value={form.sourceId}
-                            onChange={(e) =>
-                                change({ sourceId: e.target.value })
+                            invalid={invalid("collectionId")}
+                            options={collectionOptions}
+                            value={form.collectionId}
+                            onChange={(collectionId) =>
+                                change({ collectionId })
                             }
                         />
-                    </Field>
-                    <Field label="원본 갱신 일시" hint="한국 시간(KST) 기준">
-                        <Input
-                            type="datetime-local"
-                            step={MILLISECOND_STEP}
-                            value={form.sourceUpdatedAt}
-                            onChange={(e) =>
-                                change({ sourceUpdatedAt: e.target.value })
-                            }
-                        />
-                    </Field>
-                    <Field
-                        field="title"
-                        label="제목"
-                        required
-                        invalid={invalid("title")}
-                    >
-                        <Input
+                        <Field
+                            field="sourceId"
+                            label="원본 ID"
                             required
-                            aria-invalid={invalid("title")}
-                            maxLength={30}
-                            value={form.title}
-                            onChange={(e) => change({ title: e.target.value })}
-                        />
-                    </Field>
-                    <Field
-                        field="satellite"
-                        label="위성"
-                        required
-                        invalid={invalid("satellite")}
-                    >
-                        <Input
+                            invalid={invalid("sourceId")}
+                        >
+                            <Input
+                                required
+                                aria-invalid={invalid("sourceId")}
+                                value={form.sourceId}
+                                onChange={(e) =>
+                                    change({ sourceId: e.target.value })
+                                }
+                            />
+                        </Field>
+                        <Field
+                            label="원본 갱신 일시"
+                            hint="한국 시간(KST) 기준"
+                        >
+                            <Input
+                                type="datetime-local"
+                                step={MILLISECOND_STEP}
+                                value={form.sourceUpdatedAt}
+                                onChange={(e) =>
+                                    change({ sourceUpdatedAt: e.target.value })
+                                }
+                            />
+                        </Field>
+                        <Field
+                            field="title"
+                            label="제목"
                             required
-                            aria-invalid={invalid("satellite")}
-                            list={satelliteListId}
-                            value={form.satellite}
-                            onChange={(e) =>
-                                change({ satellite: e.target.value })
-                            }
-                        />
-                        <datalist id={satelliteListId}>
-                            {options?.satellites.map((satellite) => (
-                                <option key={satellite} value={satellite} />
-                            ))}
-                        </datalist>
-                    </Field>
-                    <Field label="센서" hint="입력 후 Enter로 추가">
-                        <InstrumentsField
-                            options={options?.instruments ?? []}
-                            value={form.instruments}
-                            onChange={(instruments) => change({ instruments })}
-                        />
-                    </Field>
-                    <FormSelect
-                        field="sensorType"
-                        label="유형"
-                        required
-                        invalid={invalid("sensorType")}
-                        options={(options?.sensorTypes ?? []).map((type) => ({
-                            value: type,
-                            label: SENSOR_TYPE_NAMES[type],
-                        }))}
-                        value={form.sensorType}
-                        // 유형별 칸(구름량, SAR 정보)은 값을 남겨 두고 요청을 만들 때 뺀다
-                        onChange={(sensorType) => {
-                            if (sensorType) {
-                                change({ sensorType });
-                            }
-                        }}
-                    />
-                    <Field
-                        field="acquiredAt"
-                        label="촬영 일시"
-                        required
-                        invalid={invalid("acquiredAt")}
-                        hint="한국 시간(KST) 기준"
-                    >
-                        <Input
-                            type="datetime-local"
-                            step={MILLISECOND_STEP}
+                            invalid={invalid("title")}
+                        >
+                            <Input
+                                required
+                                aria-invalid={invalid("title")}
+                                maxLength={30}
+                                value={form.title}
+                                onChange={(e) =>
+                                    change({ title: e.target.value })
+                                }
+                            />
+                        </Field>
+                        <Field
+                            field="satellite"
+                            label="위성"
                             required
-                            aria-invalid={invalid("acquiredAt")}
-                            value={form.acquiredAt}
-                            onChange={(e) =>
-                                change({ acquiredAt: e.target.value })
-                            }
-                        />
-                    </Field>
-                    <Field label="촬영 종료 일시" hint="한국 시간(KST) 기준">
-                        <Input
-                            type="datetime-local"
-                            step={MILLISECOND_STEP}
-                            min={form.acquiredAt || undefined}
-                            value={form.acquiredEndAt}
-                            onChange={(e) =>
-                                change({ acquiredEndAt: e.target.value })
-                            }
-                        />
-                    </Field>
-                    <Field
-                        label="구름량 (%)"
-                        hint={
-                            form.sensorType === "SAR"
-                                ? "SAR 영상은 구름량 정보가 없습니다."
-                                : undefined
-                        }
-                    >
-                        <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            step={0.01}
-                            disabled={form.sensorType === "SAR"}
-                            value={
-                                form.sensorType === "SAR" ? "" : form.cloudCover
-                            }
-                            onChange={(e) =>
-                                change({ cloudCover: e.target.value })
-                            }
-                        />
-                    </Field>
-                    <FormSelect
-                        label="궤도"
-                        emptyLabel="없음"
-                        options={(options?.orbitDirections ?? []).map(
-                            (direction) => ({
-                                value: direction,
-                                label: ORBIT_DIRECTION_NAMES[direction],
-                            }),
-                        )}
-                        value={form.orbitDirection}
-                        onChange={(orbitDirection) =>
-                            change({ orbitDirection })
-                        }
-                    />
-                    <Field
-                        field="url"
-                        label="메타데이터 URL"
-                        required
-                        invalid={invalid("url")}
-                    >
-                        <Input
+                            invalid={invalid("satellite")}
+                        >
+                            <Input
+                                required
+                                aria-invalid={invalid("satellite")}
+                                list={satelliteListId}
+                                value={form.satellite}
+                                onChange={(e) =>
+                                    change({ satellite: e.target.value })
+                                }
+                            />
+                            <datalist id={satelliteListId}>
+                                {options?.satellites.map((satellite) => (
+                                    <option key={satellite} value={satellite} />
+                                ))}
+                            </datalist>
+                        </Field>
+                        <Field label="센서" hint="입력 후 Enter로 추가">
+                            <InstrumentsField
+                                options={options?.instruments ?? []}
+                                value={form.instruments}
+                                onChange={(instruments) =>
+                                    change({ instruments })
+                                }
+                            />
+                        </Field>
+                        <FormSelect
+                            field="sensorType"
+                            label="유형"
                             required
-                            aria-invalid={invalid("url")}
-                            value={form.url}
-                            onChange={(e) => change({ url: e.target.value })}
+                            invalid={invalid("sensorType")}
+                            options={(options?.sensorTypes ?? []).map(
+                                (type) => ({
+                                    value: type,
+                                    label: SENSOR_TYPE_NAMES[type],
+                                }),
+                            )}
+                            value={form.sensorType}
+                            // 유형별 칸(구름량, SAR 정보)은 값을 남겨 두고 요청을 만들 때 뺀다
+                            onChange={(sensorType) => {
+                                if (sensorType) {
+                                    change({ sensorType });
+                                }
+                            }}
+                        />
+                        <Field
+                            field="acquiredAt"
+                            label="촬영 일시"
+                            required
+                            invalid={invalid("acquiredAt")}
+                            hint="한국 시간(KST) 기준"
+                        >
+                            <Input
+                                type="datetime-local"
+                                step={MILLISECOND_STEP}
+                                required
+                                aria-invalid={invalid("acquiredAt")}
+                                value={form.acquiredAt}
+                                onChange={(e) =>
+                                    change({ acquiredAt: e.target.value })
+                                }
+                            />
+                        </Field>
+                        <Field
+                            label="촬영 종료 일시"
+                            hint="한국 시간(KST) 기준"
+                        >
+                            <Input
+                                type="datetime-local"
+                                step={MILLISECOND_STEP}
+                                min={form.acquiredAt || undefined}
+                                value={form.acquiredEndAt}
+                                onChange={(e) =>
+                                    change({ acquiredEndAt: e.target.value })
+                                }
+                            />
+                        </Field>
+                        <Field
+                            label="구름량 (%)"
+                            hint={
+                                form.sensorType === "SAR"
+                                    ? "SAR 영상은 구름량 정보가 없습니다."
+                                    : undefined
+                            }
+                        >
+                            <Input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={0.01}
+                                disabled={form.sensorType === "SAR"}
+                                value={
+                                    form.sensorType === "SAR"
+                                        ? ""
+                                        : form.cloudCover
+                                }
+                                onChange={(e) =>
+                                    change({ cloudCover: e.target.value })
+                                }
+                            />
+                        </Field>
+                        <FormSelect
+                            label="궤도"
+                            emptyLabel="없음"
+                            options={(options?.orbitDirections ?? []).map(
+                                (direction) => ({
+                                    value: direction,
+                                    label: ORBIT_DIRECTION_NAMES[direction],
+                                }),
+                            )}
+                            value={form.orbitDirection}
+                            onChange={(orbitDirection) =>
+                                change({ orbitDirection })
+                            }
+                        />
+                        <Field
+                            field="url"
+                            label="메타데이터 URL"
+                            required
+                            invalid={invalid("url")}
+                        >
+                            <Input
+                                required
+                                aria-invalid={invalid("url")}
+                                value={form.url}
+                                onChange={(e) =>
+                                    change({ url: e.target.value })
+                                }
+                            />
+                        </Field>
+                    </div>
+                    {form.sensorType === "SAR" && (
+                        <SarFields
+                            value={form.sar}
+                            onChange={(sar) => change({ sar })}
+                        />
+                    )}
+                    <Field
+                        field="downloadUrls"
+                        label="다운로드 URL"
+                        required
+                        invalid={invalid("downloadUrls")}
+                        hint="Enter로 링크를 구분하여 입력"
+                    >
+                        <Textarea
+                            required
+                            aria-invalid={invalid("downloadUrls")}
+                            value={form.downloadUrls}
+                            onChange={(e) =>
+                                change({ downloadUrls: e.target.value })
+                            }
                         />
                     </Field>
-                </div>
-                {form.sensorType === "SAR" && (
-                    <SarFields
-                        value={form.sar}
-                        onChange={(sar) => change({ sar })}
-                    />
-                )}
-                <Field
-                    field="downloadUrls"
-                    label="다운로드 URL"
-                    required
-                    invalid={invalid("downloadUrls")}
-                    hint="Enter로 링크를 구분하여 입력"
-                >
-                    <Textarea
+                    <Field
+                        field="footprint"
+                        label="footprint"
                         required
-                        aria-invalid={invalid("downloadUrls")}
-                        value={form.downloadUrls}
-                        onChange={(e) =>
-                            change({ downloadUrls: e.target.value })
-                        }
-                    />
-                </Field>
-                <Field
-                    field="footprint"
-                    label="footprint"
-                    required
-                    invalid={invalid("footprint")}
-                    hint="GeoJSON MultiPolygon"
-                >
-                    <Textarea
-                        required
-                        aria-invalid={invalid("footprint")}
-                        className="font-mono"
-                        value={form.footprint}
-                        onChange={(e) => change({ footprint: e.target.value })}
-                    />
-                </Field>
-                <Field label="원본 메타데이터 (JSON)">
-                    <Textarea
-                        className="font-mono"
-                        value={form.rawMetadata}
-                        onChange={(e) =>
-                            change({ rawMetadata: e.target.value })
-                        }
-                    />
-                </Field>
+                        invalid={invalid("footprint")}
+                        hint="GeoJSON MultiPolygon"
+                    >
+                        <Textarea
+                            required
+                            aria-invalid={invalid("footprint")}
+                            className="font-mono"
+                            value={form.footprint}
+                            onChange={(e) =>
+                                change({ footprint: e.target.value })
+                            }
+                        />
+                    </Field>
+                    <Field label="원본 메타데이터 (JSON)">
+                        <Textarea
+                            className="font-mono"
+                            value={form.rawMetadata}
+                            onChange={(e) =>
+                                change({ rawMetadata: e.target.value })
+                            }
+                        />
+                    </Field>
+                </fieldset>
             </div>
             <ErrorMessage error={error} />
+            <ReadOnlyNotice readOnly={readOnly} />
             <DialogFooter>
                 <DialogClose render={<Button variant="outline" />}>
                     취소
@@ -468,6 +496,18 @@ function SarFields({ value, onChange }: SarFieldsProps) {
                 </Field>
             </div>
         </section>
+    );
+}
+
+// 저장 버튼이 꺼진 이유를 알린다
+function ReadOnlyNotice({ readOnly }: { readOnly: boolean }) {
+    if (!readOnly) {
+        return null;
+    }
+    return (
+        <p className="text-sm text-muted-foreground">
+            자동으로 수집한 영상은 수정할 수 없습니다.
+        </p>
     );
 }
 

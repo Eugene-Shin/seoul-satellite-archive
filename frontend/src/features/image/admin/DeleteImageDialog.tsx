@@ -55,6 +55,7 @@ function DeleteImageConfirm({ image, onDeleted }: DeleteImageConfirmProps) {
                 <AlertDialogDescription>
                     ‘{image.title}’ 영상을 삭제하시겠습니까?
                 </AlertDialogDescription>
+                <CollectedNotice image={image} />
             </AlertDialogHeader>
             <ErrorMessage error={deleteImage.error} />
             <AlertDialogFooter className="py-2.5">
@@ -75,5 +76,17 @@ function DeleteImageConfirm({ image, onDeleted }: DeleteImageConfirmProps) {
                 </AlertDialogAction>
             </AlertDialogFooter>
         </>
+    );
+}
+
+function CollectedNotice({ image }: Pick<DeleteImageConfirmProps, "image">) {
+    if (!image.collected) {
+        return null;
+    }
+    return (
+        <p className="text-sm text-muted-foreground">
+            자동으로 수집한 영상입니다. 수집 기간 안에 있으면 다음 수집 때 다시
+            추가됩니다.
+        </p>
     );
 }

@@ -36,7 +36,7 @@ public interface ImageApi {
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "등록 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 입력"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "제공 기관 내 sourceId 중복")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "컬렉션 내 sourceId 중복")
     })
     ApiResponse<Void> create(ImageWriteRequest request);
 
@@ -52,11 +52,13 @@ public interface ImageApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "수정 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 입력"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 영상"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "제공 기관 내 sourceId 중복")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "컬렉션 내 sourceId 중복, 자동으로 수집한 영상")
     })
     ApiResponse<Void> update(Long imageId, ImageWriteRequest request);
 
-    @Operation(summary = "영상 DB 행 삭제", description = "실제 파일은 삭제하지 않는다.")
+    @Operation(summary = "영상 DB 행 삭제", description = "실제 파일은 삭제하지 않는다. 자동으로 수집한 영상은 수집 기간 안에 있으면 다음 수집 때 다시 추가된다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "삭제 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 영상")

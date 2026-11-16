@@ -82,6 +82,11 @@ public class SatelliteImage extends BaseEntity {
         this.collectTarget = collectTarget;
     }
 
+    // 수집기가 만든 영상은 출처 값이 원본이라 수정하지 않는다
+    public boolean isCollected() {
+        return collectTarget != null;
+    }
+
     public void replaceMetadata(ImageWriteRequest request, ImageCollection collection, MultiPolygon footprint) {
         this.collection = collection;
         this.sourceId = request.getSourceId();

@@ -217,6 +217,31 @@ class ImageControllerTest {
         assertThat(thumbnailBands).containsExactly(List.of());
     }
 
+    // 수집기가 만든 영상은 출처 값이 원본이라 수정을 막고, 삭제는 허용한다
+    @Test
+    void collectedImageCannotBeUpdatedButCanBeDeleted() throws Exception {
+        long seedId = seedImageId("S2B_52SCG_20241227_0_L2A");
+        jdbc.update("""
+                WITH target AS (
+                    INSERT INTO collect_target (collection_id, aoi, schedule_cron)
+                    SELECT collection_id, footprint, '0 0 3 * * *' FROM satellite_image WHERE image_id = ?
+                    RETURNING target_id)
+                UPDATE satellite_image
+                SET collect_target_id = (SELECT target_id FROM target)
+                WHERE image_id = ?
+                """, seedId, seedId);
+
+        mockMvc.perform(get(BASE).param("size", "100"))
+                .andExpect(jsonPath("$.data.content[?(@.imageId == " + seedId + ")].collected", contains(true)))
+                .andExpect(jsonPath("$.data.content[?(@.imageId != " + seedId + ")].collected", everyItem(is(false))));
+        mockMvc.perform(get(BASE + "/" + seedId))
+                .andExpect(jsonPath("$.data.collected").value(true));
+        mockMvc.perform(json(put(BASE + "/" + seedId), request)).andExpect(status().isConflict());
+        // 요청마다 영속성 컨텍스트가 따로인 실제 서버처럼, 상세 조회가 올려 둔 파일 엔티티를 비운다
+        entityManager.clear();
+        mockMvc.perform(delete(BASE + "/" + seedId)).andExpect(status().isOk());
+    }
+
     @Test
     void detailReturnsFilesOfRegisteredImage() throws Exception {
         long id = create(request);

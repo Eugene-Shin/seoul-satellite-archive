@@ -52,6 +52,9 @@ public class ImageDetailResponse {
     private final Instant createdAt;
     private final Instant updatedAt;
 
+    @Schema(description = "수집기가 만든 영상. 수정할 수 없다")
+    private final boolean collected;
+
     public static ImageDetailResponse from(
             SatelliteImage image, ImageSar sar, ImageResolution resolution, List<ImageFile> files) {
         return new ImageDetailResponse(
@@ -76,6 +79,7 @@ public class ImageDetailResponse {
                 image.getSourceUpdatedAt(),
                 image.getRawMetadata(),
                 image.getCreatedAt(),
-                image.getUpdatedAt());
+                image.getUpdatedAt(),
+                image.isCollected());
     }
 }

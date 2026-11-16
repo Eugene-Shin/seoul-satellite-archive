@@ -58,7 +58,11 @@ public class ImageService {
 
     @Transactional
     public void update(Long imageId, ImageWriteRequest request) {
-        replaceMetadata(findImage(imageId), request);
+        SatelliteImage image = findImage(imageId);
+        if (image.isCollected()) {
+            throw new BusinessException(CommonErrorCode.CONFLICT, "자동으로 수집한 영상은 수정할 수 없습니다.");
+        }
+        replaceMetadata(image, request);
     }
 
     @Transactional
