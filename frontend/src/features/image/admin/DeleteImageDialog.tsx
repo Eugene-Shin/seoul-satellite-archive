@@ -50,7 +50,8 @@ function DeleteImageConfirm({ image, onDeleted }: DeleteImageConfirmProps) {
 
     return (
         <>
-            <AlertDialogHeader className="gap-3">
+            {/* 넓은 화면에서도 왼쪽 정렬로 바뀌지 않게 같은 조건으로 덮어쓴다 */}
+            <AlertDialogHeader className="gap-3 break-keep sm:group-data-[size=default]/alert-dialog-content:place-items-center sm:group-data-[size=default]/alert-dialog-content:text-center">
                 <AlertDialogTitle>영상 삭제</AlertDialogTitle>
                 <AlertDialogDescription>
                     ‘{image.title}’ 영상을 삭제하시겠습니까?
