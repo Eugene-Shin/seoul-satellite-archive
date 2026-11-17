@@ -75,6 +75,7 @@ class CollectServiceTest {
         assertThat(run.getInserted()).isEqualTo(2);
         assertThat(run.getWindowFrom()).isEqualTo(run.getWindowTo().minus(LOOKBACK));
         assertThat(run.getStartedAt()).isNotNull();
+        assertThat(run.getHeartbeatAt()).isNotNull();
         assertThat(count("SELECT count(*) FROM satellite_image WHERE collect_target_id = ?", targetId))
                 .isEqualTo(2);
         assertThat(count("""

@@ -15,6 +15,7 @@ import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -48,6 +49,8 @@ public class CollectService {
     private final Clock clock;
     private final TransactionTemplate transactionTemplate;
 
+    private static final Duration HEARTBEAT_INTERVAL = Duration.ofMinutes(1);
+
     private enum SaveResult {
         INSERTED,
         UPDATED,
@@ -75,8 +78,13 @@ public class CollectService {
         boolean stopped;
     }
 
-    // 기간은 단발 실행만 줄 수 있다. 없으면 워커가 시작할 때 정한다
     public Long enqueue(Long targetId, CollectRunType runType, Instant windowFrom, Instant windowTo) {
+        return enqueue(targetId, runType, windowFrom, windowTo, clock.instant());
+    }
+
+    // 기간은 단발 실행만 줄 수 있다. 없으면 워커가 시작할 때 정한다.
+    // 스케줄러는 판단한 시각을 등록 시각으로 넘겨서 다음 cron 시각 계산과 맞춘다
+    Long enqueue(Long targetId, CollectRunType runType, Instant windowFrom, Instant windowTo, Instant createdAt) {
         if (runType == CollectRunType.SCHEDULED && windowFrom != null) {
             throw new IllegalArgumentException("정기 실행은 조회 구간을 지정하지 않습니다.");
         }
@@ -94,7 +102,7 @@ public class CollectService {
             }
             try {
                 return collectRunRepository
-                        .saveAndFlush(new CollectRun(target, runType, windowFrom, windowTo, clock.instant()))
+                        .saveAndFlush(new CollectRun(target, runType, windowFrom, windowTo, createdAt))
                         .getId();
             } catch (DataIntegrityViolationException e) {
                 throw new BusinessException(CommonErrorCode.CONFLICT, "이미 대기 중이거나 실행 중인 수집입니다.");
@@ -182,13 +190,13 @@ public class CollectService {
                     items -> {
                         progress.found += items.size();
                         for (JsonNode item : items) {
-                            if (collectRunRepository.isCancelRequested(runId)) {
+                            if (checkpoint(runId)) {
                                 progress.stopped = true;
                                 return false;
                             }
                             saveCounting(context, item, progress);
                         }
-                        return !collectRunRepository.isCancelRequested(runId);
+                        return !checkpoint(runId);
                     });
             boolean canceled = progress.stopped || !reachedEnd;
             transactionTemplate.executeWithoutResult(status -> finish(findRun(runId), canceled, progress));
@@ -196,6 +204,12 @@ public class CollectService {
             log.warn("수집 실패 runId={}", runId, e);
             transactionTemplate.executeWithoutResult(status -> findRun(runId).fail(reason(e), clock.instant()));
         }
+    }
+
+    // 하트비트를 남기고 취소 요청이 있는지 돌려준다
+    private boolean checkpoint(Long runId) {
+        Instant now = clock.instant();
+        return collectRunRepository.recordHeartbeatAndCheckCancel(runId, now, now.minus(HEARTBEAT_INTERVAL));
     }
 
     private void saveCounting(RunContext context, JsonNode item, RunProgress progress) {

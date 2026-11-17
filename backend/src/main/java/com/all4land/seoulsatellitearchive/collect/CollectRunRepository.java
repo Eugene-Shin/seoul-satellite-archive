@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface CollectRunRepository extends JpaRepository<CollectRun, Long> {
 
@@ -48,6 +49,41 @@ public interface CollectRunRepository extends JpaRepository<CollectRun, Long> {
             """)
     int requestCancelRunning(Long runId, Instant now);
 
-    @Query("select count(r) > 0 from CollectRun r where r.id = :runId and r.cancelRequestedAt is not null")
-    boolean isCancelRequested(Long runId);
+    // 실행 중 확인 지점마다 부른다. 하트비트는 beatBefore보다 오래됐을 때만 갱신해서 쓰기를 줄이고, 취소 요청 여부를 함께 돌려준다
+    @Transactional
+    @Query(value = """
+            WITH beat AS (
+                UPDATE collect_run SET heartbeat_at = :now
+                WHERE run_id = :runId AND heartbeat_at < :beatBefore
+            )
+            SELECT cancel_requested_at IS NOT NULL FROM collect_run WHERE run_id = :runId
+            """, nativeQuery = true)
+    boolean recordHeartbeatAndCheckCancel(Long runId, Instant now, Instant beatBefore);
+
+    @Query("""
+            select max(r.createdAt) from CollectRun r
+            where r.target.id = :targetId
+              and r.runType = com.all4land.seoulsatellitearchive.collect.CollectRunType.SCHEDULED
+            """)
+    Optional<Instant> findLastScheduledCreatedAt(Long targetId);
+
+    @Query("""
+            select count(r) > 0 from CollectRun r
+            where r.target.id = :targetId
+              and r.status in (com.all4land.seoulsatellitearchive.collect.CollectRunStatus.QUEUED,
+                               com.all4land.seoulsatellitearchive.collect.CollectRunStatus.RUNNING)
+            """)
+    boolean existsActive(Long targetId);
+
+    // 서버가 죽어 하트비트가 멈춘 실행을 정리해야 같은 대상이 다시 실행될 수 있다
+    @Modifying(clearAutomatically = true)
+    @Query("""
+            update CollectRun r
+            set r.status = com.all4land.seoulsatellitearchive.collect.CollectRunStatus.FAILED,
+                r.failureReason = :reason,
+                r.finishedAt = :now
+            where r.status = com.all4land.seoulsatellitearchive.collect.CollectRunStatus.RUNNING
+              and r.heartbeatAt < :staleBefore
+            """)
+    int failStale(Instant staleBefore, Instant now, String reason);
 }

@@ -9,7 +9,9 @@ spring:
 app:
   cors:
     allowed-origins: http://localhost:3000
-  # 테스트는 대기열을 직접 처리한다
+  # 테스트는 대기열과 스케줄러를 직접 부른다
   collect:
     worker:
       enabled: false
+    scheduler:
+      cron: "-"

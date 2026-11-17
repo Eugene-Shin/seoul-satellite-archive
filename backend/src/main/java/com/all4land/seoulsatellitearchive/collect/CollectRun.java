@@ -59,6 +59,8 @@ public class CollectRun {
 
     private Instant cancelRequestedAt;
 
+    private Instant heartbeatAt;
+
     private Instant finishedAt;
 
     @ElementCollection
@@ -81,6 +83,7 @@ public class CollectRun {
         this.windowFrom = windowFrom;
         this.windowTo = windowTo;
         this.startedAt = startedAt;
+        this.heartbeatAt = startedAt;
     }
 
     public void succeed(int found, int inserted, int updated, List<CollectRunSkip> skips, Instant finishedAt) {
