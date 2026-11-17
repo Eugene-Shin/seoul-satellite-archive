@@ -28,8 +28,8 @@ public interface CollectRunRepository extends JpaRepository<CollectRun, Long> {
             """, nativeQuery = true)
     Optional<CollectRun> lockNextQueued();
 
-    // 워커가 동시에 가져간 경우 0건이 바뀐다
-    @Modifying
+    // 워커가 동시에 가져간 경우 0건이 바뀐다. 일괄 UPDATE는 영속성 컨텍스트를 거치지 않아서 뒤에 다시 읽도록 비운다
+    @Modifying(clearAutomatically = true)
     @Query("""
             update CollectRun r
             set r.status = com.all4land.seoulsatellitearchive.collect.CollectRunStatus.CANCELED, r.finishedAt = :now
@@ -38,7 +38,7 @@ public interface CollectRunRepository extends JpaRepository<CollectRun, Long> {
             """)
     int cancelQueued(Long runId, Instant now);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("""
             update CollectRun r
             set r.cancelRequestedAt = :now

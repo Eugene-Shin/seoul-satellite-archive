@@ -1,6 +1,7 @@
 package com.all4land.seoulsatellitearchive.collect;
 
 import com.all4land.seoulsatellitearchive.collect.Sentinel2Mapper.Mapped;
+import com.all4land.seoulsatellitearchive.collect.dto.CollectRunResponse;
 import com.all4land.seoulsatellitearchive.collection.ImageCollection;
 import com.all4land.seoulsatellitearchive.collection.ImageCollectionRepository;
 import com.all4land.seoulsatellitearchive.global.exception.BusinessException;
@@ -116,6 +117,13 @@ public class CollectService {
                 throw new BusinessException(CommonErrorCode.CONFLICT, "이미 끝난 실행입니다.");
             }
         });
+    }
+
+    public CollectRunResponse getRun(Long runId) {
+        return transactionTemplate.execute(status -> collectRunRepository
+                .findById(runId)
+                .map(CollectRunResponse::from)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND)));
     }
 
     // 대기 중인 실행 하나를 가져가 끝까지 처리한다. 대기열이 비었으면 false
