@@ -97,7 +97,7 @@ public class CollectService {
                     .findById(targetId)
                     .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
             String collectionCode = target.getCollection().getCode();
-            if (!Sentinel2Mapper.COLLECTION.equals(collectionCode)) {
+            if (!CollectableCollections.contains(collectionCode)) {
                 throw new BusinessException(CommonErrorCode.BAD_REQUEST, "수집할 수 없는 컬렉션입니다: " + collectionCode);
             }
             try {

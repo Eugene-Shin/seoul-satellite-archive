@@ -1,14 +1,11 @@
 package com.all4land.seoulsatellitearchive.collect;
 
-import com.all4land.seoulsatellitearchive.global.config.ClockConfig;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZonedDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -61,10 +58,9 @@ public class CollectScheduler {
             return;
         }
         CollectTarget target = collectTargetRepository.findById(targetId).orElseThrow();
-        CronExpression cron = CronExpression.parse(target.getScheduleCron());
-        Instant base = collectRunRepository.findLastScheduledCreatedAt(targetId).orElse(target.getCreatedAt());
-        ZonedDateTime next = cron.next(base.atZone(ClockConfig.KST));
-        if (next == null || next.toInstant().isAfter(now) || collectRunRepository.existsActive(targetId)) {
+        Instant next = target.nextRunAt(
+                collectRunRepository.findLastScheduledCreatedAt(targetId).orElse(null));
+        if (next == null || next.isAfter(now) || collectRunRepository.existsActive(targetId)) {
             return;
         }
         collectService.enqueue(targetId, CollectRunType.SCHEDULED, null, null, now);

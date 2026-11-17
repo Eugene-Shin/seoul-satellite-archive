@@ -51,6 +51,8 @@ class CollectServiceTest {
     @MockitoBean
     StacClient stacClient;
 
+    private final List<Long> createdTargetIds = new ArrayList<>();
+
     private long targetId;
 
     @BeforeEach
@@ -58,10 +60,14 @@ class CollectServiceTest {
         targetId = insertTarget("sentinel-2-c1-l2a");
     }
 
+    // seed 대상(서울)은 남기고 이 테스트가 만든 대상과 그 영상만 지운다
     @AfterEach
     void tearDown() {
-        jdbc.update("DELETE FROM satellite_image WHERE collect_target_id IS NOT NULL");
-        jdbc.update("DELETE FROM collect_target");
+        for (Long created : createdTargetIds) {
+            jdbc.update("DELETE FROM satellite_image WHERE collect_target_id = ?", created);
+            jdbc.update("DELETE FROM collect_target WHERE target_id = ?", created);
+        }
+        createdTargetIds.clear();
     }
 
     @Test
@@ -256,7 +262,7 @@ class CollectServiceTest {
     }
 
     private long insertTarget(String collectionCode) {
-        return jdbc.queryForObject("""
+        Long created = jdbc.queryForObject("""
                 INSERT INTO collect_target (collection_id, aoi, schedule_cron)
                 SELECT collection_id,
                        ST_GeomFromText('MULTIPOLYGON(((126.9 37.5, 127.1 37.5, 127.1 37.6, 126.9 37.5)))', 4326),
@@ -265,6 +271,8 @@ class CollectServiceTest {
                 WHERE provider = 'earth-search' AND code = ?
                 RETURNING target_id
                 """, Long.class, collectionCode);
+        createdTargetIds.add(created);
+        return created;
     }
 
     // 실제 클라이언트처럼 페이지 하나로 넘기고 끝까지 받았다고 돌려준다
