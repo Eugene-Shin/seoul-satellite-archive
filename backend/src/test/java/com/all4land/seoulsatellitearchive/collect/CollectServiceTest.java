@@ -3,15 +3,19 @@ package com.all4land.seoulsatellitearchive.collect;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 
+import com.all4land.seoulsatellitearchive.collect.StacClient.PageHandler;
 import com.all4land.seoulsatellitearchive.global.config.TestcontainersConfiguration;
 import com.all4land.seoulsatellitearchive.global.exception.BusinessException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,14 +30,20 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-// 실행 기록과 영상을 각각 커밋하는 동작을 보려고 테스트 트랜잭션을 쓰지 않고 직접 지운다
+// 실행 기록과 영상을 각각 커밋하는 동작을 보려고 테스트 트랜잭션을 쓰지 않고 직접 지운다.
+// 워커는 꺼 두고(application-test.yml) 대기열을 processNext로 직접 처리한다
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 class CollectServiceTest {
 
+    private static final Duration LOOKBACK = Duration.ofDays(7);
+
     @Autowired
     CollectService collectService;
+
+    @Autowired
+    CollectRunRepository collectRunRepository;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -58,12 +68,13 @@ class CollectServiceTest {
     void insertsNewImagesWithFiles() throws IOException {
         stubSearch(items());
 
-        CollectRun run = collectService.run(targetId);
+        CollectRun run = runOneOff();
 
         assertThat(run.getStatus()).isEqualTo(CollectRunStatus.SUCCEEDED);
         assertThat(run.getFound()).isEqualTo(2);
         assertThat(run.getInserted()).isEqualTo(2);
-        assertThat(run.getWindowTo().minus(Duration.ofDays(7))).isEqualTo(run.getWindowFrom());
+        assertThat(run.getWindowFrom()).isEqualTo(run.getWindowTo().minus(LOOKBACK));
+        assertThat(run.getStartedAt()).isNotNull();
         assertThat(count("SELECT count(*) FROM satellite_image WHERE collect_target_id = ?", targetId))
                 .isEqualTo(2);
         assertThat(count("""
@@ -72,28 +83,46 @@ class CollectServiceTest {
                         """)).isEqualTo(23);
     }
 
+    // 단발 실행의 성공은 다음 조회 시작점이 되지 않는다
     @Test
-    void nextRunContinuesFromLastSuccessAndSkipsUnchanged() throws IOException {
+    void defaultWindowContinuesFromLastScheduledSuccessOnly() throws IOException {
+        Instant scheduledEnd = Instant.parse("2026-11-10T00:00:00Z");
+        insertSucceededRun("SCHEDULED", scheduledEnd);
+        insertSucceededRun("ONE_OFF", Instant.parse("2026-11-15T00:00:00Z"));
         stubSearch(items());
-        CollectRun first = collectService.run(targetId);
 
-        CollectRun second = collectService.run(targetId);
+        CollectRun run = runOneOff();
 
-        assertThat(second.getWindowFrom()).isEqualTo(first.getWindowTo().minus(Duration.ofDays(7)));
-        assertThat(second.getInserted()).isZero();
-        assertThat(second.getUpdated()).isZero();
+        assertThat(run.getWindowFrom()).isEqualTo(scheduledEnd.minus(LOOKBACK));
     }
 
     @Test
-    void updatesOnlyImagesWithNewSourceUpdatedAt() throws IOException {
+    void oneOffKeepsGivenWindow() throws IOException {
+        Instant from = Instant.parse("2025-01-01T00:00:00Z");
+        Instant to = Instant.parse("2025-02-01T00:00:00Z");
         stubSearch(items());
-        collectService.run(targetId);
+
+        Long runId = collectService.enqueue(targetId, CollectRunType.ONE_OFF, from, to);
+        collectService.processNext();
+
+        CollectRun run = findRun(runId);
+        assertThat(run.getWindowFrom()).isEqualTo(from);
+        assertThat(run.getWindowTo()).isEqualTo(to);
+    }
+
+    @Test
+    void rerunSkipsUnchangedAndUpdatesChanged() throws IOException {
+        stubSearch(items());
+        runOneOff();
+        assertThat(runOneOff().getUpdated()).isZero();
+
         List<JsonNode> changed = items();
         ((ObjectNode) changed.get(0).path("properties")).put("updated", "2026-11-01T00:00:00Z");
         stubSearch(changed);
 
-        CollectRun run = collectService.run(targetId);
+        CollectRun run = runOneOff();
 
+        assertThat(run.getInserted()).isZero();
         assertThat(run.getUpdated()).isEqualTo(1);
         assertThat(count("SELECT count(*) FROM satellite_image WHERE source_updated_at = '2026-11-01T00:00:00Z'"))
                 .isEqualTo(1);
@@ -105,7 +134,7 @@ class CollectServiceTest {
         ((ObjectNode) items.get(0)).remove("geometry");
         stubSearch(items);
 
-        CollectRun run = collectService.run(targetId);
+        CollectRun run = runOneOff();
 
         assertThat(run.getStatus()).isEqualTo(CollectRunStatus.SUCCEEDED);
         assertThat(run.getInserted()).isEqualTo(1);
@@ -116,29 +145,113 @@ class CollectServiceTest {
     }
 
     @Test
-    void failedSearchIsRecordedAndNotCountedAsSuccess() {
-        when(stacClient.search(any(), any(), any(), any(), any()))
-                .thenThrow(new ResourceAccessException("connection refused"));
+    void failedSearchIsRecorded() {
+        doThrow(new ResourceAccessException("connection refused"))
+                .when(stacClient)
+                .search(any(), any(), any(), any(), any(), any());
 
-        CollectRun failed = collectService.run(targetId);
+        CollectRun failed = runOneOff();
 
         assertThat(failed.getStatus()).isEqualTo(CollectRunStatus.FAILED);
         assertThat(failed.getFailureReason()).isEqualTo("connection refused");
         assertThat(failed.getFinishedAt()).isNotNull();
         assertThat(count("SELECT count(*) FROM satellite_image WHERE collect_target_id = ?", targetId))
                 .isZero();
-
-        CollectRun next = collectService.run(targetId);
-        assertThat(next.getWindowFrom()).isEqualTo(next.getWindowTo().minus(Duration.ofDays(7)));
     }
 
     @Test
     void rejectsCollectionWithoutMapper() {
         long legacyTarget = insertTarget("sentinel-2-l2a");
 
-        assertThatThrownBy(() -> collectService.run(legacyTarget)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> collectService.enqueue(legacyTarget, CollectRunType.ONE_OFF, null, null))
+                .isInstanceOf(BusinessException.class);
         assertThat(count("SELECT count(*) FROM collect_run WHERE target_id = ?", legacyTarget))
                 .isZero();
+    }
+
+    @Test
+    void rejectsSecondActiveRunOfSameTarget() {
+        collectService.enqueue(targetId, CollectRunType.ONE_OFF, null, null);
+
+        assertThatThrownBy(() -> collectService.enqueue(targetId, CollectRunType.SCHEDULED, null, null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("이미 대기 중이거나 실행 중");
+    }
+
+    @Test
+    void cancelingQueuedRunCancelsImmediately() {
+        Long runId = collectService.enqueue(targetId, CollectRunType.ONE_OFF, null, null);
+
+        collectService.requestCancel(runId);
+
+        assertThat(findRun(runId).getStatus()).isEqualTo(CollectRunStatus.CANCELED);
+        assertThat(collectService.processNext()).isFalse();
+    }
+
+    // 실행 중 취소는 다음 확인 지점(영상마다)에서 멈추고, 그때까지 저장한 영상은 남는다
+    @Test
+    void cancelingRunningRunStopsAtNextCheck() throws IOException {
+        List<JsonNode> items = items();
+        Long runId = collectService.enqueue(targetId, CollectRunType.ONE_OFF, null, null);
+        answerSearch(pageHandler -> {
+            pageHandler.handle(List.of(items.get(0)));
+            collectService.requestCancel(runId);
+            pageHandler.handle(List.of(items.get(1)));
+        });
+
+        collectService.processNext();
+
+        CollectRun run = findRun(runId);
+        assertThat(run.getStatus()).isEqualTo(CollectRunStatus.CANCELED);
+        assertThat(run.getInserted()).isEqualTo(1);
+        assertThat(run.getCancelRequestedAt()).isNotNull();
+        assertThat(count("SELECT count(*) FROM satellite_image WHERE collect_target_id = ?", targetId))
+                .isEqualTo(1);
+    }
+
+    // 확인하기 전에 끝까지 처리했으면 취소 요청이 있어도 성공이다
+    @Test
+    void cancelRequestedAfterLastItemEndsAsSucceeded() throws IOException {
+        List<JsonNode> items = items();
+        Long runId = collectService.enqueue(targetId, CollectRunType.ONE_OFF, null, null);
+        answerSearch(pageHandler -> {
+            pageHandler.handle(items);
+            collectService.requestCancel(runId);
+        });
+
+        collectService.processNext();
+
+        CollectRun run = findRun(runId);
+        assertThat(run.getStatus()).isEqualTo(CollectRunStatus.SUCCEEDED);
+        assertThat(run.getInserted()).isEqualTo(2);
+    }
+
+    @Test
+    void cancelingFinishedRunConflicts() throws IOException {
+        stubSearch(items());
+        CollectRun run = runOneOff();
+
+        assertThatThrownBy(() -> collectService.requestCancel(run.getId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("이미 끝난 실행");
+    }
+
+    private CollectRun runOneOff() {
+        Long runId = collectService.enqueue(targetId, CollectRunType.ONE_OFF, null, null);
+        collectService.processNext();
+        return findRun(runId);
+    }
+
+    private CollectRun findRun(Long runId) {
+        return collectRunRepository.findById(runId).orElseThrow();
+    }
+
+    // 정기 실행은 스케줄러(C-6)가 생기기 전까지 SQL로 넣는다
+    private void insertSucceededRun(String runType, Instant windowTo) {
+        jdbc.update("""
+                INSERT INTO collect_run (target_id, run_type, status, window_from, window_to, started_at, finished_at)
+                VALUES (?, ?, 'SUCCEEDED', ?::timestamptz - INTERVAL '7 days', ?::timestamptz, now(), now())
+                """, targetId, runType, windowTo.toString(), windowTo.toString());
     }
 
     private long insertTarget(String collectionCode) {
@@ -153,8 +266,19 @@ class CollectServiceTest {
                 """, Long.class, collectionCode);
     }
 
+    // 실제 클라이언트처럼 페이지 하나로 넘기고 끝까지 받았다고 돌려준다
     private void stubSearch(List<JsonNode> items) {
-        when(stacClient.search(any(), any(), any(), any(), any())).thenReturn(items);
+        answerSearch(pageHandler -> pageHandler.handle(items));
+    }
+
+    // when(mock.search(...))는 스텁을 걸 때 이전 스텁을 실행하므로 doAnswer로 건다
+    private void answerSearch(Consumer<PageHandler> pages) {
+        doAnswer(invocation -> {
+                    pages.accept(invocation.getArgument(5));
+                    return true;
+                })
+                .when(stacClient)
+                .search(any(), any(), any(), any(), any(), any());
     }
 
     private long count(String sql, Object... args) {

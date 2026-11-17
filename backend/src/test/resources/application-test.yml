@@ -9,3 +9,7 @@ spring:
 app:
   cors:
     allowed-origins: http://localhost:3000
+  # 테스트는 대기열을 직접 처리한다
+  collect:
+    worker:
+      enabled: false

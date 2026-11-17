@@ -38,24 +38,35 @@ public class StacClient {
         this.restClient = builder.build();
     }
 
-    // 촬영 일시가 [from, to]인 영상을 다음 페이지가 없을 때까지 모은다
-    public List<JsonNode> search(String searchUrl, String collection, JsonNode aoi, Instant from, Instant to) {
+    @FunctionalInterface
+    public interface PageHandler {
+        // 페이지의 영상을 처리하고, 다음 페이지를 계속 받을지 돌려준다
+        boolean handle(List<JsonNode> items);
+    }
+
+    // 촬영 일시가 [from, to]인 영상을 페이지마다 넘긴다. 마지막 페이지까지 받았으면 true
+    public boolean search(
+            String searchUrl, String collection, JsonNode aoi, Instant from, Instant to, PageHandler pageHandler) {
         ObjectNode body = JsonNodeFactory.instance.objectNode();
         body.putArray("collections").add(collection);
         body.set("intersects", aoi);
         body.put("datetime", from + "/" + to);
         body.put("limit", PAGE_SIZE);
 
-        List<JsonNode> items = new ArrayList<>();
         HttpMethod method = HttpMethod.POST;
         String uri = searchUrl + "/search";
         while (true) {
             JsonNode page = exchange(method, uri, body);
+            List<JsonNode> items = new ArrayList<>();
             page.path("features").forEach(items::add);
+            boolean proceed = pageHandler.handle(items);
 
             JsonNode next = nextLink(page);
             if (next == null) {
-                return items;
+                return true;
+            }
+            if (!proceed) {
+                return false;
             }
             uri = next.path("href").asString();
             method = HttpMethod.valueOf(next.path("method").asString("GET"));

@@ -64,75 +64,152 @@ public class CollectService {
             Instant windowFrom,
             Instant windowTo) {}
 
-    // 실행 기록과 영상은 각각 따로 커밋한다. 영상 하나가 실패해도 나머지는 저장되고, 실행이 실패해도 기록이 남는다
-    public CollectRun run(Long targetId) {
-        RunContext context = transactionTemplate.execute(status -> start(targetId));
-        Long runId = context.runId();
-        try {
-            List<JsonNode> items = stacClient.search(
-                    context.searchUrl(),
-                    context.collectionCode(),
-                    JsonMapper.shared().readTree(context.aoiGeoJson()),
-                    context.windowFrom(),
-                    context.windowTo());
-            int inserted = 0;
-            int updated = 0;
-            List<CollectRunSkip> skips = new ArrayList<>();
-            for (JsonNode item : items) {
-                try {
-                    switch (transactionTemplate.execute(status -> save(context, item))) {
-                        case INSERTED -> inserted++;
-                        case UPDATED -> updated++;
-                        case UNCHANGED -> {}
-                    }
-                } catch (RuntimeException e) {
-                    String sourceId = item.path("id").asString("(id 없음)");
-                    log.warn("영상을 건너뜁니다 runId={} sourceId={}", runId, sourceId, e);
-                    skips.add(new CollectRunSkip(sourceId, reason(e)));
-                }
-            }
-            int found = items.size();
-            int insertedCount = inserted;
-            int updatedCount = updated;
-            transactionTemplate.executeWithoutResult(
-                    status -> findRun(runId).succeed(found, insertedCount, updatedCount, skips, clock.instant()));
-        } catch (RuntimeException e) {
-            log.warn("수집 실패 runId={}", runId, e);
-            transactionTemplate.executeWithoutResult(status -> findRun(runId).fail(reason(e), clock.instant()));
-        }
-        return findRun(runId);
+    // 실행 하나의 진행 상황. StacClient가 페이지마다 부르는 람다 안에서 바꾸므로 지역 변수 대신 객체에 담는다
+    private static final class RunProgress {
+        int found;
+        int inserted;
+        int updated;
+        final List<CollectRunSkip> skips = new ArrayList<>();
+        // 취소 요청을 보고 남은 영상을 처리하지 않았다
+        boolean stopped;
     }
 
-    // 실패한 기간을 다음 실행이 다시 조회하도록 마지막 성공 실행에서 이어 간다
-    private RunContext start(Long targetId) {
-        CollectTarget target = collectTargetRepository
-                .findById(targetId)
-                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+    // 기간은 단발 실행만 줄 수 있다. 없으면 워커가 시작할 때 정한다
+    public Long enqueue(Long targetId, CollectRunType runType, Instant windowFrom, Instant windowTo) {
+        if (runType == CollectRunType.SCHEDULED && windowFrom != null) {
+            throw new IllegalArgumentException("정기 실행은 조회 구간을 지정하지 않습니다.");
+        }
+        if ((windowFrom == null) != (windowTo == null) || (windowFrom != null && !windowFrom.isBefore(windowTo))) {
+            throw new BusinessException(
+                    CommonErrorCode.BAD_REQUEST, "windowFrom과 windowTo는 함께 주고, windowFrom이 windowTo보다 앞서야 합니다.");
+        }
+        return transactionTemplate.execute(status -> {
+            CollectTarget target = collectTargetRepository
+                    .findById(targetId)
+                    .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+            String collectionCode = target.getCollection().getCode();
+            if (!Sentinel2Mapper.COLLECTION.equals(collectionCode)) {
+                throw new BusinessException(CommonErrorCode.BAD_REQUEST, "수집할 수 없는 컬렉션입니다: " + collectionCode);
+            }
+            try {
+                return collectRunRepository
+                        .saveAndFlush(new CollectRun(target, runType, windowFrom, windowTo, clock.instant()))
+                        .getId();
+            } catch (DataIntegrityViolationException e) {
+                throw new BusinessException(CommonErrorCode.CONFLICT, "이미 대기 중이거나 실행 중인 수집입니다.");
+            }
+        });
+    }
+
+    // 대기 중이면 바로 취소한다. 실행 중이면 요청만 남기고, 상태는 워커가 확인해서 바꾼다
+    public void requestCancel(Long runId) {
+        transactionTemplate.executeWithoutResult(status -> {
+            Instant now = clock.instant();
+            if (collectRunRepository.cancelQueued(runId, now) == 1
+                    || collectRunRepository.requestCancelRunning(runId, now) == 1) {
+                return;
+            }
+            CollectRun run = collectRunRepository
+                    .findById(runId)
+                    .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+            if (run.getStatus().isFinished()) {
+                throw new BusinessException(CommonErrorCode.CONFLICT, "이미 끝난 실행입니다.");
+            }
+        });
+    }
+
+    // 대기 중인 실행 하나를 가져가 끝까지 처리한다. 대기열이 비었으면 false
+    public boolean processNext() {
+        RunContext context = transactionTemplate.execute(status -> claimNext());
+        if (context == null) {
+            return false;
+        }
+        execute(context);
+        return true;
+    }
+
+    private RunContext claimNext() {
+        CollectRun run = collectRunRepository.lockNextQueued().orElse(null);
+        if (run == null) {
+            return null;
+        }
+        CollectTarget target = run.getTarget();
         ImageCollection collection = target.getCollection();
-        if (!Sentinel2Mapper.COLLECTION.equals(collection.getCode())) {
-            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "수집할 수 없는 컬렉션입니다: " + collection.getCode());
-        }
         Instant now = clock.instant();
-        Instant from = collectRunRepository
-                .findLastSucceeded(targetId)
-                .map(CollectRun::getWindowTo)
-                .orElse(now)
-                .minus(target.getLookback());
-        CollectRun run;
-        try {
-            run = collectRunRepository.saveAndFlush(new CollectRun(target, from, now, now));
-        } catch (DataIntegrityViolationException e) {
-            throw new BusinessException(CommonErrorCode.CONFLICT, "이미 실행 중인 수집입니다.");
+        Instant from = run.getWindowFrom();
+        Instant to = run.getWindowTo();
+        if (from == null) {
+            // 실패한 기간을 다음 실행이 다시 조회하도록 마지막으로 성공한 정기 실행에서 이어 간다
+            from = collectRunRepository
+                    .findLastScheduledSuccess(target.getId())
+                    .map(CollectRun::getWindowTo)
+                    .orElse(now)
+                    .minus(target.getLookback());
+            to = now;
         }
+        run.start(from, to, now);
         return new RunContext(
                 run.getId(),
-                targetId,
+                target.getId(),
                 collection.getId(),
                 collection.getProvider().getMetadataSearchUrl(),
                 collection.getCode(),
                 target.getAoiGeoJson(),
                 from,
-                now);
+                to);
+    }
+
+    // 실행 기록과 영상은 각각 따로 커밋한다. 영상 하나가 실패해도 나머지는 저장되고, 실행이 실패해도 기록이 남는다.
+    // 취소 요청은 영상마다, 다음 페이지를 받기 전마다 확인한다. 확인하기 전에 끝까지 처리했으면 성공으로 끝낸다
+    private void execute(RunContext context) {
+        Long runId = context.runId();
+        RunProgress progress = new RunProgress();
+        try {
+            boolean reachedEnd = stacClient.search(
+                    context.searchUrl(),
+                    context.collectionCode(),
+                    JsonMapper.shared().readTree(context.aoiGeoJson()),
+                    context.windowFrom(),
+                    context.windowTo(),
+                    items -> {
+                        progress.found += items.size();
+                        for (JsonNode item : items) {
+                            if (collectRunRepository.isCancelRequested(runId)) {
+                                progress.stopped = true;
+                                return false;
+                            }
+                            saveCounting(context, item, progress);
+                        }
+                        return !collectRunRepository.isCancelRequested(runId);
+                    });
+            boolean canceled = progress.stopped || !reachedEnd;
+            transactionTemplate.executeWithoutResult(status -> finish(findRun(runId), canceled, progress));
+        } catch (RuntimeException e) {
+            log.warn("수집 실패 runId={}", runId, e);
+            transactionTemplate.executeWithoutResult(status -> findRun(runId).fail(reason(e), clock.instant()));
+        }
+    }
+
+    private void saveCounting(RunContext context, JsonNode item, RunProgress progress) {
+        try {
+            switch (transactionTemplate.execute(status -> save(context, item))) {
+                case INSERTED -> progress.inserted++;
+                case UPDATED -> progress.updated++;
+                case UNCHANGED -> {}
+            }
+        } catch (RuntimeException e) {
+            String sourceId = item.path("id").asString("(id 없음)");
+            log.warn("영상을 건너뜁니다 runId={} sourceId={}", context.runId(), sourceId, e);
+            progress.skips.add(new CollectRunSkip(sourceId, reason(e)));
+        }
+    }
+
+    private void finish(CollectRun run, boolean canceled, RunProgress progress) {
+        if (canceled) {
+            run.cancel(progress.found, progress.inserted, progress.updated, progress.skips, clock.instant());
+        } else {
+            run.succeed(progress.found, progress.inserted, progress.updated, progress.skips, clock.instant());
+        }
     }
 
     private void validate(ImageWriteRequest request) {

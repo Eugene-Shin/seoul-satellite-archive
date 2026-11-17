@@ -51,6 +51,8 @@ class CollectTableTest {
         CollectRun run = entityManager.find(CollectRun.class, runId);
 
         assertThat(run.getStatus()).isEqualTo(CollectRunStatus.SUCCEEDED);
+        assertThat(run.getRunType()).isEqualTo(CollectRunType.SCHEDULED);
+        assertThat(run.getCreatedAt()).isNotNull();
         assertThat(run.getTarget().getLookback()).isEqualTo(Duration.ofDays(7));
         assertThat(run.getTarget().isEnabled()).isTrue();
         assertThat(run.getTarget().getAoi().getSRID()).isEqualTo(4326);
@@ -71,18 +73,31 @@ class CollectTableTest {
                 .isZero();
     }
 
+    // 대기 중이거나 실행 중인 실행은 대상마다 하나다
     @Test
-    void onlyOneRunningRunPerTarget() {
+    void onlyOneActiveRunPerTarget() {
         insertRun("SUCCEEDED");
         insertRun("RUNNING");
 
-        assertThatThrownBy(() -> insertRun("RUNNING")).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> insertRun("QUEUED")).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    // 조회 구간과 시작 시각은 시작하기 전(대기, 시작 전 취소)에만 비어 있을 수 있다
+    @Test
+    void startedRunNeedsWindowAndStartTime() {
+        jdbc.update(
+                "INSERT INTO collect_run (target_id, run_type, status) VALUES (?, 'ONE_OFF', 'CANCELED')", targetId);
+
+        assertThatThrownBy(() -> jdbc.update(
+                        "INSERT INTO collect_run (target_id, run_type, status) VALUES (?, 'ONE_OFF', 'RUNNING')",
+                        targetId))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private long insertRun(String status) {
         return jdbc.queryForObject("""
-                INSERT INTO collect_run (target_id, status, window_from, window_to)
-                VALUES (?, ?, now() - INTERVAL '7 days', now())
+                INSERT INTO collect_run (target_id, run_type, status, window_from, window_to, started_at)
+                VALUES (?, 'SCHEDULED', ?, now() - INTERVAL '7 days', now(), now())
                 RETURNING run_id
                 """, Long.class, targetId, status);
     }

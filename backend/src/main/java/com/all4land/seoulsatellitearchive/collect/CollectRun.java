@@ -34,6 +34,9 @@ public class CollectRun {
     private CollectTarget target;
 
     @Enumerated(EnumType.STRING)
+    private CollectRunType runType;
+
+    @Enumerated(EnumType.STRING)
     private CollectRunStatus status;
 
     private Instant windowFrom;
@@ -50,7 +53,11 @@ public class CollectRun {
 
     private String failureReason;
 
+    private Instant createdAt;
+
     private Instant startedAt;
+
+    private Instant cancelRequestedAt;
 
     private Instant finishedAt;
 
@@ -58,8 +65,18 @@ public class CollectRun {
     @CollectionTable(name = "collect_run_skip", joinColumns = @JoinColumn(name = "run_id"))
     private List<CollectRunSkip> skips = new ArrayList<>();
 
-    public CollectRun(CollectTarget target, Instant windowFrom, Instant windowTo, Instant startedAt) {
+    // 조회 구간이 없으면 워커가 시작할 때 정한다
+    public CollectRun(
+            CollectTarget target, CollectRunType runType, Instant windowFrom, Instant windowTo, Instant createdAt) {
         this.target = target;
+        this.runType = runType;
+        this.status = CollectRunStatus.QUEUED;
+        this.windowFrom = windowFrom;
+        this.windowTo = windowTo;
+        this.createdAt = createdAt;
+    }
+
+    public void start(Instant windowFrom, Instant windowTo, Instant startedAt) {
         this.status = CollectRunStatus.RUNNING;
         this.windowFrom = windowFrom;
         this.windowTo = windowTo;
@@ -67,7 +84,22 @@ public class CollectRun {
     }
 
     public void succeed(int found, int inserted, int updated, List<CollectRunSkip> skips, Instant finishedAt) {
-        this.status = CollectRunStatus.SUCCEEDED;
+        finish(CollectRunStatus.SUCCEEDED, found, inserted, updated, skips, finishedAt);
+    }
+
+    // 멈추기 전까지 저장한 영상은 남으므로 건수도 남긴다
+    public void cancel(int found, int inserted, int updated, List<CollectRunSkip> skips, Instant finishedAt) {
+        finish(CollectRunStatus.CANCELED, found, inserted, updated, skips, finishedAt);
+    }
+
+    private void finish(
+            CollectRunStatus status,
+            int found,
+            int inserted,
+            int updated,
+            List<CollectRunSkip> skips,
+            Instant finishedAt) {
+        this.status = status;
         this.found = found;
         this.inserted = inserted;
         this.updated = updated;

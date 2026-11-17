@@ -11,6 +11,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -130,8 +131,34 @@ class StacClientTest {
         server.verify();
     }
 
+    @Test
+    void stopsRequestingWhenHandlerDeclinesNextPage() {
+        server.expect(requestTo(SEARCH_URL + "/search"))
+                .andRespond(page("a", "{\"rel\":\"next\",\"href\":\"https://stac.test/v1/search?token=2\"}"));
+
+        boolean reachedEnd = client.search(SEARCH_URL, "sentinel-2-c1-l2a", AOI, FROM, TO, items -> false);
+
+        assertThat(reachedEnd).isFalse();
+        server.verify();
+    }
+
+    // 마지막 페이지를 받았으면 처리기가 멈추라고 해도 끝까지 받은 것이다
+    @Test
+    void reachesEndOnLastPageEvenIfHandlerDeclines() {
+        server.expect(requestTo(SEARCH_URL + "/search")).andRespond(page("a", null));
+
+        assertThat(client.search(SEARCH_URL, "sentinel-2-c1-l2a", AOI, FROM, TO, items -> false))
+                .isTrue();
+        server.verify();
+    }
+
     private List<JsonNode> search() {
-        return client.search(SEARCH_URL, "sentinel-2-c1-l2a", AOI, FROM, TO);
+        List<JsonNode> items = new ArrayList<>();
+        client.search(SEARCH_URL, "sentinel-2-c1-l2a", AOI, FROM, TO, page -> {
+            items.addAll(page);
+            return true;
+        });
+        return items;
     }
 
     private static List<String> ids(List<JsonNode> items) {
