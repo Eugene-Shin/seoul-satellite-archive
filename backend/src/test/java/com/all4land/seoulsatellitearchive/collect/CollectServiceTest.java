@@ -55,14 +55,21 @@ class CollectServiceTest {
 
     private long targetId;
 
+    // 컬렉션마다 대상이 하나라서 c1은 seed 서울 대상을 쓴다
     @BeforeEach
     void setUp() {
-        targetId = insertTarget("sentinel-2-c1-l2a");
+        targetId = jdbc.queryForObject("""
+                SELECT t.target_id FROM collect_target t
+                JOIN image_collection c ON c.collection_id = t.collection_id
+                WHERE c.code = 'sentinel-2-c1-l2a'
+                """, Long.class);
     }
 
-    // seed 대상(서울)은 남기고 이 테스트가 만든 대상과 그 영상만 지운다
+    // seed 대상은 남기고 그 실행 이력·수집 영상과, 이 테스트가 만든 대상만 지운다
     @AfterEach
     void tearDown() {
+        jdbc.update("DELETE FROM satellite_image WHERE collect_target_id = ?", targetId);
+        jdbc.update("DELETE FROM collect_run WHERE target_id = ?", targetId);
         for (Long created : createdTargetIds) {
             jdbc.update("DELETE FROM satellite_image WHERE collect_target_id = ?", created);
             jdbc.update("DELETE FROM collect_target WHERE target_id = ?", created);

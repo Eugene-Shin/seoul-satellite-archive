@@ -35,9 +35,14 @@ class CollectRunControllerTest {
 
     private long targetId;
 
+    // 컬렉션마다 대상이 하나라서 c1은 seed 서울 대상을 쓴다
     @BeforeEach
     void setUp() {
-        targetId = insertTarget("sentinel-2-c1-l2a");
+        targetId = jdbc.queryForObject("""
+                SELECT t.target_id FROM collect_target t
+                JOIN image_collection c ON c.collection_id = t.collection_id
+                WHERE c.code = 'sentinel-2-c1-l2a'
+                """, Long.class);
     }
 
     @Test

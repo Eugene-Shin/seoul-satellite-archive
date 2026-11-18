@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.MultiPolygon;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
@@ -51,13 +52,25 @@ public class CollectTargetService {
         if (!CollectableCollections.contains(collection.getCode())) {
             throw new BusinessException(CommonErrorCode.BAD_REQUEST, "collectionId: 수집할 수 없는 컬렉션입니다.");
         }
+        // 형식 오류(400)를 먼저 알리고 중복(409)은 그 뒤에 본다
+        MultiPolygon aoi = aoi(request);
+        String scheduleCron = scheduleCron(request);
+        if (collectTargetRepository.existsForCollection(collection.getId())) {
+            throw duplicateCollection();
+        }
         CollectTarget target = new CollectTarget(
-                collection,
-                aoi(request),
-                scheduleCron(request),
-                Duration.ofDays(request.lookbackDays()),
-                request.enabled());
-        return save(target);
+                collection, aoi, scheduleCron, Duration.ofDays(request.lookbackDays()), request.enabled());
+        // 위 검사와 저장 사이에 다른 요청이 먼저 등록하면 유니크 제약이 막는다
+        try {
+            return save(target);
+        } catch (DataIntegrityViolationException e) {
+            throw duplicateCollection();
+        }
+    }
+
+    private static BusinessException duplicateCollection() {
+        return new BusinessException(
+                CommonErrorCode.CONFLICT, "collectionId: 이 컬렉션의 수집 대상이 이미 있습니다. 기존 대상의 영역에 지역을 추가하세요.");
     }
 
     @Transactional

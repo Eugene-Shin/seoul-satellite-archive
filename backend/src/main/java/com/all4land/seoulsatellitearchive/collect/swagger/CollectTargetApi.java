@@ -29,7 +29,10 @@ public interface CollectTargetApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "등록 (COMMON_201_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
-                description = "없거나 수집할 수 없는 컬렉션, 잘못된 영역·cron·lookback")
+                description = "없거나 수집할 수 없는 컬렉션, 잘못된 영역·cron·lookback"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "이 컬렉션의 수집 대상이 이미 있음 (컬렉션마다 하나)")
     })
     ApiResponse<CollectTargetResponse> create(CollectTargetRequest request);
 

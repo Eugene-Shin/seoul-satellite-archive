@@ -14,6 +14,7 @@ import {
     toFormValues,
 } from "@/features/collect/collectTargetFormValues";
 import {
+    useCollectTargets,
     useDefaultAoi,
     useSaveCollectTarget,
 } from "@/features/collect/queries";
@@ -80,14 +81,16 @@ function CollectTargetFormLoader({
 }: CollectTargetFormLoaderProps) {
     const defaultAoi = useDefaultAoi();
     const collections = useCollections();
+    const targets = useCollectTargets();
 
     if (editing === null) {
         return null;
     }
-    if (defaultAoi.error || collections.error) {
-        return <ErrorMessage error={defaultAoi.error ?? collections.error} />;
+    const error = defaultAoi.error ?? collections.error ?? targets.error;
+    if (error) {
+        return <ErrorMessage error={error} />;
     }
-    if (!defaultAoi.data || !collections.data) {
+    if (!defaultAoi.data || !collections.data || !targets.data) {
         return (
             <p className="text-sm text-muted-foreground">
                 불러오는 중입니다...
@@ -95,22 +98,29 @@ function CollectTargetFormLoader({
         );
     }
 
-    const collectable = collections.data.filter(
-        (collection) => collection.collectable,
-    );
     const target = editing === "new" ? null : editing;
+    // 컬렉션마다 수집 대상은 하나라서, 등록할 때는 이미 대상이 있는 컬렉션을 뺀다
+    const usedCollectionIds = targets.data.map(
+        (existing) => existing.collection.collectionId,
+    );
+    const choosable = collections.data.filter(
+        (collection) =>
+            collection.collectable &&
+            (target !== null ||
+                !usedCollectionIds.includes(collection.collectionId)),
+    );
     const initialValues = target
         ? toFormValues(target)
         : emptyFormValues(
               defaultAoi.data.aoi,
-              collectable[0]?.collectionId ?? null,
+              choosable[0]?.collectionId ?? null,
           );
 
     return (
         <CollectTargetForm
             target={target}
             initialValues={initialValues}
-            collections={collectable}
+            collections={choosable}
             defaultAoi={defaultAoi.data}
             onSaved={onSaved}
         />
@@ -185,16 +195,24 @@ function CollectTargetForm({
             {/* 입력칸만 스크롤해서 제목·닫기·버튼은 항상 보이게. 음수 여백은 초점 테두리가 잘리지 않게 */}
             <div className="-mx-4 flex min-h-0 flex-col gap-4 overflow-y-auto px-4 py-1">
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <FormSelect
-                        field="collectionId"
-                        label="컬렉션"
-                        required
-                        invalid={invalid("collectionId")}
-                        disabled={target !== null}
-                        options={collectionOptions}
-                        value={form.collectionId}
-                        onChange={selectCollection}
-                    />
+                    <div className="flex flex-col gap-2">
+                        <FormSelect
+                            field="collectionId"
+                            label="컬렉션"
+                            required
+                            invalid={invalid("collectionId")}
+                            disabled={target !== null}
+                            options={collectionOptions}
+                            value={form.collectionId}
+                            onChange={selectCollection}
+                        />
+                        {target === null && collections.length === 0 && (
+                            <p className="text-xs text-muted-foreground">
+                                수집할 수 있는 컬렉션마다 이미 수집 대상이
+                                있습니다. 기존 대상의 영역에 지역을 추가하세요.
+                            </p>
+                        )}
+                    </div>
                     <Field
                         field="lookbackDays"
                         label="재조회 기간 (일)"

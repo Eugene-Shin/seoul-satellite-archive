@@ -20,6 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class CollectSchedulerTest {
 
+    private static final String C1 = "sentinel-2-c1-l2a";
+    private static final String LEGACY_S2 = "sentinel-2-l2a";
+    private static final String HLS = "C2021957657-LPCLOUD";
+
     private static final Instant NOV17_0259_KST = Instant.parse("2026-11-16T17:59:00Z");
     private static final Instant NOV17_0300_KST = Instant.parse("2026-11-16T18:00:30Z");
     private static final Instant NOV17_0301_KST = Instant.parse("2026-11-16T18:01:00Z");
@@ -32,9 +36,12 @@ class CollectSchedulerTest {
 
     private long targetId;
 
+    // seed 대상은 실제 시각 기준으로 만들어져 있어서 지우고, 시각을 정한 대상을 새로 만든다(테스트 트랜잭션이 되돌린다).
+    // 컬렉션마다 대상이 하나라서 대상이 더 필요하면 다른 컬렉션으로 만든다
     @BeforeEach
     void setUp() {
-        targetId = insertTarget("0 0 3 * * *");
+        jdbc.update("DELETE FROM collect_target");
+        targetId = insertTarget(C1, "0 0 3 * * *");
     }
 
     @Test
@@ -85,18 +92,17 @@ class CollectSchedulerTest {
 
     @Test
     void skipsDisabledTargetAndInvalidCronWithoutStoppingOthers() {
-        jdbc.update("UPDATE collect_target SET enabled = false WHERE target_id = ?", targetId);
-        long invalidCron = insertTarget("not a cron");
-        long valid = insertTarget("0 0 3 * * *");
+        long disabled = insertTarget(LEGACY_S2, "0 0 3 * * *");
+        jdbc.update("UPDATE collect_target SET enabled = false WHERE target_id = ?", disabled);
+        long invalidCron = insertTarget(HLS, "not a cron");
 
         scheduler.enqueueDueRuns(NOV17_0300_KST);
 
-        assertThat(count("SELECT count(*) FROM collect_run WHERE target_id = ?", targetId))
+        assertThat(count("SELECT count(*) FROM collect_run WHERE target_id = ?", disabled))
                 .isZero();
         assertThat(count("SELECT count(*) FROM collect_run WHERE target_id = ?", invalidCron))
                 .isZero();
-        assertThat(count("SELECT count(*) FROM collect_run WHERE target_id = ?", valid))
-                .isEqualTo(1);
+        assertThat(scheduledRuns()).isEqualTo(1);
     }
 
     @Test
@@ -104,7 +110,7 @@ class CollectSchedulerTest {
         Instant now = Instant.parse("2026-11-17T01:00:00Z");
         long stale =
                 insertRunning(targetId, now.minus(CollectScheduler.STALE_AFTER).minusSeconds(1));
-        long alive = insertRunning(insertTarget("0 0 3 * * *"), now.minusSeconds(120));
+        long alive = insertRunning(insertTarget(LEGACY_S2, "0 0 3 * * *"), now.minusSeconds(120));
 
         scheduler.failStaleRuns(now);
 
@@ -136,15 +142,15 @@ class CollectSchedulerTest {
         return jdbc.queryForObject(sql, Long.class, args);
     }
 
-    private long insertTarget(String cron) {
+    private long insertTarget(String collectionCode, String cron) {
         return jdbc.queryForObject("""
                 INSERT INTO collect_target (collection_id, aoi, schedule_cron, created_at)
                 SELECT collection_id,
                        ST_GeomFromText('MULTIPOLYGON(((126.9 37.5, 127.1 37.5, 127.1 37.6, 126.9 37.5)))', 4326),
                        ?, '2026-11-16T12:00:00+09:00'
                 FROM image_collection
-                WHERE provider = 'earth-search' AND code = 'sentinel-2-c1-l2a'
+                WHERE code = ?
                 RETURNING target_id
-                """, Long.class, cron);
+                """, Long.class, cron, collectionCode);
     }
 }

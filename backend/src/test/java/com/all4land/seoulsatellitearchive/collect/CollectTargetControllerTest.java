@@ -78,6 +78,7 @@ class CollectTargetControllerTest {
 
     @Test
     void createUpdateAndDelete() throws Exception {
+        removeSeededTarget();
         String created = mockMvc.perform(json(post(BASE), body(c1CollectionId, "0 30 4 * * *", 3, true)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.aoi.coordinates[0][0][0][0]").value(126.9))
@@ -100,6 +101,7 @@ class CollectTargetControllerTest {
 
     @Test
     void rejectsInvalidValues() throws Exception {
+        removeSeededTarget();
         mockMvc.perform(json(post(BASE), body(legacyCollectionId, "0 0 3 * * *", 7, true)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorDetail[0]").value(containsString("수집할 수 없는 컬렉션")));
@@ -118,6 +120,16 @@ class CollectTargetControllerTest {
                         post(BASE), body(c1CollectionId, "0 0 3 * * *", 7, true).replace("MultiPolygon", "Polygon")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorDetail[0]").value(containsString("aoi")));
+    }
+
+    // 컬렉션마다 수집 대상은 하나다. 형식 오류는 중복보다 먼저 알린다
+    @Test
+    void secondTargetOfSameCollectionConflicts() throws Exception {
+        mockMvc.perform(json(post(BASE), body(c1CollectionId, "0 0 3 * * *", 7, true)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorDetail[0]").value(containsString("이 컬렉션의 수집 대상이 이미 있습니다")));
+        mockMvc.perform(json(post(BASE), body(c1CollectionId, "0 3 * * *", 7, true)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -160,6 +172,11 @@ class CollectTargetControllerTest {
 
     private static MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder request, String body) {
         return request.contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+
+    // 컬렉션마다 대상이 하나라서, c1 대상을 새로 만드는 테스트는 seed 대상을 먼저 지운다(테스트 트랜잭션이 되돌린다)
+    private void removeSeededTarget() {
+        jdbc.update("DELETE FROM collect_target");
     }
 
     private long seoulTargetId() {
