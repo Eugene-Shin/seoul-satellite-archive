@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import {
     type ImageFormValues,
@@ -24,28 +24,30 @@ import {
 } from "@/features/image/schemas";
 import type { Polarization } from "@/features/image/types";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
+import {
+    Field,
+    focusField,
+    FormSelect,
+    type FormSelectProps,
+} from "@/shared/components/FormField";
 import { MultiSelectMenu } from "@/shared/components/MultiSelect";
 import { Button } from "@/shared/components/ui/button";
 import { DialogClose, DialogFooter } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/shared/components/ui/select";
+import { SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Textarea } from "@/shared/components/ui/textarea";
-
-// 초점을 옮길 입력 요소 (Select는 트리거 버튼)
-const FOCUSABLE =
-    '[data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"]';
-
-export const IMAGE_FORM_DIALOG_CLASS =
-    "flex max-h-[80vh] flex-col shadow-2xl sm:max-w-2xl";
 
 // 기존 데이터에 밀리초가 있어서, 수정 후 저장해도 그대로 남게
 const MILLISECOND_STEP = 0.001;
+
+// 칸 이름을 영상 폼의 필수 칸으로 고정한다
+const ImageField = Field<RequiredField>;
+
+function ImageFormSelect<T extends string | number>(
+    props: FormSelectProps<T, RequiredField>,
+) {
+    return <FormSelect {...props} />;
+}
 
 type ImageFormProps = {
     initialValues: ImageFormValues;
@@ -104,10 +106,7 @@ export function ImageForm({
                 setSubmitted(true);
                 const [firstMissing] = missingRequiredFields(form);
                 if (firstMissing) {
-                    event.currentTarget
-                        .querySelector(`[data-field="${firstMissing}"]`)
-                        ?.querySelector<HTMLElement>(FOCUSABLE)
-                        ?.focus();
+                    focusField(event.currentTarget, firstMissing);
                     return;
                 }
                 onSubmit(form);
@@ -120,10 +119,10 @@ export function ImageForm({
                     fieldset은 스크롤 상자로 쓰면 높이가 줄지 않아서 contents로 상자를 없앤다 */}
                 <fieldset disabled={readOnly} className="contents">
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="제공 기관">
+                        <ImageField label="제공 기관">
                             <Input readOnly value={selectedProviderName} />
-                        </Field>
-                        <FormSelect
+                        </ImageField>
+                        <ImageFormSelect
                             field="collectionId"
                             label="컬렉션"
                             required
@@ -134,7 +133,7 @@ export function ImageForm({
                                 change({ collectionId })
                             }
                         />
-                        <Field
+                        <ImageField
                             field="sourceId"
                             label="원본 ID"
                             required
@@ -148,8 +147,8 @@ export function ImageForm({
                                     change({ sourceId: e.target.value })
                                 }
                             />
-                        </Field>
-                        <Field
+                        </ImageField>
+                        <ImageField
                             label="원본 갱신 일시"
                             hint="한국 시간(KST) 기준"
                         >
@@ -161,8 +160,8 @@ export function ImageForm({
                                     change({ sourceUpdatedAt: e.target.value })
                                 }
                             />
-                        </Field>
-                        <Field
+                        </ImageField>
+                        <ImageField
                             field="title"
                             label="제목"
                             required
@@ -177,8 +176,8 @@ export function ImageForm({
                                     change({ title: e.target.value })
                                 }
                             />
-                        </Field>
-                        <Field
+                        </ImageField>
+                        <ImageField
                             field="satellite"
                             label="위성"
                             required
@@ -198,8 +197,8 @@ export function ImageForm({
                                     <option key={satellite} value={satellite} />
                                 ))}
                             </datalist>
-                        </Field>
-                        <Field label="센서" hint="입력 후 Enter로 추가">
+                        </ImageField>
+                        <ImageField label="센서" hint="입력 후 Enter로 추가">
                             <InstrumentsField
                                 options={options?.instruments ?? []}
                                 value={form.instruments}
@@ -207,8 +206,8 @@ export function ImageForm({
                                     change({ instruments })
                                 }
                             />
-                        </Field>
-                        <FormSelect
+                        </ImageField>
+                        <ImageFormSelect
                             field="sensorType"
                             label="유형"
                             required
@@ -227,7 +226,7 @@ export function ImageForm({
                                 }
                             }}
                         />
-                        <Field
+                        <ImageField
                             field="acquiredAt"
                             label="촬영 일시"
                             required
@@ -244,8 +243,8 @@ export function ImageForm({
                                     change({ acquiredAt: e.target.value })
                                 }
                             />
-                        </Field>
-                        <Field
+                        </ImageField>
+                        <ImageField
                             label="촬영 종료 일시"
                             hint="한국 시간(KST) 기준"
                         >
@@ -258,8 +257,8 @@ export function ImageForm({
                                     change({ acquiredEndAt: e.target.value })
                                 }
                             />
-                        </Field>
-                        <Field
+                        </ImageField>
+                        <ImageField
                             label="구름량 (%)"
                             hint={
                                 form.sensorType === "SAR"
@@ -282,8 +281,8 @@ export function ImageForm({
                                     change({ cloudCover: e.target.value })
                                 }
                             />
-                        </Field>
-                        <FormSelect
+                        </ImageField>
+                        <ImageFormSelect
                             label="궤도"
                             emptyLabel="없음"
                             options={(options?.orbitDirections ?? []).map(
@@ -297,7 +296,7 @@ export function ImageForm({
                                 change({ orbitDirection })
                             }
                         />
-                        <Field
+                        <ImageField
                             field="url"
                             label="메타데이터 URL"
                             required
@@ -311,7 +310,7 @@ export function ImageForm({
                                     change({ url: e.target.value })
                                 }
                             />
-                        </Field>
+                        </ImageField>
                     </div>
                     {form.sensorType === "SAR" && (
                         <SarFields
@@ -319,7 +318,7 @@ export function ImageForm({
                             onChange={(sar) => change({ sar })}
                         />
                     )}
-                    <Field
+                    <ImageField
                         field="downloadUrls"
                         label="다운로드 URL"
                         required
@@ -334,8 +333,8 @@ export function ImageForm({
                                 change({ downloadUrls: e.target.value })
                             }
                         />
-                    </Field>
-                    <Field
+                    </ImageField>
+                    <ImageField
                         field="footprint"
                         label="footprint"
                         required
@@ -351,8 +350,8 @@ export function ImageForm({
                                 change({ footprint: e.target.value })
                             }
                         />
-                    </Field>
-                    <Field label="원본 메타데이터 (JSON)">
+                    </ImageField>
+                    <ImageField label="원본 메타데이터 (JSON)">
                         <Textarea
                             className="font-mono"
                             value={form.rawMetadata}
@@ -360,7 +359,7 @@ export function ImageForm({
                                 change({ rawMetadata: e.target.value })
                             }
                         />
-                    </Field>
+                    </ImageField>
                 </fieldset>
             </div>
             <ErrorMessage error={error} />
@@ -391,7 +390,7 @@ function SarFields({ value, onChange }: SarFieldsProps) {
         <section className="flex flex-col gap-4">
             <h3 className="font-semibold">SAR 정보</h3>
             <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="상대 궤도">
+                <ImageField label="상대 궤도">
                     <Input
                         type="number"
                         min={1}
@@ -401,8 +400,8 @@ function SarFields({ value, onChange }: SarFieldsProps) {
                             change({ relativeOrbit: e.target.value })
                         }
                     />
-                </Field>
-                <Field label="프레임">
+                </ImageField>
+                <ImageField label="프레임">
                     <Input
                         type="number"
                         min={0}
@@ -410,8 +409,8 @@ function SarFields({ value, onChange }: SarFieldsProps) {
                         value={value.frame}
                         onChange={(e) => change({ frame: e.target.value })}
                     />
-                </Field>
-                <Field label="촬영 모드" hint="예: IW, SM">
+                </ImageField>
+                <ImageField label="촬영 모드" hint="예: IW, SM">
                     <Input
                         maxLength={10}
                         value={value.instrumentMode}
@@ -419,8 +418,8 @@ function SarFields({ value, onChange }: SarFieldsProps) {
                             change({ instrumentMode: e.target.value })
                         }
                     />
-                </Field>
-                <FormSelect
+                </ImageField>
+                <ImageFormSelect
                     label="관측 방향"
                     emptyLabel="없음"
                     options={lookDirectionSchema.options.map((direction) => ({
@@ -430,7 +429,7 @@ function SarFields({ value, onChange }: SarFieldsProps) {
                     value={value.lookDirection}
                     onChange={(lookDirection) => change({ lookDirection })}
                 />
-                <Field label="편파">
+                <ImageField label="편파">
                     <MultiSelectMenu
                         options={polarizationSchema.options.map(
                             (polarization) => ({
@@ -459,8 +458,8 @@ function SarFields({ value, onChange }: SarFieldsProps) {
                             </SelectValue>
                         </SelectTrigger>
                     </MultiSelectMenu>
-                </Field>
-                <Field label="입사각 (°)" hint="장면 중심">
+                </ImageField>
+                <ImageField label="입사각 (°)" hint="장면 중심">
                     <Input
                         type="number"
                         min={0}
@@ -471,8 +470,11 @@ function SarFields({ value, onChange }: SarFieldsProps) {
                             change({ incidenceAngle: e.target.value })
                         }
                     />
-                </Field>
-                <Field label="거리 방향 해상도 (m)" hint="진행 방향에 수직">
+                </ImageField>
+                <ImageField
+                    label="거리 방향 해상도 (m)"
+                    hint="진행 방향에 수직"
+                >
                     <Input
                         type="number"
                         min={0}
@@ -482,8 +484,8 @@ function SarFields({ value, onChange }: SarFieldsProps) {
                             change({ resolutionRangeMeters: e.target.value })
                         }
                     />
-                </Field>
-                <Field label="방위 방향 해상도 (m)" hint="진행 방향">
+                </ImageField>
+                <ImageField label="방위 방향 해상도 (m)" hint="진행 방향">
                     <Input
                         type="number"
                         min={0}
@@ -493,7 +495,7 @@ function SarFields({ value, onChange }: SarFieldsProps) {
                             change({ resolutionAzimuthMeters: e.target.value })
                         }
                     />
-                </Field>
+                </ImageField>
             </div>
         </section>
     );
@@ -508,103 +510,5 @@ function ReadOnlyNotice({ readOnly }: { readOnly: boolean }) {
         <p className="text-sm text-muted-foreground">
             자동으로 수집한 영상은 수정할 수 없습니다.
         </p>
-    );
-}
-
-type FieldProps = {
-    field?: RequiredField;
-    label: string;
-    required?: boolean;
-    invalid?: boolean;
-    hint?: string;
-    children: ReactNode;
-};
-
-function Field({
-    field,
-    label,
-    required,
-    invalid,
-    hint,
-    children,
-}: FieldProps) {
-    return (
-        <label data-field={field} className="flex flex-col gap-2">
-            <span className="flex items-baseline justify-between gap-2 text-sm font-medium">
-                <span>
-                    {label}
-                    {required && <span className="text-destructive"> *</span>}
-                </span>
-                {hint && (
-                    <span className="text-xs font-normal text-muted-foreground">
-                        {hint}
-                    </span>
-                )}
-            </span>
-            {children}
-            {invalid && (
-                <span className="text-xs text-destructive">
-                    필수 입력입니다.
-                </span>
-            )}
-        </label>
-    );
-}
-
-type FormSelectProps<T extends string | number> = {
-    field?: RequiredField;
-    label: string;
-    required?: boolean;
-    invalid?: boolean;
-    emptyLabel?: string;
-    options: { value: T; label: string }[];
-    value: T | null;
-    onChange: (value: T | null) => void;
-};
-
-// 공용 Select는 [전체]가 붙어 있어서 폼에선 쓰지 않는다
-function FormSelect<T extends string | number>({
-    field,
-    label,
-    required,
-    invalid,
-    emptyLabel,
-    options,
-    value,
-    onChange,
-}: FormSelectProps<T>) {
-    const items = emptyLabel
-        ? [{ value: null, label: emptyLabel }, ...options]
-        : options;
-
-    return (
-        <Field
-            field={field}
-            label={label}
-            required={required}
-            invalid={invalid}
-        >
-            <Select
-                items={items}
-                required={required}
-                value={value}
-                onValueChange={onChange}
-            >
-                <SelectTrigger aria-invalid={invalid} className="w-full">
-                    <SelectValue placeholder="선택" />
-                </SelectTrigger>
-                <SelectContent>
-                    {items.map((item) => (
-                        <SelectItem
-                            key={String(item.value)}
-                            value={item.value}
-                            title={item.label}
-                        >
-                            <span className="truncate">{item.label}</span>
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </Field>
     );
 }

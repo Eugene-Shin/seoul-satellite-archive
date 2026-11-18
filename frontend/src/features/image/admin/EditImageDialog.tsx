@@ -2,13 +2,11 @@
 
 import { toast } from "sonner";
 
-import {
-    IMAGE_FORM_DIALOG_CLASS,
-    ImageForm,
-} from "@/features/image/admin/ImageForm";
+import { ImageForm } from "@/features/image/admin/ImageForm";
 import { toFormValues } from "@/features/image/admin/imageFormValues";
 import { useImageDetail, useUpdateImage } from "@/features/image/queries";
 import { ErrorMessage } from "@/shared/components/ErrorMessage";
+import { FORM_DIALOG_CLASS } from "@/shared/components/FormField";
 import {
     Dialog,
     DialogContent,
@@ -32,7 +30,7 @@ export function EditImageDialog({ imageId, onClose }: EditImageDialogProps) {
                 }
             }}
         >
-            <DialogContent className={IMAGE_FORM_DIALOG_CLASS}>
+            <DialogContent className={FORM_DIALOG_CLASS}>
                 <DialogHeader>
                     <DialogTitle>영상 수정</DialogTitle>
                 </DialogHeader>
