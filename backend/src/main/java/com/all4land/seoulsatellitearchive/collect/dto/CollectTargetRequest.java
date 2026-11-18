@@ -24,5 +24,5 @@ public record CollectTargetRequest(
         @NotNull @Min(value = 1, message = "1~31일이어야 합니다.") @Max(value = 31, message = "1~31일이어야 합니다.") @Schema(description = "늦게 공개·갱신되는 영상을 다시 조회할 일수(1~31)", example = "7")
         Integer lookbackDays,
 
-        @NotNull @Schema(description = "끄면 정기 수집을 하지 않는다. 단발 실행은 할 수 있다", example = "true")
+        @NotNull @Schema(description = "끄면 정기 수집을 하지 않는다. 단건 실행은 할 수 있다", example = "true")
         Boolean enabled) {}

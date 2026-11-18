@@ -97,7 +97,7 @@ class CollectServiceTest {
                         """)).isEqualTo(23);
     }
 
-    // 단발 실행의 성공은 다음 조회 시작점이 되지 않는다
+    // 단건 실행의 성공은 다음 조회 시작점이 되지 않는다
     @Test
     void defaultWindowContinuesFromLastScheduledSuccessOnly() throws IOException {
         Instant scheduledEnd = Instant.parse("2026-11-10T00:00:00Z");
@@ -171,6 +171,25 @@ class CollectServiceTest {
         assertThat(failed.getFinishedAt()).isNotNull();
         assertThat(count("SELECT count(*) FROM satellite_image WHERE collect_target_id = ?", targetId))
                 .isZero();
+    }
+
+    // 실패 전에 저장한 영상은 남으므로 건수도 남는다
+    @Test
+    void failureKeepsCountsSavedBeforeIt() throws IOException {
+        List<JsonNode> firstPage = items();
+        answerSearch(pageHandler -> {
+            pageHandler.handle(firstPage);
+            throw new ResourceAccessException("connection reset");
+        });
+
+        CollectRun failed = runOneOff();
+
+        assertThat(failed.getStatus()).isEqualTo(CollectRunStatus.FAILED);
+        assertThat(failed.getFailureReason()).isEqualTo("connection reset");
+        assertThat(failed.getFound()).isEqualTo(2);
+        assertThat(failed.getInserted()).isEqualTo(2);
+        assertThat(count("SELECT count(*) FROM satellite_image WHERE collect_target_id = ?", targetId))
+                .isEqualTo(2);
     }
 
     @Test

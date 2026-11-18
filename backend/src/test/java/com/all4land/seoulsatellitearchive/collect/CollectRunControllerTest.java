@@ -1,5 +1,6 @@
 package com.all4land.seoulsatellitearchive.collect;
 
+import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -114,6 +115,54 @@ class CollectRunControllerTest {
                 .andExpect(jsonPath("$.data.finishedAt").isNotEmpty());
         mockMvc.perform(post("/api/collect-runs/" + runId + "/cancel")).andExpect(status().isConflict());
         mockMvc.perform(post("/api/collect-runs/-1/cancel")).andExpect(status().isNotFound());
+    }
+
+    // 최근 등록이 위로. 커서로 이어 받고, targetId를 주면 그 대상만
+    @Test
+    void listsRunsNewestFirstWithCursorAndTargetFilter() throws Exception {
+        long legacyTarget = insertTarget("sentinel-2-l2a");
+        long oldest = insertFinishedRun(targetId, "2026-11-01T00:00:00Z");
+        long middle = insertFinishedRun(legacyTarget, "2026-11-02T00:00:00Z");
+        long newest = insertFinishedRun(targetId, "2026-11-03T00:00:00Z");
+
+        String first = mockMvc.perform(get("/api/collect-runs").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[*].runId", contains((int) newest, (int) middle)))
+                .andExpect(jsonPath("$.data.content[0].collectionTitle").value("Sentinel-2 Collection 1 Level-2A"))
+                .andExpect(jsonPath("$.data.nextCursor").isNotEmpty())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String cursor = JsonPath.read(first, "$.data.nextCursor");
+
+        mockMvc.perform(get("/api/collect-runs").param("size", "2").param("cursor", cursor))
+                .andExpect(jsonPath("$.data.content[*].runId", contains((int) oldest)))
+                .andExpect(jsonPath("$.data.nextCursor").doesNotExist());
+        mockMvc.perform(get("/api/collect-runs").param("targetId", String.valueOf(legacyTarget)))
+                .andExpect(jsonPath("$.data.content[*].runId", contains((int) middle)));
+        mockMvc.perform(get("/api/collect-runs").param("cursor", "not-a-cursor"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void returnsSkipsOfRun() throws Exception {
+        long runId = insertFinishedRun(targetId, "2026-11-01T00:00:00Z");
+        jdbc.update(
+                "INSERT INTO collect_run_skip (run_id, source_id, reason) VALUES (?, 'item-1', 'footprint 없음')", runId);
+
+        mockMvc.perform(get("/api/collect-runs/" + runId + "/skips"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].sourceId").value("item-1"))
+                .andExpect(jsonPath("$.data[0].reason").value("footprint 없음"));
+        mockMvc.perform(get("/api/collect-runs/-1/skips")).andExpect(status().isNotFound());
+    }
+
+    private long insertFinishedRun(long target, String createdAt) {
+        return jdbc.queryForObject("""
+                INSERT INTO collect_run (target_id, run_type, status, window_from, window_to, created_at, started_at, finished_at)
+                VALUES (?, 'ONE_OFF', 'SUCCEEDED', now() - INTERVAL '7 days', now(), ?::timestamptz, now(), now())
+                RETURNING run_id
+                """, Long.class, target, createdAt);
     }
 
     private long enqueue() throws Exception {

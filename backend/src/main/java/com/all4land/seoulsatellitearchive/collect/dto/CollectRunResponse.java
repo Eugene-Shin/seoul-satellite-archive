@@ -9,6 +9,7 @@ import java.time.Instant;
 public record CollectRunResponse(
         Long runId,
         Long targetId,
+        @Schema(description = "수집 대상의 컬렉션 이름") String collectionTitle,
         CollectRunType runType,
         CollectRunStatus status,
 
@@ -35,6 +36,7 @@ public record CollectRunResponse(
         return new CollectRunResponse(
                 run.getId(),
                 run.getTarget().getId(),
+                run.getTarget().getCollection().getTitle(),
                 run.getRunType(),
                 run.getStatus(),
                 run.getWindowFrom(),

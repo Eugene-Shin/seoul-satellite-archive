@@ -2,9 +2,12 @@ package com.all4land.seoulsatellitearchive.collect;
 
 import com.all4land.seoulsatellitearchive.collect.Sentinel2Mapper.Mapped;
 import com.all4land.seoulsatellitearchive.collect.dto.CollectRunResponse;
+import com.all4land.seoulsatellitearchive.collect.dto.CollectRunSearchRequest;
+import com.all4land.seoulsatellitearchive.collect.dto.CollectRunSkipResponse;
 import com.all4land.seoulsatellitearchive.collection.ImageCollection;
 import com.all4land.seoulsatellitearchive.collection.ImageCollectionRepository;
 import com.all4land.seoulsatellitearchive.global.exception.BusinessException;
+import com.all4land.seoulsatellitearchive.global.paging.SliceResponse;
 import com.all4land.seoulsatellitearchive.global.response.CommonErrorCode;
 import com.all4land.seoulsatellitearchive.image.ImageFile;
 import com.all4land.seoulsatellitearchive.image.ImageFileDetails;
@@ -29,8 +32,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.MultiPolygon;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.StringUtils;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -82,7 +88,7 @@ public class CollectService {
         return enqueue(targetId, runType, windowFrom, windowTo, clock.instant());
     }
 
-    // 기간은 단발 실행만 줄 수 있다. 없으면 워커가 시작할 때 정한다.
+    // 기간은 단건 실행만 줄 수 있다. 없으면 워커가 시작할 때 정한다.
     // 스케줄러는 판단한 시각을 등록 시각으로 넘겨서 다음 cron 시각 계산과 맞춘다
     Long enqueue(Long targetId, CollectRunType runType, Instant windowFrom, Instant windowTo, Instant createdAt) {
         if (runType == CollectRunType.SCHEDULED && windowFrom != null) {
@@ -118,20 +124,41 @@ public class CollectService {
                     || collectRunRepository.requestCancelRunning(runId, now) == 1) {
                 return;
             }
-            CollectRun run = collectRunRepository
-                    .findById(runId)
-                    .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
-            if (run.getStatus().isFinished()) {
+            if (findRunOrNotFound(runId).getStatus().isFinished()) {
                 throw new BusinessException(CommonErrorCode.CONFLICT, "이미 끝난 실행입니다.");
             }
         });
     }
 
+    @Transactional(readOnly = true)
     public CollectRunResponse getRun(Long runId) {
-        return transactionTemplate.execute(status -> collectRunRepository
-                .findById(runId)
-                .map(CollectRunResponse::from)
-                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND)));
+        return CollectRunResponse.from(findRunOrNotFound(runId));
+    }
+
+    // 최근 등록이 위로. 한 건 더 가져와서 다음 페이지가 있는지 판단한다
+    @Transactional(readOnly = true)
+    public SliceResponse<CollectRunResponse> findRuns(CollectRunSearchRequest request) {
+        CollectRunCursor cursor = StringUtils.hasText(request.getCursor())
+                ? CollectRunCursor.decode(request.getCursor())
+                : CollectRunCursor.FIRST;
+        int size = request.getSize();
+        List<CollectRun> rows = collectRunRepository.findPage(
+                request.getTargetId(), cursor.createdAt(), cursor.runId(), Limit.of(size + 1));
+        List<CollectRun> page = rows.size() > size ? rows.subList(0, size) : rows;
+        String nextCursor =
+                rows.size() > size ? CollectRunCursor.of(page.getLast()).encode() : null;
+        return new SliceResponse<>(page.stream().map(CollectRunResponse::from).toList(), nextCursor);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CollectRunSkipResponse> getSkips(Long runId) {
+        return findRunOrNotFound(runId).getSkips().stream()
+                .map(CollectRunSkipResponse::from)
+                .toList();
+    }
+
+    private CollectRun findRunOrNotFound(Long runId) {
+        return collectRunRepository.findById(runId).orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }
 
     // 대기 중인 실행 하나를 가져가 끝까지 처리한다. 대기열이 비었으면 false
@@ -202,7 +229,14 @@ public class CollectService {
             transactionTemplate.executeWithoutResult(status -> finish(findRun(runId), canceled, progress));
         } catch (RuntimeException e) {
             log.warn("수집 실패 runId={}", runId, e);
-            transactionTemplate.executeWithoutResult(status -> findRun(runId).fail(reason(e), clock.instant()));
+            transactionTemplate.executeWithoutResult(status -> findRun(runId)
+                    .fail(
+                            reason(e),
+                            progress.found,
+                            progress.inserted,
+                            progress.updated,
+                            progress.skips,
+                            clock.instant()));
         }
     }
 

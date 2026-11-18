@@ -24,6 +24,7 @@ import { formatKstDateTime } from "@/shared/utils/date";
 
 const CELL = "px-3 py-2 whitespace-nowrap";
 const HEADER_CELL = `${CELL} text-left font-medium`;
+const MANAGE_CELL = `${CELL} sticky right-0 text-center`;
 
 export function CollectTargetTable() {
     const { data: targets, error, refetch } = useCollectTargets();
@@ -31,7 +32,7 @@ export function CollectTargetTable() {
     const [deleting, setDeleting] = useState<CollectTarget | null>(null);
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
+        <div className="flex max-h-[40%] min-h-0 shrink-0 flex-col gap-3">
             <div className="flex justify-end">
                 <Button
                     variant="outline"
@@ -45,14 +46,16 @@ export function CollectTargetTable() {
             <ErrorMessage error={error} onRetry={() => refetch()} />
             <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
                 <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-muted">
+                    <thead className="sticky top-0 z-10 bg-muted">
                         <tr>
                             <th className={HEADER_CELL}>컬렉션</th>
                             <th className={HEADER_CELL}>일정</th>
                             <th className={HEADER_CELL}>다음 실행</th>
                             <th className={HEADER_CELL}>재조회 기간</th>
                             <th className={HEADER_CELL}>정기 수집</th>
-                            <th className={`${HEADER_CELL} text-center`}>
+                            <th
+                                className={`${MANAGE_CELL} bg-muted font-medium`}
+                            >
                                 관리
                             </th>
                         </tr>
@@ -141,7 +144,7 @@ function CollectTargetRow({ target, onEdit, onDelete }: CollectTargetRowProps) {
                     onCheckedChange={changeEnabled}
                 />
             </td>
-            <td className={`${CELL} text-center`}>
+            <td className={`${MANAGE_CELL} bg-background`}>
                 <IconButton
                     label={`${title} 지금 실행`}
                     variant="ghost"

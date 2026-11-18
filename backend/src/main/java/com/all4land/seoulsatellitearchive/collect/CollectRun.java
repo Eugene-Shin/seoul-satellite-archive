@@ -90,9 +90,20 @@ public class CollectRun {
         finish(CollectRunStatus.SUCCEEDED, found, inserted, updated, skips, finishedAt);
     }
 
-    // 멈추기 전까지 저장한 영상은 남으므로 건수도 남긴다
+    // 취소·실패 전까지 저장한 영상은 남으므로 건수도 남긴다
     public void cancel(int found, int inserted, int updated, List<CollectRunSkip> skips, Instant finishedAt) {
         finish(CollectRunStatus.CANCELED, found, inserted, updated, skips, finishedAt);
+    }
+
+    public void fail(
+            String failureReason,
+            int found,
+            int inserted,
+            int updated,
+            List<CollectRunSkip> skips,
+            Instant finishedAt) {
+        finish(CollectRunStatus.FAILED, found, inserted, updated, skips, finishedAt);
+        this.failureReason = failureReason;
     }
 
     private void finish(
@@ -108,12 +119,6 @@ public class CollectRun {
         this.updated = updated;
         this.skipped = skips.size();
         this.skips.addAll(skips);
-        this.finishedAt = finishedAt;
-    }
-
-    public void fail(String failureReason, Instant finishedAt) {
-        this.status = CollectRunStatus.FAILED;
-        this.failureReason = failureReason;
         this.finishedAt = finishedAt;
     }
 }

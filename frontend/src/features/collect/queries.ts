@@ -1,8 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+    type InfiniteData,
+    useInfiniteQuery,
+    useMutation,
+    useQuery,
+    useQueryClient,
+} from "@tanstack/react-query";
 
 import {
+    cancelCollectRun,
     createCollectTarget,
     deleteCollectTarget,
+    fetchCollectRuns,
+    fetchCollectRunSkips,
     fetchCollectTargets,
     fetchDefaultAoi,
     runCollectTarget,
@@ -13,7 +22,8 @@ import {
     requestFromTarget,
     toRequest,
 } from "@/features/collect/collectTargetFormValues";
-import type { CollectTarget } from "@/features/collect/types";
+import { isActive } from "@/features/collect/runText";
+import type { CollectRunPage, CollectTarget } from "@/features/collect/types";
 
 const TARGETS_KEY = ["collect", "targets"];
 
@@ -79,8 +89,65 @@ export function useDeleteCollectTarget(targetId: number) {
     });
 }
 
+const RUNS_KEY = ["collect", "runs"];
+const ACTIVE_POLL_MS = 5000;
+
+type RunPages = InfiniteData<CollectRunPage, string | undefined>;
+
+// 대기·실행 중인 실행이 있는 동안만 다시 받는다
+export function useCollectRuns() {
+    return useInfiniteQuery({
+        queryKey: RUNS_KEY,
+        queryFn: ({ pageParam, signal }) => fetchCollectRuns(pageParam, signal),
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        refetchInterval: (query) =>
+            query.state.data?.pages.some((page) =>
+                page.content.some((run) => isActive(run.status)),
+            )
+                ? ACTIVE_POLL_MS
+                : false,
+    });
+}
+
+export function useCollectRunSkips(runId: number) {
+    return useQuery({
+        queryKey: [...RUNS_KEY, runId, "skips"],
+        queryFn: ({ signal }) => fetchCollectRunSkips(runId, signal),
+    });
+}
+
+// 등록 응답을 목록 맨 위에 먼저 넣어 둔다. 다시 받았을 때 이미 끝나 있어도 끝난 실행으로 알아챈다
 export function useRunCollectTarget(targetId: number) {
+    const queryClient = useQueryClient();
+
     return useMutation({
         mutationFn: () => runCollectTarget(targetId),
+        onSuccess: (run) => {
+            queryClient.setQueryData<RunPages>(RUNS_KEY, (data) =>
+                data
+                    ? {
+                          ...data,
+                          pages: data.pages.map((page, index) =>
+                              index === 0
+                                  ? { ...page, content: [run, ...page.content] }
+                                  : page,
+                          ),
+                      }
+                    : data,
+            );
+            void queryClient.invalidateQueries({ queryKey: RUNS_KEY });
+        },
+    });
+}
+
+export function useCancelCollectRun(runId: number) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => cancelCollectRun(runId),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: RUNS_KEY });
+        },
     });
 }

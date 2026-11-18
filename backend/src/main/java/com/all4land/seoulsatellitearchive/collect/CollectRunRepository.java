@@ -1,13 +1,26 @@
 package com.all4land.seoulsatellitearchive.collect;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface CollectRunRepository extends JpaRepository<CollectRun, Long> {
+
+    // 최근 등록이 위로. 커서보다 앞선 실행만 limit개. targetId가 null이면 모든 대상
+    @Query("""
+            select r from CollectRun r
+            join fetch r.target t
+            join fetch t.collection
+            where (:targetId is null or t.id = :targetId)
+              and (r.createdAt < :cursorCreatedAt or (r.createdAt = :cursorCreatedAt and r.id < :cursorRunId))
+            order by r.createdAt desc, r.id desc
+            """)
+    List<CollectRun> findPage(Long targetId, Instant cursorCreatedAt, long cursorRunId, Limit limit);
 
     @Query("""
             select r from CollectRun r
