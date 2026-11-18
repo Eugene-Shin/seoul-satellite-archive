@@ -28,6 +28,7 @@ import View from "ol/View";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { CollectAdminDialog } from "@/features/collect/CollectAdminDialog";
 import { ImageAdminDialog } from "@/features/image/admin/ImageAdminDialog";
 import { creditText } from "@/features/image/imageText";
 import { AreaToolbar } from "@/features/image/map/AreaToolbar";
@@ -614,6 +615,7 @@ export function ImageMap({
                     onOverlayOpacityChange={setOverlayOpacity}
                 />
                 <ImageAdminDialog />
+                <CollectAdminDialog />
             </div>
             {chooser && (
                 <FootprintChooser

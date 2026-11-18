@@ -21,6 +21,7 @@ describe("creditText", () => {
         productType: "L2A",
         licenseName: null,
         licenseUrl: null,
+        collectable: false,
     };
 
     it("표기 문구에 UTC 기준 촬영 연도를 붙인다", () => {
@@ -179,6 +180,7 @@ describe("collectionOptionLabel", () => {
         licenseName: null,
         licenseUrl: null,
         creditText: null,
+        collectable: false,
     };
 
     it("컬렉션을 정의한 출처 이름을 앞에 붙인다", () => {

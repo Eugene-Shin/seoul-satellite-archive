@@ -29,6 +29,7 @@ export const collectionSchema = z.object({
     licenseName: z.string().nullable(),
     licenseUrl: z.string().nullable(),
     creditText: z.string().nullable(),
+    collectable: z.boolean(),
 });
 
 export const polarizationSchema = z.enum(["HH", "HV", "VH", "VV"]);

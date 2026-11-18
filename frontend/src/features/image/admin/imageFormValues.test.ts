@@ -159,6 +159,7 @@ describe("toFormValues", () => {
             licenseName: null,
             licenseUrl: null,
             creditText: null,
+            collectable: false,
         },
         sourceId: "admin-image-001",
         title: "서울 위성 영상",
