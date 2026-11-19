@@ -16,7 +16,7 @@ import {
     runWindowText,
 } from "@/features/collect/runText";
 import type { CollectRun } from "@/features/collect/types";
-import { ErrorMessage } from "@/shared/components/ErrorMessage";
+import { ErrorMessage, toastError } from "@/shared/components/ErrorMessage";
 import { IconButton } from "@/shared/components/IconButton";
 import { formatKstDateTime } from "@/shared/utils/date";
 
@@ -111,7 +111,7 @@ function CollectRunRow({ run, onDetail }: CollectRunRowProps) {
     function requestCancel() {
         cancel.mutate(undefined, {
             onSuccess: () => toast.success("취소를 요청했습니다."),
-            onError: (error) => toast.error(error.message),
+            onError: toastError,
         });
     }
 

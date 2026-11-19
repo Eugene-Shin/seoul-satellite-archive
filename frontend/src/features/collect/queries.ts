@@ -146,7 +146,8 @@ export function useCancelCollectRun(runId: number) {
 
     return useMutation({
         mutationFn: () => cancelCollectRun(runId),
-        onSuccess: () => {
+        // 화면이 늦게 갱신돼 이미 끝난 실행을 취소하면 실패하므로, 실패해도 다시 받는다
+        onSettled: () => {
             void queryClient.invalidateQueries({ queryKey: RUNS_KEY });
         },
     });

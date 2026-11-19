@@ -16,7 +16,7 @@ import {
 } from "@/features/collect/queries";
 import { describeCron } from "@/features/collect/schedule";
 import type { CollectTarget } from "@/features/collect/types";
-import { ErrorMessage } from "@/shared/components/ErrorMessage";
+import { ErrorMessage, toastError } from "@/shared/components/ErrorMessage";
 import { IconButton } from "@/shared/components/IconButton";
 import { Button } from "@/shared/components/ui/button";
 import { Switch } from "@/shared/components/ui/switch";
@@ -114,13 +114,13 @@ function CollectTargetRow({ target, onEdit, onDelete }: CollectTargetRowProps) {
     function runNow() {
         run.mutate(undefined, {
             onSuccess: () => toast.success("수집을 등록했습니다."),
-            onError: (error) => toast.error(error.message),
+            onError: toastError,
         });
     }
 
     function changeEnabled(enabled: boolean) {
         toggle.mutate(enabled, {
-            onError: (error) => toast.error(error.message),
+            onError: toastError,
         });
     }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { CircleAlertIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { ApiError } from "@/shared/api/client";
 import {
@@ -16,16 +17,28 @@ type ErrorMessageProps = {
     onRetry?: () => void;
 };
 
+// 오류에서 보일 문구. 서버 오류면 사유(errorDetail)까지
+function describeError(error: unknown): { message: string; details: string[] } {
+    return {
+        message:
+            error instanceof Error
+                ? error.message
+                : "알 수 없는 오류가 발생했습니다.",
+        details: error instanceof ApiError ? error.details : [],
+    };
+}
+
+export function toastError(error: unknown) {
+    const { message, details } = describeError(error);
+    toast.error(message, { description: details.join(" ") || undefined });
+}
+
 export function ErrorMessage({ error, onRetry }: ErrorMessageProps) {
     if (!error) {
         return null;
     }
 
-    const message =
-        error instanceof Error
-            ? error.message
-            : "알 수 없는 오류가 발생했습니다.";
-    const details = error instanceof ApiError ? error.details : [];
+    const { message, details } = describeError(error);
 
     return (
         <Alert
