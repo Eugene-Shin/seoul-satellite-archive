@@ -253,7 +253,7 @@ class CollectServiceTest {
                 .endsWith("12 Clear_night_cov 1000");
     }
 
-    // SAR 촬영 기하를 image_sar에 저장하고, 출처에 없는 해상도는 촬영 모드로 SAR 규칙(V39 IW 5 m x 20 m)에서 채운다
+    // SAR 촬영 기하를 image_sar에 저장하고, 출처에 없는 해상도는 촬영 모드로 SAR 규칙(IW 5 m x 22 m)에서 채운다
     @Test
     void savesSarGeometryWithRuleResolution() throws IOException {
         targetId = jdbc.queryForObject("""
@@ -287,7 +287,7 @@ class CollectServiceTest {
                 .containsEntry("polarizations", "VV+VH")
                 .containsEntry("look_direction", "RIGHT")
                 .containsEntry("resolution_range_meters", new BigDecimal("5.00"))
-                .containsEntry("resolution_azimuth_meters", new BigDecimal("20.00"));
+                .containsEntry("resolution_azimuth_meters", new BigDecimal("22.00"));
     }
 
     // 출처가 준 밴드 값은 그대로 두고 비어 있는 값만 규칙에서 채운다. 출처 밴드와는 이름으로 맞춘다
