@@ -26,7 +26,7 @@ import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-class StacClientTest {
+class StacProviderClientTest {
 
     private static final String SEARCH_URL = "https://stac.test/v1";
     private static final JsonNode AOI = new JsonMapper()
@@ -35,13 +35,13 @@ class StacClientTest {
     private static final Instant TO = Instant.parse("2026-10-08T00:00:00Z");
 
     private MockRestServiceServer server;
-    private StacClient client;
+    private StacProviderClient client;
 
     @BeforeEach
     void setUp() {
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        client = new StacClient(builder);
+        client = new StacProviderClient(builder);
     }
 
     @Test

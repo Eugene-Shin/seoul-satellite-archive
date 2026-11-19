@@ -15,6 +15,7 @@ import com.all4land.seoulsatellitearchive.image.ImageFileRepository;
 import com.all4land.seoulsatellitearchive.image.SatelliteImage;
 import com.all4land.seoulsatellitearchive.image.SatelliteImageRepository;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
+import com.all4land.seoulsatellitearchive.provider.MetadataSearchApi;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.time.Clock;
@@ -50,7 +51,7 @@ public class CollectService {
     private final ImageCollectionRepository imageCollectionRepository;
     private final SatelliteImageRepository satelliteImageRepository;
     private final ImageFileRepository imageFileRepository;
-    private final StacClient stacClient;
+    private final StacProviderClient stacProviderClient;
     private final Validator validator;
     private final Clock clock;
     private final TransactionTemplate transactionTemplate;
@@ -68,13 +69,14 @@ public class CollectService {
             Long runId,
             Long targetId,
             Long collectionId,
+            MetadataSearchApi searchApi,
             String searchUrl,
             String collectionCode,
             String aoiGeoJson,
             Instant windowFrom,
             Instant windowTo) {}
 
-    // 실행 하나의 진행 상황. StacClient가 페이지마다 부르는 람다 안에서 바꾸므로 지역 변수 대신 객체에 담는다
+    // 실행 하나의 진행 상황. 검색 클라이언트가 페이지마다 부르는 람다 안에서 바꾸므로 지역 변수 대신 객체에 담는다
     private static final class RunProgress {
         int found;
         int inserted;
@@ -195,6 +197,7 @@ public class CollectService {
                 run.getId(),
                 target.getId(),
                 collection.getId(),
+                collection.getProvider().getMetadataSearchApi(),
                 collection.getProvider().getMetadataSearchUrl(),
                 collection.getCode(),
                 target.getAoiGeoJson(),
@@ -208,23 +211,24 @@ public class CollectService {
         Long runId = context.runId();
         RunProgress progress = new RunProgress();
         try {
-            boolean reachedEnd = stacClient.search(
-                    context.searchUrl(),
-                    context.collectionCode(),
-                    JsonMapper.shared().readTree(context.aoiGeoJson()),
-                    context.windowFrom(),
-                    context.windowTo(),
-                    items -> {
-                        progress.found += items.size();
-                        for (JsonNode item : items) {
-                            if (checkpoint(runId)) {
-                                progress.stopped = true;
-                                return false;
-                            }
-                            saveCounting(context, item, progress);
-                        }
-                        return !checkpoint(runId);
-                    });
+            boolean reachedEnd = client(context.searchApi())
+                    .search(
+                            context.searchUrl(),
+                            context.collectionCode(),
+                            JsonMapper.shared().readTree(context.aoiGeoJson()),
+                            context.windowFrom(),
+                            context.windowTo(),
+                            items -> {
+                                progress.found += items.size();
+                                for (JsonNode item : items) {
+                                    if (checkpoint(runId)) {
+                                        progress.stopped = true;
+                                        return false;
+                                    }
+                                    saveCounting(context, item, progress);
+                                }
+                                return !checkpoint(runId);
+                            });
             boolean canceled = progress.stopped || !reachedEnd;
             transactionTemplate.executeWithoutResult(status -> finish(findRun(runId), canceled, progress));
         } catch (RuntimeException e) {
@@ -238,6 +242,13 @@ public class CollectService {
                             progress.skips,
                             clock.instant()));
         }
+    }
+
+    private ProviderClient client(MetadataSearchApi searchApi) {
+        return switch (searchApi) {
+            case STAC -> stacProviderClient;
+            default -> throw new IllegalStateException("검색 클라이언트가 없는 방식입니다: " + searchApi);
+        };
     }
 
     // 하트비트를 남기고 취소 요청이 있는지 돌려준다

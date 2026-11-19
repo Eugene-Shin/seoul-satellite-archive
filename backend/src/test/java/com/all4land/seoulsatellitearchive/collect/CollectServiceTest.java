@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 
-import com.all4land.seoulsatellitearchive.collect.StacClient.PageHandler;
+import com.all4land.seoulsatellitearchive.collect.ProviderClient.PageHandler;
 import com.all4land.seoulsatellitearchive.global.config.TestcontainersConfiguration;
 import com.all4land.seoulsatellitearchive.global.exception.BusinessException;
 import java.io.IOException;
@@ -49,7 +49,7 @@ class CollectServiceTest {
     JdbcTemplate jdbc;
 
     @MockitoBean
-    StacClient stacClient;
+    StacProviderClient stacClient;
 
     private final List<Long> createdTargetIds = new ArrayList<>();
 
