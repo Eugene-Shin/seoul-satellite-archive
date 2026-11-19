@@ -221,6 +221,38 @@ class CollectServiceTest {
                         """, String.class)).isEqualTo("Fmask");
     }
 
+    // 파일 하나에 레이어가 여럿인 MODIS .hdf는 같은 접미사의 규칙 12행을 순서대로 붙인다
+    @Test
+    void attachesAllLayersOfMultiLayerFile() throws IOException {
+        targetId = jdbc.queryForObject("""
+                SELECT t.target_id FROM collect_target t
+                JOIN image_collection c ON c.collection_id = t.collection_id
+                WHERE c.code = 'C1748058432-LPCLOUD'
+                """, Long.class);
+        JsonNode terra;
+        try (InputStream in = CollectServiceTest.class.getResourceAsStream("/collect/lst-search.json")) {
+            terra = JsonMapper.shared().readTree(in).path("items").get(1);
+        }
+        doAnswer(invocation -> {
+                    invocation.<PageHandler>getArgument(5).handle(List.of(terra));
+                    return true;
+                })
+                .when(cmrClient)
+                .search(any(), any(), any(), any(), any(), any());
+
+        assertThat(runOneOff().getInserted()).isEqualTo(1);
+        assertThat(jdbc.queryForList("""
+                        SELECT b.band_index || ' ' || b.band_name || ' ' || trim_scale(b.resolution_meters)
+                        FROM image_file_band b
+                                 JOIN image_file f ON f.file_id = b.file_id
+                        WHERE f.asset_key = 'MOD11A1.A2026305.h28v05.061.2026306092403.hdf'
+                        ORDER BY b.band_index
+                        """, String.class))
+                .hasSize(12)
+                .startsWith("1 LST_Day_1km 1000", "2 QC_Day 1000")
+                .endsWith("12 Clear_night_cov 1000");
+    }
+
     // 출처가 준 밴드 값은 그대로 두고 비어 있는 값만 규칙에서 채운다. 출처 밴드와는 이름으로 맞춘다
     @Test
     void fillsOnlyMissingSourceBandValuesFromRule() throws IOException {

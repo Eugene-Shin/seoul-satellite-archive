@@ -83,21 +83,32 @@ public abstract class CmrGranuleMapper implements ItemMapper {
         return scale == null ? number : number.setScale(scale, RoundingMode.HALF_UP);
     }
 
-    // GPolygons의 바깥 경계만 쓴다
+    // GPolygons는 바깥 경계만 쓰고, 사각형으로만 주는 제품(ECOSTRESS 타일)은 BoundingRectangles를 다각형으로 바꾼다
     private static JsonNode footprint(JsonNode umm) {
+        JsonNode geometry =
+                umm.path("SpatialExtent").path("HorizontalSpatialDomain").path("Geometry");
         ObjectNode multi = JsonNodeFactory.instance.objectNode();
         multi.put("type", "MultiPolygon");
         ArrayNode polygons = multi.putArray("coordinates");
-        for (JsonNode polygon : umm.path("SpatialExtent")
-                .path("HorizontalSpatialDomain")
-                .path("Geometry")
-                .path("GPolygons")) {
+        for (JsonNode polygon : geometry.path("GPolygons")) {
             ArrayNode ring = polygons.addArray().addArray();
             for (JsonNode point : polygon.path("Boundary").path("Points")) {
                 ring.addArray()
                         .add(point.path("Longitude").asDouble())
                         .add(point.path("Latitude").asDouble());
             }
+        }
+        for (JsonNode rectangle : geometry.path("BoundingRectangles")) {
+            double west = rectangle.path("WestBoundingCoordinate").asDouble();
+            double east = rectangle.path("EastBoundingCoordinate").asDouble();
+            double south = rectangle.path("SouthBoundingCoordinate").asDouble();
+            double north = rectangle.path("NorthBoundingCoordinate").asDouble();
+            ArrayNode ring = polygons.addArray().addArray();
+            ring.addArray().add(west).add(south);
+            ring.addArray().add(east).add(south);
+            ring.addArray().add(east).add(north);
+            ring.addArray().add(west).add(north);
+            ring.addArray().add(west).add(south);
         }
         return multi;
     }
@@ -130,12 +141,19 @@ public abstract class CmrGranuleMapper implements ItemMapper {
         return files;
     }
 
+    // 안내 링크(VIEW RELATED INFORMATION) 중 xml·json은 메타데이터, 이미지는 레이어별 미리보기(ECOSTRESS)다.
+    // 이미지는 V18 백필 이후에 추가한 규칙이다
     private static ImageFileRole role(String type, String url) {
         return switch (type) {
             case "GET DATA" ->
                 url.matches("(?i).*\\.(zip|tar|tar\\.gz|tgz)$") ? ImageFileRole.ORIGINAL : ImageFileRole.DATA;
             case "GET RELATED VISUALIZATION" -> ImageFileRole.THUMBNAIL;
-            case "VIEW RELATED INFORMATION" -> url.matches("(?i).*\\.(xml|json)$") ? ImageFileRole.METADATA : null;
+            case "VIEW RELATED INFORMATION" -> {
+                if (url.matches("(?i).*\\.(xml|json)$")) {
+                    yield ImageFileRole.METADATA;
+                }
+                yield url.matches("(?i).*\\.(jpe?g|png)$") ? ImageFileRole.PREVIEW : null;
+            }
             default -> null;
         };
     }
