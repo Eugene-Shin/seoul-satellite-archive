@@ -2,7 +2,7 @@ package com.all4land.seoulsatellitearchive.collect;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.all4land.seoulsatellitearchive.collect.Sentinel2Mapper.Mapped;
+import com.all4land.seoulsatellitearchive.collect.ItemMapper.Mapped;
 import com.all4land.seoulsatellitearchive.image.ImageFileBand;
 import com.all4land.seoulsatellitearchive.image.ImageFileDetails;
 import com.all4land.seoulsatellitearchive.image.ImageFileRole;
@@ -18,6 +18,8 @@ import tools.jackson.databind.node.ObjectNode;
 
 class Sentinel2MapperTest {
 
+    private static final Sentinel2Mapper MAPPER = new Sentinel2Mapper();
+
     private static final String ITEM_DIR =
             "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/52/S/CG/2026/10/"
                     + "S2B_T52SCG_20261028T022157_L2A/";
@@ -32,7 +34,7 @@ class Sentinel2MapperTest {
 
     @Test
     void mapsImageFields() throws IOException {
-        ImageWriteRequest request = Sentinel2Mapper.map(firstItem(), 7L).request();
+        ImageWriteRequest request = MAPPER.map(firstItem(), 7L).request();
 
         assertThat(request.getCollectionId()).isEqualTo(7L);
         assertThat(request.getSourceId()).isEqualTo("S2B_T52SCG_20261028T022157_L2A");
@@ -55,8 +57,7 @@ class Sentinel2MapperTest {
 
     @Test
     void mapsFilesWithRolesSpacingAndBands() throws IOException {
-        Map<String, ImageFileDetails> files =
-                Sentinel2Mapper.map(firstItem(), 7L).files();
+        Map<String, ImageFileDetails> files = MAPPER.map(firstItem(), 7L).files();
 
         ImageFileDetails red = files.get(ITEM_DIR + "B04.tif");
         assertThat(red.assetKey()).isEqualTo("red");
@@ -87,7 +88,7 @@ class Sentinel2MapperTest {
         ObjectNode item = firstItem();
         ((ObjectNode) item.path("properties")).putArray("instruments").add(" msi ");
 
-        assertThat(Sentinel2Mapper.map(item, 7L).request().getInstruments()).containsExactly("MSI");
+        assertThat(MAPPER.map(item, 7L).request().getInstruments()).containsExactly("MSI");
     }
 
     @Test
@@ -95,7 +96,7 @@ class Sentinel2MapperTest {
         ObjectNode item = firstItem();
         ((ObjectNode) item.path("assets").path("red").path("eo:bands").get(0)).put("common_name", "red-edge-x");
 
-        Mapped mapped = Sentinel2Mapper.map(item, 7L);
+        Mapped mapped = MAPPER.map(item, 7L);
 
         assertThat(mapped.files().get(ITEM_DIR + "B04.tif").bands())
                 .singleElement()

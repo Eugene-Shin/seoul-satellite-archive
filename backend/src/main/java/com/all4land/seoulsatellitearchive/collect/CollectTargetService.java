@@ -49,7 +49,7 @@ public class CollectTargetService {
         ImageCollection collection = imageCollectionRepository
                 .findById(request.collectionId())
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BAD_REQUEST, "collectionId: 존재하지 않는 컬렉션입니다."));
-        if (!CollectableCollections.contains(collection.getCode())) {
+        if (!ItemMappers.supports(collection.getCode())) {
             throw new BusinessException(CommonErrorCode.BAD_REQUEST, "collectionId: 수집할 수 없는 컬렉션입니다.");
         }
         // 형식 오류(400)를 먼저 알리고 중복(409)은 그 뒤에 본다

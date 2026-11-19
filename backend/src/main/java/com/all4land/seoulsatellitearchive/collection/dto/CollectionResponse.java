@@ -1,6 +1,6 @@
 package com.all4land.seoulsatellitearchive.collection.dto;
 
-import com.all4land.seoulsatellitearchive.collect.CollectableCollections;
+import com.all4land.seoulsatellitearchive.collect.ItemMappers;
 import com.all4land.seoulsatellitearchive.collection.ImageCollection;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -25,6 +25,6 @@ public record CollectionResponse(
                 collection.getLicenseName(),
                 collection.getLicenseUrl(),
                 collection.getCreditText(),
-                CollectableCollections.contains(collection.getCode()));
+                ItemMappers.supports(collection.getCode()));
     }
 }

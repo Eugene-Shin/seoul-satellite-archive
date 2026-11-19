@@ -1,6 +1,6 @@
 package com.all4land.seoulsatellitearchive.collect;
 
-import com.all4land.seoulsatellitearchive.collect.Sentinel2Mapper.Mapped;
+import com.all4land.seoulsatellitearchive.collect.ItemMapper.Mapped;
 import com.all4land.seoulsatellitearchive.collect.dto.CollectRunResponse;
 import com.all4land.seoulsatellitearchive.collect.dto.CollectRunSearchRequest;
 import com.all4land.seoulsatellitearchive.collect.dto.CollectRunSkipResponse;
@@ -103,7 +103,7 @@ public class CollectService {
                     .findById(targetId)
                     .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
             String collectionCode = target.getCollection().getCode();
-            if (!CollectableCollections.contains(collectionCode)) {
+            if (!ItemMappers.supports(collectionCode)) {
                 throw new BusinessException(CommonErrorCode.BAD_REQUEST, "수집할 수 없는 컬렉션입니다: " + collectionCode);
             }
             try {
@@ -280,7 +280,9 @@ public class CollectService {
 
     // 출처 갱신 일시가 그대로면 바뀐 것이 없다고 보고 건드리지 않는다
     private SaveResult save(RunContext context, JsonNode item) {
-        Mapped mapped = Sentinel2Mapper.map(item, context.collectionId());
+        Mapped mapped = ItemMappers.find(context.collectionCode())
+                .orElseThrow(() -> new IllegalStateException("매퍼가 없는 컬렉션입니다: " + context.collectionCode()))
+                .map(item, context.collectionId());
         ImageWriteRequest request = mapped.request();
         validate(request);
         MultiPolygon footprint = request.toFootprint();

@@ -44,7 +44,7 @@ class Sentinel2MapperDbTest {
             dbNames.add(matcher.group(1));
         }
 
-        assertThat(dbNames).isEqualTo(Sentinel2Mapper.COMMON_NAMES);
+        assertThat(dbNames).isEqualTo(StacItemMapper.COMMON_NAMES);
     }
 
     // 수집기가 만드는 파일·밴드 행이 V18 백필과 같아야 한다(시드 S2 영상으로 비교)
@@ -60,8 +60,8 @@ class Sentinel2MapperDbTest {
 
         for (Map<String, Object> image : images) {
             Long imageId = ((Number) image.get("image_id")).longValue();
-            Map<String, ImageFileDetails> mapped = Sentinel2Mapper.map(
-                            JsonMapper.shared().readTree((String) image.get("raw")), 1L)
+            Map<String, ImageFileDetails> mapped = new Sentinel2Mapper()
+                    .map(JsonMapper.shared().readTree((String) image.get("raw")), 1L)
                     .files();
 
             assertThat(mapperRows(mapped)).as("image %d", imageId).isEqualTo(dbRows(imageId));
