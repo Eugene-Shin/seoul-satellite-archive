@@ -253,6 +253,43 @@ class CollectServiceTest {
                 .endsWith("12 Clear_night_cov 1000");
     }
 
+    // SAR 촬영 기하를 image_sar에 저장하고, 출처에 없는 해상도는 촬영 모드로 SAR 규칙(V39 IW 5 m x 20 m)에서 채운다
+    @Test
+    void savesSarGeometryWithRuleResolution() throws IOException {
+        targetId = jdbc.queryForObject("""
+                SELECT t.target_id FROM collect_target t
+                JOIN image_collection c ON c.collection_id = t.collection_id
+                WHERE c.code = 'C3470873558-ASF'
+                """, Long.class);
+        JsonNode s1c;
+        try (InputStream in = CollectServiceTest.class.getResourceAsStream("/collect/s1-search.json")) {
+            s1c = JsonMapper.shared().readTree(in).path("items").get(0);
+        }
+        doAnswer(invocation -> {
+                    invocation.<PageHandler>getArgument(5).handle(List.of(s1c));
+                    return true;
+                })
+                .when(cmrClient)
+                .search(any(), any(), any(), any(), any(), any());
+
+        assertThat(runOneOff().getInserted()).isEqualTo(1);
+        assertThat(jdbc.queryForMap("""
+                        SELECT i.orbit_direction, s.relative_orbit, s.frame, s.instrument_mode,
+                               array_to_string(s.polarizations, '+') AS polarizations, s.look_direction,
+                               s.resolution_range_meters, s.resolution_azimuth_meters
+                        FROM satellite_image i JOIN image_sar s ON s.image_id = i.image_id
+                        WHERE i.collect_target_id = ?
+                        """, targetId))
+                .containsEntry("orbit_direction", "DESCENDING")
+                .containsEntry("relative_orbit", 134)
+                .containsEntry("frame", 466)
+                .containsEntry("instrument_mode", "IW")
+                .containsEntry("polarizations", "VV+VH")
+                .containsEntry("look_direction", "RIGHT")
+                .containsEntry("resolution_range_meters", new BigDecimal("5.00"))
+                .containsEntry("resolution_azimuth_meters", new BigDecimal("20.00"));
+    }
+
     // 출처가 준 밴드 값은 그대로 두고 비어 있는 값만 규칙에서 채운다. 출처 밴드와는 이름으로 맞춘다
     @Test
     void fillsOnlyMissingSourceBandValuesFromRule() throws IOException {

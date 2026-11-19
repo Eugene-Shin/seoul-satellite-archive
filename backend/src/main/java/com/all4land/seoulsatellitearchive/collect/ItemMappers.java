@@ -17,7 +17,8 @@ public final class ItemMappers {
                     new LandsatMapper(),
                     new HlsMapper(),
                     new EcostressMapper(),
-                    new ModisLstMapper())
+                    new ModisLstMapper(),
+                    new Sentinel1SlcMapper())
             .stream()
             .flatMap(mapper -> mapper.collections().stream().map(code -> Map.entry(code, mapper)))
             .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));

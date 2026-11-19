@@ -98,7 +98,7 @@ class ImageControllerTest {
     void collections() throws Exception {
         mockMvc.perform(get("/api/collections"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(10)))
+                .andExpect(jsonPath("$.data", hasSize(12)))
                 .andExpect(jsonPath("$.data[?(@.code == 'sentinel-2-l2a')].providerCode", contains("earth-search")))
                 .andExpect(jsonPath("$.data[?(@.code == 'sentinel-2-c1-l2a')].providerCode", contains("earth-search")))
                 .andExpect(jsonPath("$.data[?(@.code == 'landsat-c2l2-st')].providerCode", contains("usgs")))
@@ -111,7 +111,10 @@ class ImageControllerTest {
                                 "C2021957295-LPCLOUD",
                                 "C3998139651-LPCLOUD",
                                 "C1748058432-LPCLOUD",
-                                "C1748046084-LPCLOUD")));
+                                "C1748046084-LPCLOUD",
+                                "C1214470488-ASF",
+                                "C3470873558-ASF",
+                                "C4175278193-ASF")));
     }
 
     // 백필은 출처가 영상에 적어 둔 컬렉션 참조(STAC collection, CMR collection-concept-id)를 따른다

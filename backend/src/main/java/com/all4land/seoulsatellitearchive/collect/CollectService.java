@@ -16,9 +16,11 @@ import com.all4land.seoulsatellitearchive.image.ImageFileBand;
 import com.all4land.seoulsatellitearchive.image.ImageFileDetails;
 import com.all4land.seoulsatellitearchive.image.ImageFileRepository;
 import com.all4land.seoulsatellitearchive.image.ImageFileRole;
+import com.all4land.seoulsatellitearchive.image.ImageService;
 import com.all4land.seoulsatellitearchive.image.SatelliteImage;
 import com.all4land.seoulsatellitearchive.image.SatelliteImageRepository;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
+import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest.SarRequest;
 import com.all4land.seoulsatellitearchive.provider.MetadataSearchApi;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -58,6 +60,8 @@ public class CollectService {
     private final ImageFileRepository imageFileRepository;
     private final BandCommonNameRepository bandCommonNameRepository;
     private final CollectBandRuleRepository collectBandRuleRepository;
+    private final CollectSarRuleRepository collectSarRuleRepository;
+    private final ImageService imageService;
     private final StacProviderClient stacProviderClient;
     private final CmrProviderClient cmrProviderClient;
     private final Validator validator;
@@ -84,7 +88,8 @@ public class CollectService {
             Instant windowFrom,
             Instant windowTo,
             Set<String> commonNames,
-            List<CollectBandRule> bandRules) {}
+            List<CollectBandRule> bandRules,
+            List<CollectSarRule> sarRules) {}
 
     // 실행 하나의 진행 상황. 검색 클라이언트가 페이지마다 부르는 람다 안에서 바꾸므로 지역 변수 대신 객체에 담는다
     private static final class RunProgress {
@@ -216,7 +221,8 @@ public class CollectService {
                 bandCommonNameRepository.findAll().stream()
                         .map(BandCommonName::getName)
                         .collect(Collectors.toUnmodifiableSet()),
-                collectBandRuleRepository.findByCollection(collection.getId()));
+                collectBandRuleRepository.findByCollection(collection.getId()),
+                collectSarRuleRepository.findByCollection(collection.getId()));
     }
 
     // 실행 기록과 영상은 각각 따로 커밋한다. 영상 하나가 실패해도 나머지는 저장되고, 실행이 실패해도 기록이 남는다.
@@ -325,7 +331,33 @@ public class CollectService {
         image.replaceMetadata(request, imageCollectionRepository.getReferenceById(context.collectionId()), footprint);
         satelliteImageRepository.saveAndFlush(image);
         syncFiles(image, completeBands(mapped.files(), context));
+        imageService.replaceSar(image, completeSar(request.getSar(), context));
         return existing.isPresent() ? SaveResult.UPDATED : SaveResult.INSERTED;
+    }
+
+    // 출처가 주지 않은 SAR 해상도는 촬영 모드로 SAR 규칙(collect_sar_rule)에서 채운다
+    private static SarRequest completeSar(SarRequest sar, RunContext context) {
+        if (sar == null) {
+            return null;
+        }
+        CollectSarRule rule = context.sarRules().stream()
+                .filter(candidate -> candidate.getInstrumentMode().equals(sar.instrumentMode()))
+                .findFirst()
+                .orElse(null);
+        if (rule == null) {
+            return sar;
+        }
+        return new SarRequest(
+                sar.relativeOrbit(),
+                sar.frame(),
+                sar.instrumentMode(),
+                sar.polarizations(),
+                sar.lookDirection(),
+                sar.incidenceAngle(),
+                sar.resolutionRangeMeters() != null ? sar.resolutionRangeMeters() : rule.getResolutionRangeMeters(),
+                sar.resolutionAzimuthMeters() != null
+                        ? sar.resolutionAzimuthMeters()
+                        : rule.getResolutionAzimuthMeters());
     }
 
     // 데이터 파일의 밴드는 출처 값을 쓰고, 출처가 주지 않은 값은 밴드 규칙(collect_band_rule)에서 채운다.

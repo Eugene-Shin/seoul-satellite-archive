@@ -96,8 +96,8 @@ public class ImageService {
         entityManager.refresh(image);
     }
 
-    // 수정은 전체 교체라서 sar가 없으면 기존 행을 지운다
-    private void replaceSar(SatelliteImage image, SarRequest request) {
+    // 수정은 전체 교체라서 sar가 없으면 기존 행을 지운다. 수집 저장(CollectService)도 같이 쓴다
+    public void replaceSar(SatelliteImage image, SarRequest request) {
         ImageSar sar = imageSarRepository.findById(image.getId()).orElse(null);
         if (request == null) {
             if (sar != null) {

@@ -3,6 +3,7 @@ package com.all4land.seoulsatellitearchive.collect;
 import com.all4land.seoulsatellitearchive.image.ImageFileDetails;
 import com.all4land.seoulsatellitearchive.image.ImageFileRole;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
+import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest.SarRequest;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
@@ -17,7 +18,7 @@ import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 
 // NASA CMR 그래뉼(UMM-G: meta + umm) 공통 변환. 파일 규칙은 V18 CMR 백필과 같다.
-// 제품마다 다른 위성·센서 이름, 구름량만 하위 클래스가 바꾼다. CMR은 밴드 정보를 주지 않아서
+// 제품마다 다른 위성·센서 이름, 센서 종류, 구름량, 궤도 방향, SAR 기하만 하위 클래스가 바꾼다. CMR은 밴드 정보를 주지 않아서
 // 밴드는 저장할 때 밴드 규칙(collect_band_rule)으로 붙인다
 public abstract class CmrGranuleMapper implements ItemMapper {
 
@@ -33,11 +34,13 @@ public abstract class CmrGranuleMapper implements ItemMapper {
         request.setTitle(umm.path("GranuleUR").asString(null));
         request.setSatellite(satellite(umm));
         request.setInstruments(instruments(umm.path("Platforms")));
-        request.setSensorType("OPTICAL");
+        request.setSensorType(sensorType());
         JsonNode range = umm.path("TemporalExtent").path("RangeDateTime");
         request.setAcquiredAt(dateTime(range.path("BeginningDateTime")));
         request.setAcquiredEndAt(dateTime(range.path("EndingDateTime")));
         request.setCloudCover(cloudCover(umm));
+        request.setOrbitDirection(orbitDirection(umm));
+        request.setSar(sar(umm));
         request.setFootprint(footprint(umm));
         request.setUrl("https://cmr.earthdata.nasa.gov/search/concepts/"
                 + meta.path("concept-id").asString());
@@ -61,8 +64,21 @@ public abstract class CmrGranuleMapper implements ItemMapper {
         return values;
     }
 
+    protected String sensorType() {
+        return "OPTICAL";
+    }
+
     // 출처마다 구름량을 주는 속성이 다르다. 없으면 비운다
     protected BigDecimal cloudCover(JsonNode umm) {
+        return null;
+    }
+
+    protected String orbitDirection(JsonNode umm) {
+        return null;
+    }
+
+    // SAR 촬영 기하(image_sar). 광학은 없다
+    protected SarRequest sar(JsonNode umm) {
         return null;
     }
 
