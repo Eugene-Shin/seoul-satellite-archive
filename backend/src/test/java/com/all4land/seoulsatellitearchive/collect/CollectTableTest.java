@@ -16,12 +16,14 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 @Transactional
+@Sql("/fixtures/uncollectable-collection.sql")
 class CollectTableTest {
 
     @Autowired
@@ -35,14 +37,16 @@ class CollectTableTest {
 
     private long targetId;
 
+    // 컬렉션마다 대상이 하나라서 대상이 없는 fixture 컬렉션(uncollectable-collection.sql)에 만든다
     @BeforeEach
     void setUp() {
         targetId = jdbc.queryForObject("""
                 INSERT INTO collect_target (collection_id, aoi, schedule_cron)
-                SELECT min(collection_id),
+                SELECT collection_id,
                        ST_GeomFromText('MULTIPOLYGON(((126.9 37.5, 127 37.5, 127 37.6, 126.9 37.5)))', 4326),
                        '0 0 3 * * *'
                 FROM image_collection
+                WHERE code = 'test-uncollectable'
                 RETURNING target_id
                 """, Long.class);
     }

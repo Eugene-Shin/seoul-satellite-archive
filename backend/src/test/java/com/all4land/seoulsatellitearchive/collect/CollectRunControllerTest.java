@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 @Transactional
+@Sql("/fixtures/uncollectable-collection.sql")
 class CollectRunControllerTest {
 
     @Autowired
@@ -88,7 +90,7 @@ class CollectRunControllerTest {
     @Test
     void enqueueRejectsUnknownTargetUnsupportedCollectionAndActiveRun() throws Exception {
         mockMvc.perform(post(runsOf(-1))).andExpect(status().isNotFound());
-        mockMvc.perform(post(runsOf(insertTarget("sentinel-2-l2a")))).andExpect(status().isBadRequest());
+        mockMvc.perform(post(runsOf(insertTarget("test-uncollectable")))).andExpect(status().isBadRequest());
 
         mockMvc.perform(post(runsOf(targetId))).andExpect(status().isAccepted());
         mockMvc.perform(post(runsOf(targetId))).andExpect(status().isConflict());
@@ -120,9 +122,9 @@ class CollectRunControllerTest {
     // 최근 등록이 위로. 커서로 이어 받고, targetId를 주면 그 대상만
     @Test
     void listsRunsNewestFirstWithCursorAndTargetFilter() throws Exception {
-        long legacyTarget = insertTarget("sentinel-2-l2a");
+        long otherTarget = insertTarget("test-uncollectable");
         long oldest = insertFinishedRun(targetId, "2026-11-01T00:00:00Z");
-        long middle = insertFinishedRun(legacyTarget, "2026-11-02T00:00:00Z");
+        long middle = insertFinishedRun(otherTarget, "2026-11-02T00:00:00Z");
         long newest = insertFinishedRun(targetId, "2026-11-03T00:00:00Z");
 
         String first = mockMvc.perform(get("/api/collect-runs").param("size", "2"))
@@ -138,7 +140,7 @@ class CollectRunControllerTest {
         mockMvc.perform(get("/api/collect-runs").param("size", "2").param("cursor", cursor))
                 .andExpect(jsonPath("$.data.content[*].runId", contains((int) oldest)))
                 .andExpect(jsonPath("$.data.nextCursor").doesNotExist());
-        mockMvc.perform(get("/api/collect-runs").param("targetId", String.valueOf(legacyTarget)))
+        mockMvc.perform(get("/api/collect-runs").param("targetId", String.valueOf(otherTarget)))
                 .andExpect(jsonPath("$.data.content[*].runId", contains((int) middle)));
         mockMvc.perform(get("/api/collect-runs").param("cursor", "not-a-cursor"))
                 .andExpect(status().isBadRequest());

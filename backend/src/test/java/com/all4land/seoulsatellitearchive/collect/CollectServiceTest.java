@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.web.client.ResourceAccessException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -79,6 +80,8 @@ class CollectServiceTest {
             jdbc.update("DELETE FROM collect_target WHERE target_id = ?", created);
         }
         createdTargetIds.clear();
+        // 테스트 트랜잭션이 없어서 fixture 컬렉션(uncollectable-collection.sql)도 직접 지운다
+        jdbc.update("DELETE FROM image_collection WHERE code = 'test-uncollectable'");
     }
 
     @Test
@@ -356,12 +359,13 @@ class CollectServiceTest {
     }
 
     @Test
+    @Sql("/fixtures/uncollectable-collection.sql")
     void rejectsCollectionWithoutMapper() {
-        long legacyTarget = insertTarget("sentinel-2-l2a");
+        long uncollectableTarget = insertTarget("test-uncollectable");
 
-        assertThatThrownBy(() -> collectService.enqueue(legacyTarget, CollectRunType.ONE_OFF, null, null))
+        assertThatThrownBy(() -> collectService.enqueue(uncollectableTarget, CollectRunType.ONE_OFF, null, null))
                 .isInstanceOf(BusinessException.class);
-        assertThat(count("SELECT count(*) FROM collect_run WHERE target_id = ?", legacyTarget))
+        assertThat(count("SELECT count(*) FROM collect_run WHERE target_id = ?", uncollectableTarget))
                 .isZero();
     }
 

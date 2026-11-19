@@ -4,11 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -84,7 +82,7 @@ class ImageControllerTest {
     @BeforeEach
     void fillCollectionId() {
         request = JsonPath.parse(REQUEST_TEMPLATE)
-                .set("$.collectionId", collectionId("earth-search", "sentinel-2-l2a"))
+                .set("$.collectionId", collectionId("earth-search", "sentinel-2-c1-l2a"))
                 .jsonString();
     }
 
@@ -100,8 +98,7 @@ class ImageControllerTest {
     void collections() throws Exception {
         mockMvc.perform(get("/api/collections"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(12)))
-                .andExpect(jsonPath("$.data[?(@.code == 'sentinel-2-l2a')].providerCode", contains("earth-search")))
+                .andExpect(jsonPath("$.data", hasSize(11)))
                 .andExpect(jsonPath("$.data[?(@.code == 'sentinel-2-c1-l2a')].providerCode", contains("earth-search")))
                 .andExpect(jsonPath("$.data[?(@.code == 'landsat-c2l2-st')].providerCode", contains("usgs")))
                 .andExpect(jsonPath("$.data[?(@.collectable == true)].code")
@@ -125,8 +122,7 @@ class ImageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.satellites", hasItems("LANDSAT-8", "SENTINEL-1A", "SENTINEL-2A")))
                 .andExpect(jsonPath("$.data.instruments", hasItems("C-SAR", "OLI", "MSI")))
-                .andExpect(jsonPath("$.data.providers", hasSize(4)))
-                .andExpect(jsonPath("$.data.providers[*].code", not(hasItem("all4land"))))
+                .andExpect(jsonPath("$.data.providers[*].code", containsInAnyOrder("earth-search", "nasa-cmr", "usgs")))
                 .andExpect(jsonPath("$.data.sensorTypes", contains("OPTICAL", "SAR")));
     }
 
@@ -181,18 +177,16 @@ class ImageControllerTest {
     // 수집기가 만든 영상은 출처 값이 원본이라 수정을 막고, 삭제는 허용한다
     @Test
     void collectedImageCannotBeUpdatedButCanBeDeleted() throws Exception {
+        // 컬렉션마다 대상이 하나라서 seed로 들어 있는 c1 서울 대상에 붙인다
         long collectedId = imageId("fx-s2-low");
         jdbc.update("""
-                WITH target AS (
-                    INSERT INTO collect_target (collection_id, aoi, schedule_cron)
-                    SELECT collection_id, footprint, '0 0 3 * * *' FROM satellite_image WHERE image_id = ?
-                    RETURNING target_id)
-                UPDATE satellite_image
-                SET collect_target_id = (SELECT target_id FROM target)
-                WHERE image_id = ?
-                """, collectedId, collectedId);
+                UPDATE satellite_image AS i
+                SET collect_target_id = t.target_id
+                FROM collect_target AS t
+                WHERE t.collection_id = i.collection_id AND i.image_id = ?
+                """, collectedId);
 
-        mockMvc.perform(get(BASE).param("size", "100"))
+        mockMvc.perform(fixtures())
                 .andExpect(jsonPath("$.data.content[?(@.imageId == " + collectedId + ")].collected", contains(true)))
                 .andExpect(jsonPath(
                         "$.data.content[?(@.imageId != " + collectedId + ")].collected", everyItem(is(false))));
@@ -445,12 +439,12 @@ class ImageControllerTest {
     void collectionsReturnLicenseAndCredit() throws Exception {
         mockMvc.perform(get("/api/collections"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[?(@.code == 'sentinel-2-l2a')].licenseName", contains("proprietary")))
+                .andExpect(jsonPath("$.data[?(@.code == 'sentinel-2-c1-l2a')].licenseName", contains("proprietary")))
                 .andExpect(jsonPath(
-                        "$.data[?(@.code == 'sentinel-2-l2a')].licenseUrl",
+                        "$.data[?(@.code == 'sentinel-2-c1-l2a')].licenseUrl",
                         contains("https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice")))
                 .andExpect(jsonPath(
-                        "$.data[?(@.code == 'sentinel-2-l2a')].creditText",
+                        "$.data[?(@.code == 'sentinel-2-c1-l2a')].creditText",
                         contains("Contains modified Copernicus Sentinel data")))
                 .andExpect(jsonPath("$.data[?(@.code == 'C2021957657-LPCLOUD')].creditText", contains(nullValue())));
     }
@@ -597,7 +591,7 @@ class ImageControllerTest {
                 .andExpect(jsonPath("$.data.imageId").value(id))
                 .andExpect(jsonPath("$.data.providerCode").value("earth-search"))
                 .andExpect(jsonPath("$.data.collection.providerCode").value("earth-search"))
-                .andExpect(jsonPath("$.data.collection.code").value("sentinel-2-l2a"))
+                .andExpect(jsonPath("$.data.collection.code").value("sentinel-2-c1-l2a"))
                 .andExpect(jsonPath("$.data.sourceId").value("admin-crud-test"))
                 .andExpect(jsonPath("$.data.satellite").value("SENTINEL-2A"))
                 .andExpect(jsonPath("$.data.instruments[0]").value("MSI"))

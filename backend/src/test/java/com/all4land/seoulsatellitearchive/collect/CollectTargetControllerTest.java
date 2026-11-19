@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 @Transactional
+@Sql("/fixtures/uncollectable-collection.sql")
 class CollectTargetControllerTest {
 
     private static final String BASE = "/api/collect-targets";
@@ -44,12 +46,12 @@ class CollectTargetControllerTest {
     JdbcTemplate jdbc;
 
     private long c1CollectionId;
-    private long legacyCollectionId;
+    private long uncollectableId;
 
     @BeforeEach
     void setUp() {
         c1CollectionId = collectionId("sentinel-2-c1-l2a");
-        legacyCollectionId = collectionId("sentinel-2-l2a");
+        uncollectableId = collectionId("test-uncollectable");
     }
 
     // seed로 서울 c1 수집 대상이 매일 03:00으로 들어 있다
@@ -102,7 +104,7 @@ class CollectTargetControllerTest {
     @Test
     void rejectsInvalidValues() throws Exception {
         removeSeededTarget();
-        mockMvc.perform(json(post(BASE), body(legacyCollectionId, "0 0 3 * * *", 7, true)))
+        mockMvc.perform(json(post(BASE), body(uncollectableId, "0 0 3 * * *", 7, true)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorDetail[0]").value(containsString("수집할 수 없는 컬렉션")));
         mockMvc.perform(json(post(BASE), body(c1CollectionId, "0 3 * * *", 7, true)))
@@ -136,7 +138,7 @@ class CollectTargetControllerTest {
     void collectionCannotBeChanged() throws Exception {
         long seoulTarget = seoulTargetId();
 
-        mockMvc.perform(json(put(BASE + "/" + seoulTarget), body(legacyCollectionId, "0 0 3 * * *", 7, true)))
+        mockMvc.perform(json(put(BASE + "/" + seoulTarget), body(uncollectableId, "0 0 3 * * *", 7, true)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorDetail[0]").value(containsString("컬렉션은 바꿀 수 없습니다")));
     }
@@ -145,9 +147,13 @@ class CollectTargetControllerTest {
     @Test
     void deleteKeepsImagesAndRejectsActiveTarget() throws Exception {
         long seoulTarget = seoulTargetId();
-        jdbc.update(
-                "UPDATE satellite_image SET collect_target_id = ? WHERE source_id = 'S2B_52SCG_20241227_0_L2A'",
-                seoulTarget);
+        jdbc.update("""
+                INSERT INTO satellite_image (collection_id, source_id, title, satellite, sensor_type, acquired_at,
+                                             footprint, url, download_urls, collect_target_id)
+                SELECT collection_id, 'collected-scene', 'collected-scene', 'SENTINEL-2C', 'OPTICAL', now(), aoi,
+                       'https://example.test/collected-scene', ARRAY['https://example.test/collected-scene.tif'], target_id
+                FROM collect_target WHERE target_id = ?
+                """, seoulTarget);
         jdbc.update(
                 "INSERT INTO collect_run (target_id, run_type, status) VALUES (?, 'ONE_OFF', 'QUEUED')", seoulTarget);
 
@@ -158,7 +164,7 @@ class CollectTargetControllerTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM collect_run WHERE target_id = ?", Long.class, seoulTarget))
                 .isZero();
         assertThat(jdbc.queryForObject(
-                        "SELECT collect_target_id IS NULL FROM satellite_image WHERE source_id = 'S2B_52SCG_20241227_0_L2A'",
+                        "SELECT collect_target_id IS NULL FROM satellite_image WHERE source_id = 'collected-scene'",
                         Boolean.class))
                 .isTrue();
         mockMvc.perform(delete(BASE + "/-1")).andExpect(status().isNotFound());
