@@ -4,12 +4,10 @@ import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-    IMAGE_FORM_DIALOG_CLASS,
-    ImageForm,
-} from "@/features/image/admin/ImageForm";
+import { ImageForm } from "@/features/image/admin/ImageForm";
 import { EMPTY_IMAGE_FORM } from "@/features/image/admin/imageFormValues";
-import { useCreateImage, useFilterOptions } from "@/features/image/queries";
+import { useCreateImage } from "@/features/image/queries";
+import { FORM_DIALOG_CLASS } from "@/shared/components/FormField";
 import { Button } from "@/shared/components/ui/button";
 import {
     Dialog,
@@ -22,7 +20,6 @@ import {
 export function CreateImageDialog() {
     const [open, setOpen] = useState(false);
     const createImage = useCreateImage();
-    const { data: options } = useFilterOptions();
 
     return (
         <Dialog
@@ -38,15 +35,12 @@ export function CreateImageDialog() {
                 <PlusIcon />
                 추가
             </DialogTrigger>
-            <DialogContent className={IMAGE_FORM_DIALOG_CLASS}>
+            <DialogContent className={FORM_DIALOG_CLASS}>
                 <DialogHeader>
                     <DialogTitle>영상 추가</DialogTitle>
                 </DialogHeader>
                 <ImageForm
                     initialValues={EMPTY_IMAGE_FORM}
-                    provider={options?.providers.find(
-                        (provider) => provider.ownOrganization,
-                    )}
                     submitLabel="등록"
                     pending={createImage.isPending}
                     error={createImage.error}

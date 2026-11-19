@@ -1,7 +1,6 @@
 package com.all4land.seoulsatellitearchive.image.dto;
 
-import com.all4land.seoulsatellitearchive.global.exception.BusinessException;
-import com.all4land.seoulsatellitearchive.global.response.CommonErrorCode;
+import com.all4land.seoulsatellitearchive.global.geo.GeoJsonMultiPolygon;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
@@ -16,19 +15,13 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.MultiPolygon;
-import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.geom.PrecisionModel;
 import tools.jackson.databind.JsonNode;
 
 @Getter
@@ -36,15 +29,13 @@ import tools.jackson.databind.JsonNode;
 @NoArgsConstructor
 public class ImageWriteRequest {
 
-    private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
-
-    @NotNull @Schema(description = "image_collection.collection_id. 올포랜드 영상만 다른 제공 기관의 컬렉션을 고를 수 있다", example = "1")
+    @NotNull @Schema(description = "image_collection.collection_id. 제공 기관은 컬렉션을 따른다", example = "1")
     private Long collectionId;
 
     @NotBlank @Size(max = 200) @Schema(example = "admin-image-001")
     private String sourceId;
 
-    @NotBlank @Size(max = 30) @Schema(example = "서울 위성 영상")
+    @NotBlank @Size(max = 300) @Schema(example = "서울 위성 영상")
     private String title;
 
     @NotBlank @Size(max = 50) @Schema(description = "앞뒤 공백 제거 후 대문자로 저장", example = "sentinel-2a")
@@ -150,60 +141,6 @@ public class ImageWriteRequest {
     }
 
     public MultiPolygon toFootprint() {
-        try {
-            if (footprint == null
-                    || !footprint.isObject()
-                    || !footprint.path("type").isString()
-                    || !"MultiPolygon".equals(footprint.path("type").stringValue())) {
-                throw new IllegalArgumentException();
-            }
-            JsonNode coordinates = footprint.path("coordinates");
-            if (!coordinates.isArray() || coordinates.isEmpty()) {
-                throw new IllegalArgumentException();
-            }
-            List<Polygon> polygons = new ArrayList<>();
-            for (JsonNode polygon : coordinates) {
-                if (!polygon.isArray() || polygon.isEmpty()) {
-                    throw new IllegalArgumentException();
-                }
-                LinearRing shell = toRing(polygon.get(0));
-                LinearRing[] holes = new LinearRing[polygon.size() - 1];
-                for (int i = 1; i < polygon.size(); i++) {
-                    holes[i - 1] = toRing(polygon.get(i));
-                }
-                polygons.add(WGS84.createPolygon(shell, holes));
-            }
-            MultiPolygon result = WGS84.createMultiPolygon(polygons.toArray(Polygon[]::new));
-            if (result.isEmpty() || !result.isValid()) {
-                throw new IllegalArgumentException();
-            }
-            return result;
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessException(
-                    CommonErrorCode.BAD_REQUEST, "footprint: 경위도 범위의 비어 있지 않은 유효한 2차원 GeoJSON MultiPolygon이어야 합니다.");
-        }
-    }
-
-    private static LinearRing toRing(JsonNode ring) {
-        if (!ring.isArray() || ring.size() < 4) {
-            throw new IllegalArgumentException();
-        }
-        Coordinate[] coordinates = new Coordinate[ring.size()];
-        for (int i = 0; i < ring.size(); i++) {
-            JsonNode position = ring.get(i);
-            if (!position.isArray()
-                    || position.size() != 2
-                    || !position.get(0).isNumber()
-                    || !position.get(1).isNumber()) {
-                throw new IllegalArgumentException();
-            }
-            double lon = position.get(0).doubleValue();
-            double lat = position.get(1).doubleValue();
-            if (!Double.isFinite(lon) || !Double.isFinite(lat) || lon < -180 || lon > 180 || lat < -90 || lat > 90) {
-                throw new IllegalArgumentException();
-            }
-            coordinates[i] = new Coordinate(lon, lat);
-        }
-        return WGS84.createLinearRing(coordinates);
+        return GeoJsonMultiPolygon.parse(footprint, "footprint");
     }
 }

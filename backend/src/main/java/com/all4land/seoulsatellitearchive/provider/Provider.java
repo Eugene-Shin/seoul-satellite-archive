@@ -14,8 +14,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Provider extends BaseEntity {
 
-    public static final String OWN_ORGANIZATION_CODE = "all4land";
-
     @Id
     private String code;
 
@@ -30,9 +28,4 @@ public class Provider extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private DownloadAuth downloadAuth;
-
-    // 우리 기관은 보유한 어느 출처의 제품이든 업로드한다
-    public boolean isOwnOrganization() {
-        return OWN_ORGANIZATION_CODE.equals(code);
-    }
 }

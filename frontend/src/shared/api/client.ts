@@ -100,7 +100,19 @@ export async function apiGet<S extends z.ZodType>(
     params: QueryParams = {},
     signal?: AbortSignal,
 ): Promise<z.infer<S>> {
-    const data = schema.safeParse(await request(path, { signal }, params));
+    return parse(schema, await request(path, { signal }, params));
+}
+
+// 응답 data를 쓰는 POST. 본문 없이 보낸다
+export async function apiPost<S extends z.ZodType>(
+    path: string,
+    schema: S,
+): Promise<z.infer<S>> {
+    return parse(schema, await request(path, { method: "POST" }));
+}
+
+function parse<S extends z.ZodType>(schema: S, body: unknown): z.infer<S> {
+    const data = schema.safeParse(body);
 
     if (!data.success) {
         throw new ApiError("서버 응답 형식이 올바르지 않습니다.", {

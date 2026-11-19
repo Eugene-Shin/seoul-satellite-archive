@@ -21,6 +21,7 @@ describe("creditText", () => {
         productType: "L2A",
         licenseName: null,
         licenseUrl: null,
+        collectable: false,
     };
 
     it("표기 문구에 UTC 기준 촬영 연도를 붙인다", () => {
@@ -62,6 +63,21 @@ describe("imageFileDetailText", () => {
                 ],
             }),
         ).toBe("10 m · red, green");
+    });
+
+    it("표준 이름이 출처 이름과 다르면 괄호로 붙인다", () => {
+        expect(
+            imageFileDetailText({
+                pixelSpacingMeters: 30,
+                bands: [{ ...band, bandName: "B05", commonName: "nir08" }],
+            }),
+        ).toBe("30 m · B05 (nir08)");
+        expect(
+            imageFileDetailText({
+                pixelSpacingMeters: null,
+                bands: [{ ...band, bandName: "red", commonName: "red" }],
+            }),
+        ).toBe("red");
     });
 
     it("밴드 이름이 없으면 표준 이름, 그것도 없으면 번호", () => {
@@ -154,7 +170,6 @@ describe("providerText", () => {
                     code: "KARI",
                     name: "항우연",
                     isPaid: true,
-                    ownOrganization: false,
                 },
             }),
         ).toBe("항우연 (유료)");
@@ -164,7 +179,6 @@ describe("providerText", () => {
                     code: "ESA",
                     name: "ESA",
                     isPaid: false,
-                    ownOrganization: false,
                 },
             }),
         ).toBe("ESA (무료)");
@@ -181,6 +195,7 @@ describe("collectionOptionLabel", () => {
         licenseName: null,
         licenseUrl: null,
         creditText: null,
+        collectable: false,
     };
 
     it("컬렉션을 정의한 출처 이름을 앞에 붙인다", () => {
@@ -190,7 +205,6 @@ describe("collectionOptionLabel", () => {
                     code: "earth-search",
                     name: "Earth Search",
                     isPaid: false,
-                    ownOrganization: false,
                 },
             ]),
         ).toBe("Earth Search · Sentinel-2 Level-2A");

@@ -50,11 +50,13 @@ function DeleteImageConfirm({ image, onDeleted }: DeleteImageConfirmProps) {
 
     return (
         <>
-            <AlertDialogHeader className="gap-3">
+            {/* 넓은 화면에서도 왼쪽 정렬로 바뀌지 않게 같은 조건으로 덮어쓴다 */}
+            <AlertDialogHeader className="gap-3 break-keep sm:group-data-[size=default]/alert-dialog-content:place-items-center sm:group-data-[size=default]/alert-dialog-content:text-center">
                 <AlertDialogTitle>영상 삭제</AlertDialogTitle>
                 <AlertDialogDescription>
                     ‘{image.title}’ 영상을 삭제하시겠습니까?
                 </AlertDialogDescription>
+                <CollectedNotice image={image} />
             </AlertDialogHeader>
             <ErrorMessage error={deleteImage.error} />
             <AlertDialogFooter className="py-2.5">
@@ -75,5 +77,17 @@ function DeleteImageConfirm({ image, onDeleted }: DeleteImageConfirmProps) {
                 </AlertDialogAction>
             </AlertDialogFooter>
         </>
+    );
+}
+
+function CollectedNotice({ image }: Pick<DeleteImageConfirmProps, "image">) {
+    if (!image.collected) {
+        return null;
+    }
+    return (
+        <p className="text-sm text-muted-foreground">
+            자동으로 수집한 영상입니다. 수집 기간 안에 있으면 다음 수집 때 다시
+            추가됩니다.
+        </p>
     );
 }

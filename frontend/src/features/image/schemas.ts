@@ -17,7 +17,6 @@ export const providerSchema = z.object({
     code: z.string(),
     name: z.string(),
     isPaid: z.boolean(),
-    ownOrganization: z.boolean(),
 });
 
 // providerCode는 이 컬렉션을 정의한 출처. 영상의 제공 기관과 다를 수 있다(올포랜드 영상)
@@ -30,6 +29,7 @@ export const collectionSchema = z.object({
     licenseName: z.string().nullable(),
     licenseUrl: z.string().nullable(),
     creditText: z.string().nullable(),
+    collectable: z.boolean(),
 });
 
 export const polarizationSchema = z.enum(["HH", "HV", "VH", "VV"]);
@@ -103,6 +103,7 @@ export const imageResponseSchema = z.object({
     sourceUpdatedAt: z.iso.datetime().nullable(),
     thumbnailUrl: z.string().nullable(),
     overlayUrl: z.string().nullable(),
+    collected: z.boolean(),
 });
 
 export const imageDetailSchema = z.object({
@@ -126,6 +127,7 @@ export const imageDetailSchema = z.object({
     files: z.array(imageFileSchema),
     sourceUpdatedAt: z.iso.datetime().nullable(),
     rawMetadata: z.record(z.string(), z.unknown()),
+    collected: z.boolean(),
 });
 
 function rangeSchema<T extends z.ZodType>(valueSchema: T) {

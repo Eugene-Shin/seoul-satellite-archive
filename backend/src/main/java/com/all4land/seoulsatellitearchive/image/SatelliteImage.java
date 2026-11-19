@@ -1,9 +1,9 @@
 package com.all4land.seoulsatellitearchive.image;
 
+import com.all4land.seoulsatellitearchive.collect.CollectTarget;
 import com.all4land.seoulsatellitearchive.collection.ImageCollection;
 import com.all4land.seoulsatellitearchive.global.entity.BaseEntity;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
-import com.all4land.seoulsatellitearchive.provider.Provider;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -34,10 +34,6 @@ public class SatelliteImage extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "image_id")
     private Long id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "provider")
-    private Provider provider;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "collection_id")
@@ -78,9 +74,20 @@ public class SatelliteImage extends BaseEntity {
     @Column(name = "raw_metadata", nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> rawMetadata;
 
-    public void replaceMetadata(
-            ImageWriteRequest request, Provider provider, ImageCollection collection, MultiPolygon footprint) {
-        this.provider = provider;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "collect_target_id")
+    private CollectTarget collectTarget;
+
+    public SatelliteImage(CollectTarget collectTarget) {
+        this.collectTarget = collectTarget;
+    }
+
+    // 수집기가 만든 영상은 출처 값이 원본이라 수정하지 않는다
+    public boolean isCollected() {
+        return collectTarget != null;
+    }
+
+    public void replaceMetadata(ImageWriteRequest request, ImageCollection collection, MultiPolygon footprint) {
         this.collection = collection;
         this.sourceId = request.getSourceId();
         this.title = request.getTitle();
@@ -98,10 +105,7 @@ public class SatelliteImage extends BaseEntity {
                 request.getOrbitDirection() == null ? null : OrbitDirection.valueOf(request.getOrbitDirection());
         this.footprint = footprint;
         this.url = request.getUrl();
-        // 자동으로 수집한 영상의 파일 정보는 수집기가 관리한다
-        if (provider.isOwnOrganization()) {
-            this.downloadUrls = request.getDownloadUrls().toArray(String[]::new);
-        }
+        this.downloadUrls = request.getDownloadUrls().toArray(String[]::new);
         this.sourceUpdatedAt = request.getSourceUpdatedAt() == null
                 ? null
                 : request.getSourceUpdatedAt().toInstant();

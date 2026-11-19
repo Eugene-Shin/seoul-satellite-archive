@@ -159,6 +159,7 @@ describe("toFormValues", () => {
             licenseName: null,
             licenseUrl: null,
             creditText: null,
+            collectable: false,
         },
         sourceId: "admin-image-001",
         title: "서울 위성 영상",
@@ -177,6 +178,7 @@ describe("toFormValues", () => {
         files: [],
         sourceUpdatedAt: null,
         rawMetadata: { cloud: 5 },
+        collected: false,
     };
 
     it("상세 응답을 KST 입력칸 값과 글자로 바꾼다", () => {

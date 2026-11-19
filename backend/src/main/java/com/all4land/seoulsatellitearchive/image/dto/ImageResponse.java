@@ -36,13 +36,14 @@ public record ImageResponse(
 
         Instant sourceUpdatedAt,
         @Schema(description = "썸네일이 없으면 null") String thumbnailUrl,
-        @Schema(description = "지도에 겹칠 COG. 없으면 null") String overlayUrl) {
+        @Schema(description = "지도에 겹칠 COG. 없으면 null") String overlayUrl,
+        @Schema(description = "수집기가 만든 영상. 수정할 수 없다") boolean collected) {
 
     public static ImageResponse from(
             SatelliteImage image, ImageSar sar, ImageResolution resolution, String thumbnailUrl, String overlayUrl) {
         return new ImageResponse(
                 image.getId(),
-                ProviderResponse.from(image.getProvider()),
+                ProviderResponse.from(image.getCollection().getProvider()),
                 CollectionResponse.from(image.getCollection()),
                 image.getTitle(),
                 image.getSatellite(),
@@ -57,6 +58,7 @@ public record ImageResponse(
                 image.getFootprintGeoJson(),
                 image.getSourceUpdatedAt(),
                 thumbnailUrl,
-                overlayUrl);
+                overlayUrl,
+                image.isCollected());
     }
 }

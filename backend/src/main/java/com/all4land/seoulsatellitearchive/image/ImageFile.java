@@ -61,4 +61,20 @@ public class ImageFile {
         this.role = ImageFileRole.fromHref(href);
         this.href = href;
     }
+
+    public ImageFile(SatelliteImage image, String href, ImageFileDetails details) {
+        this.image = image;
+        this.href = href;
+        replaceDetails(details);
+    }
+
+    // 같은 링크의 행은 남겨 두고(아카이빙 정보 보존) 출처가 준 값만 바꾼다
+    public void replaceDetails(ImageFileDetails details) {
+        this.assetKey = details.assetKey();
+        this.role = details.role();
+        this.mediaType = details.mediaType();
+        this.pixelSpacingMeters = details.pixelSpacingMeters();
+        this.bands.clear();
+        this.bands.addAll(details.bands());
+    }
 }
