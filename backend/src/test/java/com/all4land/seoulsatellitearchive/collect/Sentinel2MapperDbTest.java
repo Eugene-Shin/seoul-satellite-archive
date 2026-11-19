@@ -6,12 +6,9 @@ import com.all4land.seoulsatellitearchive.global.config.TestcontainersConfigurat
 import com.all4land.seoulsatellitearchive.image.ImageFileBand;
 import com.all4land.seoulsatellitearchive.image.ImageFileDetails;
 import java.math.BigDecimal;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,24 +25,6 @@ class Sentinel2MapperDbTest {
 
     @Autowired
     JdbcTemplate jdbc;
-
-    @Test
-    void commonNamesMatchDbCheck() {
-        String check = jdbc.queryForObject("""
-                SELECT pg_get_constraintdef(oid)
-                FROM pg_constraint
-                WHERE conrelid = 'image_file_band'::regclass
-                  AND contype = 'c'
-                  AND pg_get_constraintdef(oid) LIKE '%common_name%'
-                """, String.class);
-        Matcher matcher = Pattern.compile("'([^']+)'").matcher(check);
-        Set<String> dbNames = new HashSet<>();
-        while (matcher.find()) {
-            dbNames.add(matcher.group(1));
-        }
-
-        assertThat(dbNames).isEqualTo(StacItemMapper.COMMON_NAMES);
-    }
 
     // 수집기가 만드는 파일·밴드 행이 V18 백필과 같아야 한다(시드 S2 영상으로 비교)
     @Test

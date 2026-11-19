@@ -13,39 +13,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 
-// STAC Item 공통 변환. 출처마다 다른 위성 이름, 픽셀 간격 위치, 파일 역할만 하위 클래스가 바꾼다
-@Slf4j
+// STAC Item 공통 변환. 출처마다 다른 위성 이름, 픽셀 간격 위치, 파일 역할만 하위 클래스가 바꾼다.
+// common_name은 출처 값 그대로 넘기고, 사전에 없는 값은 저장할 때 CollectService가 비운다
 public abstract class StacItemMapper implements ItemMapper {
 
     private static final int ASSET_KEY_MAX_LENGTH = 200;
-    // image_file_band.common_name CHECK와 같은 목록. 어긋나면 Sentinel2MapperDbTest가 실패한다
-    static final Set<String> COMMON_NAMES = Set.of(
-            "pan",
-            "coastal",
-            "blue",
-            "green",
-            "green05",
-            "yellow",
-            "red",
-            "rededge",
-            "rededge071",
-            "rededge075",
-            "rededge078",
-            "nir",
-            "nir08",
-            "nir09",
-            "cirrus",
-            "swir16",
-            "swir22",
-            "lwir",
-            "lwir11",
-            "lwir12");
 
     @Override
     public final Mapped map(JsonNode item, Long collectionId) {
@@ -183,20 +160,12 @@ public abstract class StacItemMapper implements ItemMapper {
             bands.add(new ImageFileBand(
                     (short) (i + 1),
                     band.path("name").asString(null),
-                    commonName(band.path("common_name").asString(null)),
+                    band.path("common_name").asString(null),
                     decimal(band.path("center_wavelength")),
                     decimal(band.path("full_width_half_max")),
                     decimal(gsd)));
         }
         return bands;
-    }
-
-    private static String commonName(String value) {
-        if (value == null || COMMON_NAMES.contains(value)) {
-            return value;
-        }
-        log.warn("표준이 아닌 common_name을 비웁니다: {}", value);
-        return null;
     }
 
     private static BigDecimal decimal(JsonNode node) {

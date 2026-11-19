@@ -2,14 +2,12 @@ package com.all4land.seoulsatellitearchive.collect;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.all4land.seoulsatellitearchive.collect.ItemMapper.Mapped;
 import com.all4land.seoulsatellitearchive.image.ImageFileBand;
 import com.all4land.seoulsatellitearchive.image.ImageFileDetails;
 import com.all4land.seoulsatellitearchive.image.ImageFileRole;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -89,20 +87,5 @@ class Sentinel2MapperTest {
         ((ObjectNode) item.path("properties")).putArray("instruments").add(" msi ");
 
         assertThat(MAPPER.map(item, 7L).request().getInstruments()).containsExactly("MSI");
-    }
-
-    @Test
-    void dropsNonStandardCommonName() throws IOException {
-        ObjectNode item = firstItem();
-        ((ObjectNode) item.path("assets").path("red").path("eo:bands").get(0)).put("common_name", "red-edge-x");
-
-        Mapped mapped = MAPPER.map(item, 7L);
-
-        assertThat(mapped.files().get(ITEM_DIR + "B04.tif").bands())
-                .singleElement()
-                .satisfies(band -> {
-                    assertThat(band.getCommonName()).isNull();
-                    assertThat(band.getCenterWavelengthUm()).isEqualTo(new BigDecimal("0.665"));
-                });
     }
 }

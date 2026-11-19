@@ -11,6 +11,7 @@ import com.all4land.seoulsatellitearchive.global.config.TestcontainersConfigurat
 import com.all4land.seoulsatellitearchive.global.exception.BusinessException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -156,6 +157,27 @@ class CollectServiceTest {
         assertThat(jdbc.queryForObject(
                         "SELECT source_id FROM collect_run_skip WHERE run_id = ?", String.class, run.getId()))
                 .isEqualTo("S2B_T52SCG_20261028T022157_L2A");
+    }
+
+    // 사전(band_common_name)에 없는 분류는 비우고 영상과 나머지 밴드 값은 저장한다
+    @Test
+    void clearsUnknownCommonNameAndSavesImage() throws IOException {
+        List<JsonNode> items = items();
+        ((ObjectNode) items.get(0).path("assets").path("red").path("eo:bands").get(0)).put("common_name", "red-edge-x");
+        stubSearch(items);
+
+        CollectRun run = runOneOff();
+
+        assertThat(run.getInserted()).isEqualTo(2);
+        assertThat(jdbc.queryForMap("""
+                        SELECT b.common_name, b.center_wavelength_um
+                        FROM image_file_band b
+                                 JOIN image_file f ON f.file_id = b.file_id
+                                 JOIN satellite_image i ON i.image_id = f.image_id
+                        WHERE i.source_id = 'S2B_T52SCG_20261028T022157_L2A' AND f.asset_key = 'red'
+                        """))
+                .containsEntry("common_name", null)
+                .containsEntry("center_wavelength_um", new BigDecimal("0.6650"));
     }
 
     @Test
