@@ -35,7 +35,7 @@ public class ImageWriteRequest {
     @NotBlank @Size(max = 200) @Schema(example = "admin-image-001")
     private String sourceId;
 
-    @NotBlank @Size(max = 30) @Schema(example = "서울 위성 영상")
+    @NotBlank @Size(max = 300) @Schema(example = "서울 위성 영상")
     private String title;
 
     @NotBlank @Size(max = 50) @Schema(description = "앞뒤 공백 제거 후 대문자로 저장", example = "sentinel-2a")

@@ -21,8 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 class CollectSchedulerTest {
 
     private static final String C1 = "sentinel-2-c1-l2a";
-    private static final String LEGACY_S2 = "sentinel-2-l2a";
-    private static final String HLS = "C2021957657-LPCLOUD";
+    private static final String LANDSAT_SR = "landsat-c2l2-sr";
+    private static final String LANDSAT_ST = "landsat-c2l2-st";
 
     private static final Instant NOV17_0259_KST = Instant.parse("2026-11-16T17:59:00Z");
     private static final Instant NOV17_0300_KST = Instant.parse("2026-11-16T18:00:30Z");
@@ -92,9 +92,9 @@ class CollectSchedulerTest {
 
     @Test
     void skipsDisabledTargetAndInvalidCronWithoutStoppingOthers() {
-        long disabled = insertTarget(LEGACY_S2, "0 0 3 * * *");
+        long disabled = insertTarget(LANDSAT_SR, "0 0 3 * * *");
         jdbc.update("UPDATE collect_target SET enabled = false WHERE target_id = ?", disabled);
-        long invalidCron = insertTarget(HLS, "not a cron");
+        long invalidCron = insertTarget(LANDSAT_ST, "not a cron");
 
         scheduler.enqueueDueRuns(NOV17_0300_KST);
 
@@ -110,7 +110,7 @@ class CollectSchedulerTest {
         Instant now = Instant.parse("2026-11-17T01:00:00Z");
         long stale =
                 insertRunning(targetId, now.minus(CollectScheduler.STALE_AFTER).minusSeconds(1));
-        long alive = insertRunning(insertTarget(LEGACY_S2, "0 0 3 * * *"), now.minusSeconds(120));
+        long alive = insertRunning(insertTarget(LANDSAT_SR, "0 0 3 * * *"), now.minusSeconds(120));
 
         scheduler.failStaleRuns(now);
 
