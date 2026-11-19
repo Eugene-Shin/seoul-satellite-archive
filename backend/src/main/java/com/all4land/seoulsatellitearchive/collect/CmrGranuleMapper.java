@@ -1,6 +1,5 @@
 package com.all4land.seoulsatellitearchive.collect;
 
-import com.all4land.seoulsatellitearchive.image.ImageFileBand;
 import com.all4land.seoulsatellitearchive.image.ImageFileDetails;
 import com.all4land.seoulsatellitearchive.image.ImageFileRole;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
@@ -18,7 +17,8 @@ import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 
 // NASA CMR 그래뉼(UMM-G: meta + umm) 공통 변환. 파일 규칙은 V18 CMR 백필과 같다.
-// 제품마다 다른 위성·센서 이름, 구름량, 밴드만 하위 클래스가 바꾼다
+// 제품마다 다른 위성·센서 이름, 구름량만 하위 클래스가 바꾼다. CMR은 밴드 정보를 주지 않아서
+// 밴드는 저장할 때 밴드 규칙(collect_band_rule)으로 붙인다
 public abstract class CmrGranuleMapper implements ItemMapper {
 
     @Override
@@ -64,10 +64,6 @@ public abstract class CmrGranuleMapper implements ItemMapper {
     // 출처마다 구름량을 주는 속성이 다르다. 없으면 비운다
     protected BigDecimal cloudCover(JsonNode umm) {
         return null;
-    }
-
-    protected List<ImageFileBand> bands(String url) {
-        return List.of();
     }
 
     protected static String attribute(JsonNode umm, String name) {
@@ -129,7 +125,7 @@ public abstract class CmrGranuleMapper implements ItemMapper {
                             role,
                             related.path("MimeType").asString(null),
                             role == ImageFileRole.DATA ? spatialResolution : null,
-                            bands(url)));
+                            List.of()));
         }
         return files;
     }

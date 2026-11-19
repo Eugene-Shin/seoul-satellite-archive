@@ -183,9 +183,10 @@ class CollectServiceTest {
                 .containsEntry("center_wavelength_um", new BigDecimal("0.6650"));
     }
 
-    // CMR은 밴드 정보를 주지 않아 collection_band(V34)로 채운다. 같은 B05가 S30에서는 레드엣지다
+    // CMR은 밴드 정보를 주지 않아 파일 이름의 접미사로 밴드 규칙(collect_band_rule)을 붙인다.
+    // 같은 B05가 S30에서는 레드엣지다. 품질 레이어(Fmask)도 규칙에 있어 밴드가 붙는다
     @Test
-    void fillsBandsFromCollectionBandTable() throws IOException {
+    void attachesBandsByFileSuffixRule() throws IOException {
         targetId = jdbc.queryForObject("""
                 SELECT t.target_id FROM collect_target t
                 JOIN image_collection c ON c.collection_id = t.collection_id
@@ -213,6 +214,42 @@ class CollectServiceTest {
                 .containsEntry("common_name", "rededge")
                 .containsEntry("center_wavelength_um", new BigDecimal("0.7040"))
                 .containsEntry("resolution_meters", new BigDecimal("20.00"));
+        assertThat(jdbc.queryForObject("""
+                        SELECT b.band_name FROM image_file_band b
+                                 JOIN image_file f ON f.file_id = b.file_id
+                        WHERE f.asset_key = 'HLS.S30.T52SCG.2026276T021531.v2.0.Fmask.tif'
+                        """, String.class)).isEqualTo("Fmask");
+    }
+
+    // 출처가 준 밴드 값은 그대로 두고 비어 있는 값만 규칙에서 채운다. 출처 밴드와는 이름으로 맞춘다
+    @Test
+    void fillsOnlyMissingSourceBandValuesFromRule() throws IOException {
+        List<JsonNode> items = items();
+        JsonNode red = items.get(0).path("assets").path("red");
+        ((ObjectNode) red).remove("gsd");
+        ((ObjectNode) red.path("eo:bands").get(0)).remove("gsd");
+        stubSearch(items);
+        jdbc.update("""
+                INSERT INTO collect_band_rule (collection_id, file_suffix, band_index, band_name, common_name,
+                                               resolution_meters)
+                SELECT collection_id, 'B04.tif', 1, 'B04', 'nir', 10 FROM collect_target WHERE target_id = ?
+                """, targetId);
+        try {
+            runOneOff();
+
+            assertThat(jdbc.queryForMap("""
+                            SELECT b.band_name, b.common_name, b.resolution_meters
+                            FROM image_file_band b
+                                     JOIN image_file f ON f.file_id = b.file_id
+                                     JOIN satellite_image i ON i.image_id = f.image_id
+                            WHERE i.source_id = 'S2B_T52SCG_20261028T022157_L2A' AND f.asset_key = 'red'
+                            """))
+                    .containsEntry("band_name", "B04")
+                    .containsEntry("common_name", "red")
+                    .containsEntry("resolution_meters", new BigDecimal("10.00"));
+        } finally {
+            jdbc.update("DELETE FROM collect_band_rule WHERE file_suffix = 'B04.tif'");
+        }
     }
 
     @Test

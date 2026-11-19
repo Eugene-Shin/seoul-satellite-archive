@@ -4,7 +4,6 @@ import com.all4land.seoulsatellitearchive.collect.ItemMapper.Mapped;
 import com.all4land.seoulsatellitearchive.collect.dto.CollectRunResponse;
 import com.all4land.seoulsatellitearchive.collect.dto.CollectRunSearchRequest;
 import com.all4land.seoulsatellitearchive.collect.dto.CollectRunSkipResponse;
-import com.all4land.seoulsatellitearchive.collection.CollectionBand;
 import com.all4land.seoulsatellitearchive.collection.ImageCollection;
 import com.all4land.seoulsatellitearchive.collection.ImageCollectionRepository;
 import com.all4land.seoulsatellitearchive.global.exception.BusinessException;
@@ -16,17 +15,18 @@ import com.all4land.seoulsatellitearchive.image.ImageFile;
 import com.all4land.seoulsatellitearchive.image.ImageFileBand;
 import com.all4land.seoulsatellitearchive.image.ImageFileDetails;
 import com.all4land.seoulsatellitearchive.image.ImageFileRepository;
+import com.all4land.seoulsatellitearchive.image.ImageFileRole;
 import com.all4land.seoulsatellitearchive.image.SatelliteImage;
 import com.all4land.seoulsatellitearchive.image.SatelliteImageRepository;
 import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
 import com.all4land.seoulsatellitearchive.provider.MetadataSearchApi;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +57,7 @@ public class CollectService {
     private final SatelliteImageRepository satelliteImageRepository;
     private final ImageFileRepository imageFileRepository;
     private final BandCommonNameRepository bandCommonNameRepository;
+    private final CollectBandRuleRepository collectBandRuleRepository;
     private final StacProviderClient stacProviderClient;
     private final CmrProviderClient cmrProviderClient;
     private final Validator validator;
@@ -83,7 +84,7 @@ public class CollectService {
             Instant windowFrom,
             Instant windowTo,
             Set<String> commonNames,
-            Map<String, CollectionBand> collectionBands) {}
+            List<CollectBandRule> bandRules) {}
 
     // 실행 하나의 진행 상황. 검색 클라이언트가 페이지마다 부르는 람다 안에서 바꾸므로 지역 변수 대신 객체에 담는다
     private static final class RunProgress {
@@ -215,8 +216,7 @@ public class CollectService {
                 bandCommonNameRepository.findAll().stream()
                         .map(BandCommonName::getName)
                         .collect(Collectors.toUnmodifiableSet()),
-                collection.getBands().stream()
-                        .collect(Collectors.toUnmodifiableMap(CollectionBand::getBandName, band -> band)));
+                collectBandRuleRepository.findByCollection(collection.getId()));
     }
 
     // 실행 기록과 영상은 각각 따로 커밋한다. 영상 하나가 실패해도 나머지는 저장되고, 실행이 실패해도 기록이 남는다.
@@ -328,46 +328,90 @@ public class CollectService {
         return existing.isPresent() ? SaveResult.UPDATED : SaveResult.INSERTED;
     }
 
-    // 출처가 주지 않은 밴드 값은 컬렉션 밴드 표(collection_band)에서 이름으로 채운다.
+    // 데이터 파일의 밴드는 출처 값을 쓰고, 출처가 주지 않은 값은 밴드 규칙(collect_band_rule)에서 채운다.
+    // 규칙은 링크 끝(파일 이름)의 접미사로 찾고, 출처 밴드와는 밴드 이름으로 맞춘다. 순서는 출처가 바꿀 수 있어
+    // 맞추지 않는다(잘못 채우느니 비워 둔다). 출처가 밴드를 하나도 주지 않으면 규칙의 밴드를 그 순서대로 붙인다.
+    // 규칙이 있는 컬렉션인데 밴드가 하나도 없는 데이터 파일은 출처가 새 레이어를 내놓은 것일 수 있어 경고를 남긴다(영상은 저장한다).
     // 사전에 없는 분류는 저장하면 FK에 걸려 영상 전체가 빠지므로 분류만 비우고 남긴다
     private static Map<String, ImageFileDetails> completeBands(
             Map<String, ImageFileDetails> files, RunContext context) {
         Map<String, ImageFileDetails> completed = new LinkedHashMap<>();
-        files.forEach((href, file) -> completed.put(
-                href,
-                new ImageFileDetails(
-                        file.assetKey(),
-                        file.role(),
-                        file.mediaType(),
-                        file.pixelSpacingMeters(),
-                        file.bands().stream()
-                                .map(band -> completeBand(band, context))
-                                .toList())));
+        files.forEach((href, file) -> {
+            boolean data = file.role() == ImageFileRole.DATA;
+            List<CollectBandRule> fileRules = data ? fileRules(href, context.bandRules()) : List.of();
+            List<ImageFileBand> bands = file.bands().isEmpty()
+                    ? fileRules.stream().map(CollectService::ruleBand).toList()
+                    : file.bands().stream()
+                            .map(band -> fillFromRule(band, fileRules))
+                            .toList();
+            if (data && bands.isEmpty() && !context.bandRules().isEmpty()) {
+                log.warn("밴드 규칙에 없는 데이터 파일입니다 collectionId={} file={}", context.collectionId(), file.assetKey());
+            }
+            completed.put(
+                    href,
+                    new ImageFileDetails(
+                            file.assetKey(),
+                            file.role(),
+                            file.mediaType(),
+                            file.pixelSpacingMeters(),
+                            bands.stream()
+                                    .map(band -> knownCommonName(band, context.commonNames()))
+                                    .toList()));
+        });
         return completed;
     }
 
-    private static ImageFileBand completeBand(ImageFileBand band, RunContext context) {
-        CollectionBand known =
-                band.getBandName() == null ? null : context.collectionBands().get(band.getBandName());
-        String commonName = band.getCommonName();
-        BigDecimal centerWavelength = band.getCenterWavelengthUm();
-        BigDecimal resolution = band.getResolutionMeters();
-        if (known != null) {
-            commonName = commonName == null ? known.getCommonName() : commonName;
-            centerWavelength = centerWavelength == null ? known.getCenterWavelengthUm() : centerWavelength;
-            resolution = resolution == null ? known.getResolutionMeters() : resolution;
-        }
-        if (commonName != null && !context.commonNames().contains(commonName)) {
-            log.warn("사전에 없는 common_name을 비웁니다: {}", commonName);
-            commonName = null;
+    // 맞는 접미사가 여럿이면 가장 긴 것(가장 구체적인 규칙)을 쓴다
+    private static List<CollectBandRule> fileRules(String href, List<CollectBandRule> rules) {
+        String suffix = rules.stream()
+                .map(CollectBandRule::getFileSuffix)
+                .filter(href::endsWith)
+                .max(Comparator.comparingInt(String::length))
+                .orElse(null);
+        return rules.stream()
+                .filter(rule -> rule.getFileSuffix().equals(suffix))
+                .toList();
+    }
+
+    private static ImageFileBand ruleBand(CollectBandRule rule) {
+        return new ImageFileBand(
+                rule.getBandIndex(),
+                rule.getBandName(),
+                rule.getCommonName(),
+                rule.getCenterWavelengthUm(),
+                null,
+                rule.getResolutionMeters());
+    }
+
+    private static ImageFileBand fillFromRule(ImageFileBand band, List<CollectBandRule> fileRules) {
+        CollectBandRule rule = fileRules.stream()
+                .filter(candidate -> candidate.getBandName().equals(band.getBandName()))
+                .findFirst()
+                .orElse(null);
+        if (rule == null) {
+            return band;
         }
         return new ImageFileBand(
                 band.getBandIndex(),
                 band.getBandName(),
-                commonName,
-                centerWavelength,
+                band.getCommonName() != null ? band.getCommonName() : rule.getCommonName(),
+                band.getCenterWavelengthUm() != null ? band.getCenterWavelengthUm() : rule.getCenterWavelengthUm(),
                 band.getBandwidthUm(),
-                resolution);
+                band.getResolutionMeters() != null ? band.getResolutionMeters() : rule.getResolutionMeters());
+    }
+
+    private static ImageFileBand knownCommonName(ImageFileBand band, Set<String> commonNames) {
+        if (band.getCommonName() == null || commonNames.contains(band.getCommonName())) {
+            return band;
+        }
+        log.warn("사전에 없는 common_name을 비웁니다: {}", band.getCommonName());
+        return new ImageFileBand(
+                band.getBandIndex(),
+                band.getBandName(),
+                null,
+                band.getCenterWavelengthUm(),
+                band.getBandwidthUm(),
+                band.getResolutionMeters());
     }
 
     // 같은 링크의 행은 값만 바꾸고(아카이빙 정보 보존), 빠진 링크는 지우고, 새 링크는 추가한다

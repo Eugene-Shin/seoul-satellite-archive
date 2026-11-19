@@ -50,9 +50,9 @@ class HlsMapperTest {
         assertThat(request.getCloudCover()).isEqualByComparingTo("74");
     }
 
-    // https만. 밴드는 파일 이름의 이름만 넣고 나머지는 저장할 때 collection_band에서 채운다
+    // https만. 밴드는 매퍼가 만들지 않고 저장할 때 밴드 규칙(collect_band_rule)으로 붙인다
     @Test
-    void mapsHttpsFilesWithGranuleSpacingAndBandNameOnly() throws IOException {
+    void mapsHttpsFilesWithGranuleSpacingWithoutBands() throws IOException {
         Map<String, ImageFileDetails> files = MAPPER.map(item(0), 7L).files();
 
         assertThat(files).hasSize(18).allSatisfy((href, file) -> assertThat(href)
@@ -63,11 +63,7 @@ class HlsMapperTest {
         assertThat(nir.assetKey()).isEqualTo("HLS.L30.T52SCG.2026279T021105.v2.0.B05.tif");
         assertThat(nir.role()).isEqualTo(ImageFileRole.DATA);
         assertThat(nir.pixelSpacingMeters()).isEqualByComparingTo("30");
-        assertThat(nir.bands()).singleElement().satisfies(band -> {
-            assertThat(band.getBandName()).isEqualTo("B05");
-            assertThat(band.getCommonName()).isNull();
-        });
-        assertThat(files.get(L30_DIR + ".Fmask.tif").bands()).isEmpty();
+        assertThat(files.values()).allSatisfy(file -> assertThat(file.bands()).isEmpty());
         assertThat(files.get(L30_DIR + ".cmr.xml").role()).isEqualTo(ImageFileRole.METADATA);
         assertThat(files.get(L30_DIR.replace("protected", "public") + ".jpg").role())
                 .isEqualTo(ImageFileRole.THUMBNAIL);
