@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 public final class ItemMappers {
 
     private static final Map<String, ItemMapper> BY_COLLECTION =
-            List.of(new Sentinel2Mapper(), new LandsatMapper()).stream()
+            List.of(new Sentinel2Mapper(), new LandsatMapper(), new HlsMapper()).stream()
                     .flatMap(mapper -> mapper.collections().stream().map(code -> Map.entry(code, mapper)))
                     .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
 

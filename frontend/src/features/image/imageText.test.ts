@@ -65,6 +65,21 @@ describe("imageFileDetailText", () => {
         ).toBe("10 m · red, green");
     });
 
+    it("표준 이름이 출처 이름과 다르면 괄호로 붙인다", () => {
+        expect(
+            imageFileDetailText({
+                pixelSpacingMeters: 30,
+                bands: [{ ...band, bandName: "B05", commonName: "nir08" }],
+            }),
+        ).toBe("30 m · B05 (nir08)");
+        expect(
+            imageFileDetailText({
+                pixelSpacingMeters: null,
+                bands: [{ ...band, bandName: "red", commonName: "red" }],
+            }),
+        ).toBe("red");
+    });
+
     it("밴드 이름이 없으면 표준 이름, 그것도 없으면 번호", () => {
         expect(
             imageFileDetailText({

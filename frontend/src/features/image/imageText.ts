@@ -33,20 +33,33 @@ export const IMAGE_FILE_ROLE_NAMES: Record<ImageFileRole, string> = {
     METADATA: "메타데이터",
 };
 
-// 픽셀 간격과 밴드 이름. 출처에 이름이 없는 밴드는 표준 이름, 그것도 없으면 번호로 보여준다
+// 픽셀 간격과 밴드 이름. 같은 이름도 제품마다 뜻이 달라서(HLS B05: L30 nir08, S30 rededge) 표준 이름을 괄호로 붙인다.
+// 출처에 이름이 없는 밴드는 표준 이름, 그것도 없으면 번호로 보여준다
 export function imageFileDetailText({
     pixelSpacingMeters,
     bands,
 }: Pick<ImageFile, "pixelSpacingMeters" | "bands">): string {
     const spacing =
         pixelSpacingMeters === null ? [] : [`${pixelSpacingMeters} m`];
-    const bandNames = bands.map(
-        (band) => band.bandName ?? band.commonName ?? `밴드 ${band.bandIndex}`,
-    );
+    const bandNames = bands.map(bandText);
     return [
         ...spacing,
         ...(bandNames.length ? [bandNames.join(", ")] : []),
     ].join(" · ");
+}
+
+function bandText({
+    bandIndex,
+    bandName,
+    commonName,
+}: ImageFile["bands"][number]): string {
+    if (bandName === null) {
+        return commonName ?? `밴드 ${bandIndex}`;
+    }
+    if (commonName === null || commonName === bandName) {
+        return bandName;
+    }
+    return `${bandName} (${commonName})`;
 }
 
 export function satelliteText({

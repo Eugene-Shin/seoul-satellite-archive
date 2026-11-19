@@ -2,7 +2,9 @@ package com.all4land.seoulsatellitearchive.collection;
 
 import com.all4land.seoulsatellitearchive.global.entity.BaseEntity;
 import com.all4land.seoulsatellitearchive.provider.Provider;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -10,6 +12,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,4 +45,8 @@ public class ImageCollection extends BaseEntity {
     private String licenseUrl;
 
     private String creditText;
+
+    @ElementCollection
+    @CollectionTable(name = "collection_band", joinColumns = @JoinColumn(name = "collection_id"))
+    private List<CollectionBand> bands = new ArrayList<>();
 }

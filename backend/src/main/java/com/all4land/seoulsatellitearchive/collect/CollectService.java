@@ -4,6 +4,7 @@ import com.all4land.seoulsatellitearchive.collect.ItemMapper.Mapped;
 import com.all4land.seoulsatellitearchive.collect.dto.CollectRunResponse;
 import com.all4land.seoulsatellitearchive.collect.dto.CollectRunSearchRequest;
 import com.all4land.seoulsatellitearchive.collect.dto.CollectRunSkipResponse;
+import com.all4land.seoulsatellitearchive.collection.CollectionBand;
 import com.all4land.seoulsatellitearchive.collection.ImageCollection;
 import com.all4land.seoulsatellitearchive.collection.ImageCollectionRepository;
 import com.all4land.seoulsatellitearchive.global.exception.BusinessException;
@@ -21,6 +22,7 @@ import com.all4land.seoulsatellitearchive.image.dto.ImageWriteRequest;
 import com.all4land.seoulsatellitearchive.provider.MetadataSearchApi;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -56,6 +58,7 @@ public class CollectService {
     private final ImageFileRepository imageFileRepository;
     private final BandCommonNameRepository bandCommonNameRepository;
     private final StacProviderClient stacProviderClient;
+    private final CmrProviderClient cmrProviderClient;
     private final Validator validator;
     private final Clock clock;
     private final TransactionTemplate transactionTemplate;
@@ -79,7 +82,8 @@ public class CollectService {
             String aoiGeoJson,
             Instant windowFrom,
             Instant windowTo,
-            Set<String> commonNames) {}
+            Set<String> commonNames,
+            Map<String, CollectionBand> collectionBands) {}
 
     // 실행 하나의 진행 상황. 검색 클라이언트가 페이지마다 부르는 람다 안에서 바꾸므로 지역 변수 대신 객체에 담는다
     private static final class RunProgress {
@@ -210,7 +214,9 @@ public class CollectService {
                 to,
                 bandCommonNameRepository.findAll().stream()
                         .map(BandCommonName::getName)
-                        .collect(Collectors.toUnmodifiableSet()));
+                        .collect(Collectors.toUnmodifiableSet()),
+                collection.getBands().stream()
+                        .collect(Collectors.toUnmodifiableMap(CollectionBand::getBandName, band -> band)));
     }
 
     // 실행 기록과 영상은 각각 따로 커밋한다. 영상 하나가 실패해도 나머지는 저장되고, 실행이 실패해도 기록이 남는다.
@@ -255,6 +261,7 @@ public class CollectService {
     private ProviderClient client(MetadataSearchApi searchApi) {
         return switch (searchApi) {
             case STAC -> stacProviderClient;
+            case CMR -> cmrProviderClient;
             default -> throw new IllegalStateException("검색 클라이언트가 없는 방식입니다: " + searchApi);
         };
     }
@@ -317,15 +324,16 @@ public class CollectService {
                 () -> new SatelliteImage(collectTargetRepository.getReferenceById(context.targetId())));
         image.replaceMetadata(request, imageCollectionRepository.getReferenceById(context.collectionId()), footprint);
         satelliteImageRepository.saveAndFlush(image);
-        syncFiles(image, knownCommonNames(mapped.files(), context.commonNames()));
+        syncFiles(image, completeBands(mapped.files(), context));
         return existing.isPresent() ? SaveResult.UPDATED : SaveResult.INSERTED;
     }
 
+    // 출처가 주지 않은 밴드 값은 컬렉션 밴드 표(collection_band)에서 이름으로 채운다.
     // 사전에 없는 분류는 저장하면 FK에 걸려 영상 전체가 빠지므로 분류만 비우고 남긴다
-    private static Map<String, ImageFileDetails> knownCommonNames(
-            Map<String, ImageFileDetails> files, Set<String> commonNames) {
-        Map<String, ImageFileDetails> known = new LinkedHashMap<>();
-        files.forEach((href, file) -> known.put(
+    private static Map<String, ImageFileDetails> completeBands(
+            Map<String, ImageFileDetails> files, RunContext context) {
+        Map<String, ImageFileDetails> completed = new LinkedHashMap<>();
+        files.forEach((href, file) -> completed.put(
                 href,
                 new ImageFileDetails(
                         file.assetKey(),
@@ -333,23 +341,33 @@ public class CollectService {
                         file.mediaType(),
                         file.pixelSpacingMeters(),
                         file.bands().stream()
-                                .map(band -> knownCommonName(band, commonNames))
+                                .map(band -> completeBand(band, context))
                                 .toList())));
-        return known;
+        return completed;
     }
 
-    private static ImageFileBand knownCommonName(ImageFileBand band, Set<String> commonNames) {
-        if (band.getCommonName() == null || commonNames.contains(band.getCommonName())) {
-            return band;
+    private static ImageFileBand completeBand(ImageFileBand band, RunContext context) {
+        CollectionBand known =
+                band.getBandName() == null ? null : context.collectionBands().get(band.getBandName());
+        String commonName = band.getCommonName();
+        BigDecimal centerWavelength = band.getCenterWavelengthUm();
+        BigDecimal resolution = band.getResolutionMeters();
+        if (known != null) {
+            commonName = commonName == null ? known.getCommonName() : commonName;
+            centerWavelength = centerWavelength == null ? known.getCenterWavelengthUm() : centerWavelength;
+            resolution = resolution == null ? known.getResolutionMeters() : resolution;
         }
-        log.warn("사전에 없는 common_name을 비웁니다: {}", band.getCommonName());
+        if (commonName != null && !context.commonNames().contains(commonName)) {
+            log.warn("사전에 없는 common_name을 비웁니다: {}", commonName);
+            commonName = null;
+        }
         return new ImageFileBand(
                 band.getBandIndex(),
                 band.getBandName(),
-                null,
-                band.getCenterWavelengthUm(),
+                commonName,
+                centerWavelength,
                 band.getBandwidthUm(),
-                band.getResolutionMeters());
+                resolution);
     }
 
     // 같은 링크의 행은 값만 바꾸고(아카이빙 정보 보존), 빠진 링크는 지우고, 새 링크는 추가한다

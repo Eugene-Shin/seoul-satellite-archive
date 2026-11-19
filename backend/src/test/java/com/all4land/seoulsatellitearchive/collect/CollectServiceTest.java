@@ -52,6 +52,9 @@ class CollectServiceTest {
     @MockitoBean
     StacProviderClient stacClient;
 
+    @MockitoBean
+    CmrProviderClient cmrClient;
+
     private final List<Long> createdTargetIds = new ArrayList<>();
 
     private long targetId;
@@ -178,6 +181,38 @@ class CollectServiceTest {
                         """))
                 .containsEntry("common_name", null)
                 .containsEntry("center_wavelength_um", new BigDecimal("0.6650"));
+    }
+
+    // CMR은 밴드 정보를 주지 않아 collection_band(V34)로 채운다. 같은 B05가 S30에서는 레드엣지다
+    @Test
+    void fillsBandsFromCollectionBandTable() throws IOException {
+        targetId = jdbc.queryForObject("""
+                SELECT t.target_id FROM collect_target t
+                JOIN image_collection c ON c.collection_id = t.collection_id
+                WHERE c.code = 'C2021957295-LPCLOUD'
+                """, Long.class);
+        JsonNode s30;
+        try (InputStream in = CollectServiceTest.class.getResourceAsStream("/collect/hls-search.json")) {
+            s30 = JsonMapper.shared().readTree(in).path("items").get(1);
+        }
+        doAnswer(invocation -> {
+                    invocation.<PageHandler>getArgument(5).handle(List.of(s30));
+                    return true;
+                })
+                .when(cmrClient)
+                .search(any(), any(), any(), any(), any(), any());
+
+        assertThat(runOneOff().getInserted()).isEqualTo(1);
+        assertThat(jdbc.queryForMap("""
+                        SELECT b.band_name, b.common_name, b.center_wavelength_um, b.resolution_meters
+                        FROM image_file_band b
+                                 JOIN image_file f ON f.file_id = b.file_id
+                        WHERE f.asset_key = 'HLS.S30.T52SCG.2026276T021531.v2.0.B05.tif'
+                        """))
+                .containsEntry("band_name", "B05")
+                .containsEntry("common_name", "rededge")
+                .containsEntry("center_wavelength_um", new BigDecimal("0.7040"))
+                .containsEntry("resolution_meters", new BigDecimal("20.00"));
     }
 
     @Test
