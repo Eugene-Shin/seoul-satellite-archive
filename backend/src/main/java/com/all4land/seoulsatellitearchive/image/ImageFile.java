@@ -1,5 +1,6 @@
 package com.all4land.seoulsatellitearchive.image;
 
+import com.all4land.seoulsatellitearchive.archive.ArchiveFile;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -46,6 +47,10 @@ public class ImageFile {
     private String mediaType;
 
     private BigDecimal pixelSpacingMeters;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "archive_file_id")
+    private ArchiveFile archiveFile;
 
     @ElementCollection
     @CollectionTable(name = "image_file_band", joinColumns = @JoinColumn(name = "file_id"))
