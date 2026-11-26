@@ -13,6 +13,15 @@ public class LandsatMapper extends StacItemMapper {
         return Set.of("landsat-c2l2-sr", "landsat-c2l2-st");
     }
 
+    // WRS 경로-행(116-034)
+    @Override
+    public String grid(JsonNode item) {
+        JsonNode properties = item.path("properties");
+        String path = properties.path("landsat:wrs_path").asString(null);
+        String row = properties.path("landsat:wrs_row").asString(null);
+        return path == null || row == null ? null : path + "-" + row;
+    }
+
     // 위성 이름은 출처가 달라도 같아야 해서 다른 출처처럼 -로 잇는다(LANDSAT_9 → LANDSAT-9)
     @Override
     protected String satellite(String platform) {

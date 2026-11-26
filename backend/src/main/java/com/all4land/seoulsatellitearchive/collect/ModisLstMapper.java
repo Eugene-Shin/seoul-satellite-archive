@@ -13,6 +13,15 @@ public class ModisLstMapper extends CmrGranuleMapper {
         return Set.of("C1748058432-LPCLOUD", "C1748046084-LPCLOUD");
     }
 
+    // sinusoidal 타일(h28v05)
+    @Override
+    public String grid(JsonNode item) {
+        JsonNode umm = item.path("umm");
+        String horizontal = attribute(umm, "HORIZONTALTILENUMBER");
+        String vertical = attribute(umm, "VERTICALTILENUMBER");
+        return horizontal == null || vertical == null ? null : "h" + horizontal + "v" + vertical;
+    }
+
     // 그래뉼에 Platforms가 없어서 장면 ID 앞부분(MOD: Terra, MYD: Aqua)으로 정한다
     @Override
     protected String satellite(JsonNode umm) {

@@ -50,6 +50,12 @@ public abstract class CmrGranuleMapper implements ItemMapper {
         return new Mapped(request, files);
     }
 
+    // MGRS 타일(HLS). 타일 속성이 없는 제품은 하위 클래스가 바꾼다
+    @Override
+    public String grid(JsonNode item) {
+        return attribute(item.path("umm"), "MGRS_TILE_ID");
+    }
+
     protected String satellite(JsonNode umm) {
         return umm.path("Platforms").path(0).path("ShortName").asString(null);
     }

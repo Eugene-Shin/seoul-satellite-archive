@@ -47,6 +47,13 @@ public abstract class StacItemMapper implements ItemMapper {
         return new Mapped(request, files);
     }
 
+    // STAC grid 확장(MGRS-52SCG → 52SCG)
+    @Override
+    public String grid(JsonNode item) {
+        String code = item.path("properties").path("grid:code").asString(null);
+        return code == null ? null : code.substring(code.indexOf('-') + 1);
+    }
+
     // 대문자로 바꾸는 것은 ImageWriteRequest가 한다
     protected String satellite(String platform) {
         return platform;

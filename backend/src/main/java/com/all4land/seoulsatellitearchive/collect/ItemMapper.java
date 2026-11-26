@@ -14,4 +14,9 @@ public interface ItemMapper {
     Set<String> collections();
 
     Mapped map(JsonNode item, Long collectionId);
+
+    // 아카이브 폴더의 격자(광학 타일·경로). item은 저장한 raw_metadata. 모르면 null
+    default String grid(JsonNode item) {
+        return null;
+    }
 }
