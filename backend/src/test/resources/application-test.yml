@@ -11,6 +11,9 @@ app:
     allowed-origins: http://localhost:3000
   archive:
     root: ${java.io.tmpdir}/ssa-archive-test
+    # 테스트는 대기열을 직접 처리한다
+    worker:
+      enabled: false
   # 테스트는 대기열과 스케줄러를 직접 부른다
   collect:
     worker:

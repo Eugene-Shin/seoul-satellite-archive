@@ -8,6 +8,7 @@ import com.all4land.seoulsatellitearchive.image.ImageFileRole;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,8 +44,13 @@ public final class ArchivePaths {
             Integer relativeOrbit,
             JsonNode raw) {}
 
-    // 파일 → 상대 경로. 이름이 겹치면 목록 순서대로 _2, _3을 붙인다
     public static Map<ImageFile, String> paths(Scene scene, List<ImageFile> files) {
+        return paths(scene, files, List.of());
+    }
+
+    // 파일 → 상대 경로. 이름이 겹치면 목록 순서대로 _2, _3을 붙인다.
+    // takenNames: 같은 영상에서 이미 경로를 정한 파일 이름. 다시 계산하지 않으므로 새 파일이 피해 간다
+    public static Map<ImageFile, String> paths(Scene scene, List<ImageFile> files, Collection<String> takenNames) {
         String folder = String.join(
                 "/",
                 segment(scene.constellation()),
@@ -52,6 +58,7 @@ public final class ArchivePaths {
                 segment(grid(scene)),
                 segment(ACQUIRED.format(scene.acquiredAt()) + "_" + scene.sourceId()));
         Set<String> used = new HashSet<>(RESERVED);
+        takenNames.forEach(name -> used.add(name.toLowerCase(Locale.ROOT)));
         Map<ImageFile, String> paths = new LinkedHashMap<>();
         for (ImageFile file : files) {
             String path = folder + "/" + unique(segment(fileName(scene.sourceId(), file)), used);
@@ -108,8 +115,8 @@ public final class ArchivePaths {
         return rest.equals(extension) ? name : rest;
     }
 
-    // 링크의 파일 이름에서. tar.gz는 한 확장자로 본다
-    private static String extension(String href) {
+    // 링크·경로의 파일 이름에서. tar.gz는 한 확장자로 본다. 없으면 빈 문자열
+    static String extension(String href) {
         String fileName = href.replaceFirst("[?#].*$", "");
         fileName = fileName.substring(fileName.lastIndexOf('/') + 1);
         if (fileName.toLowerCase(Locale.ROOT).endsWith(".tar.gz")) {

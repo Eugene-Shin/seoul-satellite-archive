@@ -52,4 +52,35 @@ public class ArchiveFile {
 
     @Column(insertable = false, updatable = false)
     private Instant createdAt;
+
+    // 경로는 요청할 때 영상 파일 전체로 정한다(겹친 이름 번호)
+    public ArchiveFile(ImageFile file, String archivePath) {
+        this.file = file;
+        this.archivePath = archivePath;
+        this.status = ArchiveFileStatus.QUEUED;
+    }
+
+    public void start() {
+        this.status = ArchiveFileStatus.ARCHIVING;
+    }
+
+    // 다음 이어받기의 If-Range
+    public void recordEtag(String etag) {
+        this.etag = etag;
+    }
+
+    // 확장자가 없으면(빈 문자열) 다른 칸처럼 NULL로 둔다
+    public void archive(String archivePath, String extension, long sizeBytes, Instant archivedAt) {
+        this.status = ArchiveFileStatus.ARCHIVED;
+        this.archivePath = archivePath;
+        this.extension = extension.isEmpty() ? null : extension;
+        this.sizeBytes = sizeBytes;
+        this.archivedAt = archivedAt;
+        this.failureReason = null;
+    }
+
+    public void fail(String reason) {
+        this.status = ArchiveFileStatus.FAILED;
+        this.failureReason = reason;
+    }
 }
